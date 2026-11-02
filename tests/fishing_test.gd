@@ -22,14 +22,16 @@ func _initialize() -> void:
 	_test_faster_belly_drags()
 	_test_mend_buys_a_drag_free_drift()
 	_test_early_mend_jolts_fly()
-	_test_right_fly_gets_eaten()
-	_test_wrong_fly_mostly_refused()
-	_test_drag_refused()
-	_test_splashy_cast_spooks()
+	_test_bite_chance_by_distance_and_presentation()
+	_test_bite_rate_matches_the_odds()
+	_test_bite_becomes_a_take()
+	_test_picking_up_cancels_a_bite()
+	_test_dimples_show_where_the_fish_is()
 	_test_set_timing()
-	_test_full_pressure_snaps_a_redband()
+	_test_full_pressure_snaps_a_strong_fish()
 	_test_no_pressure_throws_hook()
 	_test_steady_pressure_lands_fish()
+	_test_holding_on_lands_the_starter_trout()
 	if _failures == 0:
 		print("Fishing tests passed.")
 		quit(0)
@@ -45,7 +47,7 @@ func _test_data_loads() -> void:
 		var fly := load(path) as FlyPattern
 		_check(fly != null and fly.display_name != "", "data: %s loads" % path.get_file())
 	for sp in [_cutthroat, _redband, _brook]:
-		_check(sp != null and sp.preferred_flies.size() > 0, "data: %s has a preferred fly" % sp.id)
+		_check(sp != null and sp.bite_chance > 0.0 and sp.bite_range > Fish.CLOSE_RANGE, "data: %s has bite odds" % sp.id)
 		_check(sp.set_min < sp.set_max, "data: %s set window is valid" % sp.id)
 
 
@@ -141,27 +143,58 @@ func _test_early_mend_jolts_fly() -> void:
 
 # --- Fish ------------------------------------------------------------------
 
-func _test_right_fly_gets_eaten() -> void:
-	var takes := _count_rises(_brook, &"royal_wulff", 0.0, 40)
-	_check(takes >= 30, "fish: brook trout rises to a Royal Wulff most drifts (%d/40)" % takes)
+func _test_bite_chance_by_distance_and_presentation() -> void:
+	var f := Fish.new(_redband, _rng)
+	var close := f.lie + Vector2(-5, 0)
+	var delicate := f.bite_chance_for(close, "Delicate")
+	_check(is_equal_approx(delicate, _redband.bite_chance), "odds: delicate cast right by the fish gets the full chance (%.2f)" % delicate)
+	_check(f.bite_chance_for(close, "Fair") < delicate, "odds: a fair landing is less likely")
+	_check(f.bite_chance_for(close, "Splashy") < f.bite_chance_for(close, "Fair"), "odds: a splashy landing is least likely")
+	var mid := f.bite_chance_for(f.lie + Vector2(0, -_redband.bite_range * 0.6), "Delicate")
+	_check(mid > 0.0 and mid < delicate, "odds: farther away is less likely (%.2f)" % mid)
+	_check(f.bite_chance_for(f.lie + Vector2(_redband.bite_range + 1.0, 0), "Delicate") == 0.0, "odds: out of range never bites")
 
 
-func _test_wrong_fly_mostly_refused() -> void:
-	var takes := _count_rises(_brook, &"elk_hair_caddis", 0.0, 40)
-	_check(takes <= 18, "fish: brook trout mostly refuses the wrong fly (%d/40)" % takes)
+func _test_bite_rate_matches_the_odds() -> void:
+	var f := Fish.new(_redband, _rng)
+	var bites := 0
+	var casts := 2000
+	for i in casts:
+		f.on_landing(f.lie + Vector2(-5, 0), "Delicate")
+		if f.state == Fish.State.WAITING:
+			bites += 1
+	var rate := float(bites) / casts
+	_check(absf(rate - _redband.bite_chance) < 0.04, "odds: bite rate over %d casts is %.2f (expected %.2f)" % [casts, rate, _redband.bite_chance])
 
 
-func _test_drag_refused() -> void:
-	var takes := _count_rises(_brook, &"royal_wulff", 0.5, 40)
-	_check(takes == 0, "fish: a dragging fly never gets eaten (%d/40)" % takes)
+func _test_bite_becomes_a_take() -> void:
+	var f := Fish.new(_eager(_redband), _rng)
+	var fly := f.lie + Vector2(-5, 0)
+	f.on_landing(fly, "Delicate")
+	var events: Array[StringName] = []
+	for i in 180:
+		var e := f.update(DT, fly, true)
+		if e != &"" and e != &"dimple":
+			events.append(e)
+		if f.state == Fish.State.TAKEN:
+			break
+	_check(events == [&"rising", &"take"], "take: a bite rises then takes the fly (%s)" % [events])
 
 
-func _test_splashy_cast_spooks() -> void:
-	var f := Fish.new(_cutthroat, _rng)
-	_check(f.on_landing(f.lie + Vector2(-10, 0), "Splashy"), "fish: splashy cast nearby spooks it")
-	_check(f.state == Fish.State.GONE, "fish: spooked fish leaves")
-	var g := Fish.new(_cutthroat, _rng)
-	_check(not g.on_landing(g.lie + Vector2(-14, 0), "Delicate"), "fish: delicate cast upstream doesn't spook it")
+func _test_picking_up_cancels_a_bite() -> void:
+	var f := Fish.new(_eager(_redband), _rng)
+	f.on_landing(f.lie, "Delicate")
+	f.update(DT, f.lie, false)
+	_check(f.state == Fish.State.HOLDING, "take: lifting the fly off the water cancels the bite")
+
+
+func _test_dimples_show_where_the_fish_is() -> void:
+	var f := Fish.new(_redband, _rng)
+	var dimples := 0
+	for i in 600:
+		if f.update(DT, Vector2.ZERO, false) == &"dimple":
+			dimples += 1
+	_check(dimples >= 1, "dimple: the fish rises on its own now and then (%d in 10 s)" % dimples)
 
 
 func _test_set_timing() -> void:
@@ -174,19 +207,22 @@ func _test_set_timing() -> void:
 	var late := _taken_fish(_cutthroat)
 	var event := &""
 	for i in 120:
-		var e := late.update(DT, late.pos, &"elk_hair_caddis", 0.0, true)
+		var e := late.update(DT, late.pos, true)
 		if e != &"":
 			event = e
+			break
 	_check(event == &"spat", "set: waiting too long, it spits the fly")
 	_check(Fish.new(_cutthroat, _rng).try_set() == Fish.SetResult.NO_FISH, "set: nothing there, nothing happens")
 
 
 # --- Fight -----------------------------------------------------------------
 
-func _test_full_pressure_snaps_a_redband() -> void:
-	var f := FightModel.new(_redband, 50.0, -PI / 2.0, _rng)
+func _test_full_pressure_snaps_a_strong_fish() -> void:
+	var strong: FishSpecies = _redband.duplicate()
+	strong.pull = 1.0
+	var f := FightModel.new(strong, 50.0, -PI / 2.0, _rng)
 	var result := _run_fight(f, 10.0, func(_f: FightModel): return Vector2(0, -1))
-	_check(result == FightModel.Result.SNAPPED, "fight: full pressure on a running redband snaps it (%s)" % FightModel.Result.keys()[result])
+	_check(result == FightModel.Result.SNAPPED, "fight: full pressure on a strong running fish snaps it (%s)" % FightModel.Result.keys()[result])
 
 
 func _test_no_pressure_throws_hook() -> void:
@@ -205,6 +241,14 @@ func _test_steady_pressure_lands_fish() -> void:
 		_check(result == FightModel.Result.LANDED, "fight: easing off on runs lands a %s (%s)" % [sp.id, FightModel.Result.keys()[result]])
 
 
+func _test_holding_on_lands_the_starter_trout() -> void:
+	# The starter redband is gentle: holding full pressure the whole fight (as on
+	# a keyboard) lands it instead of snapping.
+	var f := FightModel.new(_redband, 50.0, -PI / 2.0, _rng)
+	var result := _run_fight(f, 60.0, func(_f: FightModel): return Vector2(0, -1))
+	_check(result == FightModel.Result.LANDED, "fight: holding on the whole time lands the starter redband (%s)" % FightModel.Result.keys()[result])
+
+
 # --- Helpers ---------------------------------------------------------------
 
 func _run_drift(d: DriftModel, seconds: float, flow: Callable) -> void:
@@ -212,20 +256,11 @@ func _run_drift(d: DriftModel, seconds: float, flow: Callable) -> void:
 		d.update(DT, flow)
 
 
-## Drifts a fly straight down onto a fresh fish's nose, many times over, and
-## counts how often it rises.
-func _count_rises(species: FishSpecies, fly_id: StringName, drag: float, trials: int) -> int:
-	var takes := 0
-	for i in trials:
-		var f := Fish.new(species, _rng)
-		var fly := f.lie + Vector2(-20, 0)
-		f.on_landing(fly, "Delicate")
-		for step in 60:
-			fly.x += 30.0 * DT
-			if f.update(DT, fly, fly_id, drag, true) == &"rising":
-				takes += 1
-				break
-	return takes
+## A copy of a species that always bites, for testing what happens after.
+func _eager(species: FishSpecies) -> FishSpecies:
+	var copy: FishSpecies = species.duplicate()
+	copy.bite_chance = 1.0
+	return copy
 
 
 func _taken_fish(species: FishSpecies) -> Fish:

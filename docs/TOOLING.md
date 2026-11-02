@@ -43,7 +43,8 @@ With the debug overlay open, you can read the real hold and overlap times from t
 Flies and fish are data files, so adding one doesn't need code.
 
 - **New fly:** in Godot's FileSystem panel, duplicate a file in `data/flies/`, give it a new `id`, `display_name` and colours, and add it to the `flies` list on the **Fishing** node in `scenes/main.tscn`.
-- **New fish:** duplicate a file in `data/fish/`. Set `lie_area` (the rectangle of the stream where it holds, in screen pixels), `preferred_flies` (fly ids), `take_chance`, the hook-set window (`set_min`/`set_max`), `pull` (around 1.0 snaps the tippet under full pressure) and size range. Then add it to `stocking` on the Fishing node.
+- **New fish:** duplicate a file in `data/fish/`. Set `lie_area` (the rectangle of the stream where it holds, in screen pixels), `bite_chance` and `bite_range`, the hook-set window (`set_min`/`set_max`), `pull` (around 1.0 snaps the tippet under full pressure) and size range. Then add it to `stocking` on the Fishing node.
+- **Bite odds:** `bite_chance` is the chance for a delicate cast right by the fish. Fair landings get 60% of it and splashy ones 25% (`PRESENTATION_FACTOR` in `scripts/fishing/fish.gd`), falling off to zero at `bite_range` px away.
 
 The drift and fight feel constants sit at the top of `scripts/fishing/drift_model.gd` and `scripts/fishing/fight_model.gd`, each with a comment.
 
@@ -61,9 +62,9 @@ Open the debug overlay with View (Create on a PS5 pad). Use it to check that the
 
 ## Checks
 
-- `tests/smoke_test.gd` verifies every input action exists, loads the main scene, then plays a whole catch through the input system: a cast, a brook trout rising, the hook set and the fight.
+- `tests/smoke_test.gd` verifies every input action exists, loads the main scene, then plays a whole catch through the input system: a cast, the trout rising, the hook set and the fight.
 - `tests/cast_test.gd` tests the cast rhythm on its own: clean casts, false casts adding line, collapses, ticking the grass, tailing loops, early strokes, aim and pick-ups.
-- `tests/fishing_test.gd` tests the stick gestures (mend loop, hook-set flick), drift and drag, mending, rises and refusals, spooking, hook-set timing, and fight outcomes for every species.
+- `tests/fishing_test.gd` tests the stick gestures (mend loop, hook-set flick), drift and mending, the bite odds (including that 2,000 simulated casts bite at the advertised rate), rises, hook-set timing, and fight outcomes.
 
   ```
   godot --headless --path . --script res://tests/smoke_test.gd

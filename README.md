@@ -2,15 +2,15 @@
 
 A cabin-core fly fishing game. A laid-off father inherits his late dad's cabin, rod and fly box in the Oregon Cascades, learns the river, and grows a guiding lodge. The game is built for Steam Deck first, with a Game Boy-inspired look and tactile bumper-and-stick casting.
 
-| Drifting a Royal Wulff over trout | Fish on | Landed |
+| Fly on the water, 46% bite chance | Fish on | Landed |
 |---|---|---|
-| ![Fly drifting on the pool with trout shadows below](docs/screenshots/drift.png) | ![Fighting a fish with the tension meter](docs/screenshots/fight.png) | ![Catch card for a brook trout](docs/screenshots/caught.png) |
+| ![Fly on the pool with the trout's shadow nearby](docs/screenshots/drift.png) | ![Fighting a fish with the tension meter](docs/screenshots/fight.png) | ![Catch card for a redband rainbow](docs/screenshots/caught.png) |
 
 ## Current milestone: dry fly minigame
 
 1. **Tooling and project skeleton** (done). Godot project, Deck control map, placeholder stream, controller debug overlay.
 2. **Casting** (done). Hold R for the back cast, overlap into L for the forward cast, and alternate R/L to shoot line for distance.
-3. **Drift, rise, set and fight** (this step). The fly drifts on the current, the right stick mends, a fish rises, you flick to set, then hold and play line tension. 3 flies and 3 trout.
+3. **Rise, set and fight** (this step). One trout, one fly, a simple bite chance per cast, flick to set, then play line tension.
 4. **Tune on the Deck.** Timing windows, rumble, and how readable the bite cue is.
 
 ## Quick start
@@ -33,14 +33,14 @@ The longer the line, the longer each stroke needs, just like a real cast. Stroke
 
 ## How to fish
 
-1. **Pick a fly.** Press **Y** while reeled in to cycle the fly box. Each trout has a favourite:
-   - **Westslope Cutthroat** hold in the riffle and like the **Elk Hair Caddis**. They rise slowly, so wait a beat before setting.
-   - **Redband Rainbows** sit on the seam where the riffle meets the pool and like the **Parachute Adams**. They run hard.
-   - **Brook Trout** tuck along the slow far edge of the pool and go for the **Royal Wulff**. They strike fast.
-2. **Cast upstream of a fish.** Trout face into the current (left), so land the fly upstream and let it drift down to them. You can see their faint shadows. A splashy landing near a fish spooks it.
-3. **Mend.** The belly of your line drifts faster than the fly and starts to drag it, which shows as a V-wake behind the fly. **Loop the right stick** (about half a circle) to flip the belly back upstream. Mend too early and you yank the fly.
-4. **Set the hook.** When a fish rises and the fly disappears, **flick the right stick up**. Too soon pulls the fly away, and too late means it spits the fly. Each species has its own timing.
-5. **Fight.** **Push the right stick** to put pressure on, and watch the tension bar. Ease off when it runs, or the tippet snaps. Push sideways against a run to tire it faster. Give it no pressure at all and it throws the hook. Once it's tired, reel it close to land it.
+For now the stream holds **one Redband Rainbow** in the middle of the pool, and you have **one fly**, a Parachute Adams. Watch for the rings where it rises on its own to find it.
+
+1. **Cast near the fish.** When the fly lands you'll see your chance of a bite. A delicate landing right by the fish gives the best odds (60%). Fair landings get about 60% of that and splashy ones 25%, and the chance falls off with distance until about 40 px out, where it's zero.
+2. **Wait for the rise.** If the fish bites, it comes up for the fly a second or two later and the fly disappears.
+3. **Set the hook.** **Flick the right stick up** (tap **I** on keyboard). You have about a second.
+4. **Fight.** **Push the right stick** (hold **I**) to pull it in, and watch the tension bar. Don't let the line go slack for long or it throws the hook. Pushing sideways against a run tires it faster. Reel it in close once it's tired to land it.
+
+You can also mend the line by looping the right stick, but drag doesn't affect bites yet. More flies (`data/flies/`) and two more trout (`data/fish/`) are already set up as data and can be added back when we want more depth.
 
 ## Controls
 
@@ -74,7 +74,7 @@ scripts/fishing/            Drift and mending (drift_model.gd), fish behaviour (
                             fight (fight_model.gd), stick gestures, and the scene glue
                             (fishing_controller.gd)
 data/flies/*.tres           Fly patterns (FlyPattern)
-data/fish/*.tres            Trout species: habitat, favourite flies, hook-set window, fight
+data/fish/*.tres            Trout species: habitat, bite odds, hook-set window, fight
 scripts/debug_overlay.gd    Bumper timeline, stick readouts, rumble test
 tools/setup_input_map.gd    Source of truth for the input map (regenerates project.godot)
 tools/capture_screenshot.gd Plays a scripted catch and saves screenshots

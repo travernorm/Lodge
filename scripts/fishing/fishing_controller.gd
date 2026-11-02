@@ -11,17 +11,14 @@ extends Node2D
 enum Phase { NONE, DRIFT, FIGHT }
 
 ## The fly box. Y (F on keyboard) cycles through it while the line is reeled in.
+## Starts with just one fly; more patterns are waiting in data/flies/.
 @export var flies: Array[FlyPattern] = [
 	preload("res://data/flies/parachute_adams.tres"),
-	preload("res://data/flies/elk_hair_caddis.tres"),
-	preload("res://data/flies/royal_wulff.tres"),
 ]
-## One fish is stocked for each entry.
+## One fish is stocked for each entry. Starts with one trout in the pool; more
+## species are waiting in data/fish/.
 @export var stocking: Array[FishSpecies] = [
-	preload("res://data/fish/cutthroat.tres"),
 	preload("res://data/fish/redband.tres"),
-	preload("res://data/fish/redband.tres"),
-	preload("res://data/fish/brook.tres"),
 ]
 
 const CARD_SECONDS := 3.5
@@ -30,7 +27,7 @@ const RING_SECONDS := 0.9
 const COL_LINE := Color("d8cfa6")
 const COL_LINE_TIGHT := Color("f2a65a")
 const COL_LINE_DANGER := Color("e8553a")
-const COL_FISH_SHADOW := Color(0.05, 0.12, 0.14, 0.32)
+const COL_FISH_SHADOW := Color(0.05, 0.12, 0.14, 0.55)
 const COL_WAKE := Color(1, 1, 1, 0.6)
 const COL_RING := Color(1, 1, 1, 0.85)
 const COL_PANEL := Color(0, 0, 0, 0.55)
@@ -126,11 +123,14 @@ func _process(delta: float) -> void:
 	for f in fish:
 		if f == hooked:
 			continue
-		_on_fish_event(f, f.update(delta, drift.fly, current_fly().id, drift.drag, on_water))
+		_on_fish_event(f, f.update(delta, drift.fly, on_water))
 	queue_redraw()
 
 
 func _change_fly() -> void:
+	if flies.size() < 2:
+		_cast.show_message("Just the one fly in Dad's box for now.", 0.5)
+		return
 	if _cast.model.state != CastModel.State.IDLE:
 		_cast.show_message("Reel in first (B) to change flies.", 0.5)
 		return
@@ -147,12 +147,14 @@ func _on_landed(_presentation: String, _quality: float) -> void:
 	phase = Phase.DRIFT
 	_fly_taken = false
 	drift.start(_stream.rod_tip(), at)
-	var spooked := false
+	var best := 0.0
 	for f in fish:
-		spooked = f.on_landing(at, _cast.model.presentation) or spooked
-	if spooked:
-		_cast.show_message("That landing spooked a fish.", 0.2)
-		_burst(at, 14.0)
+		best = maxf(best, f.on_landing(at, _cast.model.presentation))
+	var presentation: String = _cast.model.presentation
+	if best <= 0.0:
+		_cast.show_message("%s landing. Too far from the fish for a bite." % presentation, 0.4)
+	else:
+		_cast.show_message("%s landing. %d%% chance of a bite." % [presentation, roundi(best * 100.0)], best / 0.6)
 
 
 func _update_drift(delta: float) -> void:
@@ -211,14 +213,10 @@ func _on_fish_event(f: Fish, event: StringName) -> void:
 		&"spat":
 			_fly_taken = false
 			_cast.show_message("Too late. It spat the fly.", 0.3)
-		&"refuse":
-			_cast.show_message("A fish looked and refused. Wrong fly?", 0.4)
-			_rings.append(Vector3(f.lie.x, f.lie.y, _time - 0.4))
-		&"refuse_drag":
-			_cast.show_message("Drag! The fish turned away. Mend sooner.", 0.3)
-		&"spook":
-			_cast.show_message("The skating fly spooked a fish.", 0.1)
-			_burst(f.lie, 10.0)
+		&"dimple":
+			_rings.append(Vector3(f.lie.x, f.lie.y, _time - 0.3))
+		&"rising":
+			_cast.show_message("Here it comes...", 1.0)
 
 
 # --- Fight -----------------------------------------------------------------
@@ -383,9 +381,12 @@ func _draw_hud() -> void:
 	draw_rect(box, COL_PANEL)
 	fly.draw_at(self, box.position + Vector2(5, 5), 2.0)
 	draw_string(font, box.position + Vector2(14, 10), fly.display_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, COL_TEXT)
-	draw_string(font, box.position + Vector2(0, -3), "Y: fly box", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, COL_DIM)
+	if flies.size() > 1:
+		draw_string(font, box.position + Vector2(0, -3), "Y: fly box", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, COL_DIM)
 	# Catch log, bottom right.
-	var log_text := "%d caught  %d/%d species" % [catches.size(), species_caught(), _unique_species()]
+	var log_text := "%d caught" % catches.size()
+	if _unique_species() > 1:
+		log_text += "  %d/%d species" % [species_caught(), _unique_species()]
 	var w := font.get_string_size(log_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
 	var log_box := Rect2(view.x - w - 10, view.y - 17, w + 6, 13)
 	draw_rect(log_box, COL_PANEL)

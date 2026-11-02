@@ -11,15 +11,14 @@ extends Resource
 ## Area of the test stream (screen px) where this fish picks its lie.
 @export var lie_area := Rect2(0, 60, 320, 80)
 
-@export_group("What it eats")
-## Fly ids this fish takes readily.
+@export_group("Biting")
+## Chance it bites a delicate cast landing right by it. Fair landings get 60% of
+## this and splashy ones 25%, and it falls off with distance out to bite_range.
+@export_range(0.0, 1.0) var bite_chance := 0.6
+## Casts landing farther than this (px) from the fish never get a bite.
+@export var bite_range := 40.0
+## Fly ids this fish likes. Not used for bites yet; kept for when the fly box returns.
 @export var preferred_flies := PackedStringArray()
-## Chance it takes a preferred fly on a clean drift.
-@export_range(0.0, 1.0) var take_chance := 0.85
-## Chance it takes any other fly.
-@export_range(0.0, 1.0) var off_pattern_take := 0.15
-## Drag above this and it refuses.
-@export_range(0.0, 1.0) var drag_tolerance := 0.25
 
 @export_group("Hook set")
 ## Seconds after the take. Set sooner and you pull the fly away; later and it spits the fly.

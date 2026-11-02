@@ -24,12 +24,6 @@ func _initialize() -> void:
 
 func _run() -> void:
 	await _wait(0.3)
-	# Tie on a Royal Wulff and walk a little upstream.
-	_fishing.fly_index = 2
-	Input.action_press(&"move_left")
-	await _wait(0.6)
-	Input.action_release(&"move_left")
-
 	# Back cast, forward cast, two false casts, deliver.
 	Input.action_press(&"cast_back")
 	await _wait(_ideal())
@@ -50,21 +44,18 @@ func _run() -> void:
 	Input.action_release(&"cast_forward")
 	await _wait(_cast.model.tuning.flight_time + 0.1)
 
-	# Plant an eager brook trout just downstream of the fly.
-	var brook: Fish = null
-	for f in _fishing.fish:
-		if f.species.id == &"brook":
-			brook = f
-	brook.species = brook.species.duplicate()
-	brook.species.take_chance = 1.0
-	brook.lie = _cast.fly_pos + Vector2(22, 1)
-	brook.pos = brook.lie
-	brook.state = Fish.State.HOLDING
-	await _wait(0.35)
+	# Move the trout next to where the fly landed and make it bite for sure.
+	var trout: Fish = _fishing.fish[0]
+	trout.species = trout.species.duplicate()
+	trout.species.bite_chance = 1.0
+	trout.lie = _cast.fly_pos + Vector2(16, 3)
+	trout.pos = trout.lie
+	trout.on_landing(_cast.fly_pos, "Delicate")
+	await _wait(0.3)
 	await _save("drift")
-	while brook.state != Fish.State.TAKEN:
+	while trout.state != Fish.State.TAKEN:
 		await process_frame
-	await _wait(brook.species.set_min + 0.05)
+	await _wait(trout.species.set_min + 0.05)
 	_stick(Vector2(0, -1))
 	await _wait(0.05)
 

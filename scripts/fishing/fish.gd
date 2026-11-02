@@ -1,26 +1,27 @@
 class_name Fish
 extends RefCounted
-## One trout holding in the stream. It watches flies drift down to it and decides
-## whether to rise, refuse, or bolt, and it judges your hook set.
+## One trout holding in the stream.
+##
+## Bites are a simple roll per cast: when the fly lands, the fish works out a bite
+## chance from how close the fly landed and how softly (see bite_chance_for()).
+## If the roll succeeds, it rises to the fly a moment later. Then you have to set
+## the hook in its window.
 ##
 ## update() returns an event name the scene can react to:
-##   &"rising"      started coming up for the fly
-##   &"take"        took the fly: the hook-set window is open
-##   &"spat"        you waited too long and it spat the fly
-##   &"refuse"      looked and turned away (wrong fly)
-##   &"refuse_drag" turned away because the fly was dragging
-##   &"spook"       bolted (heavy drag)
+##   &"dimple"  a natural rise at its lie, so you can see where it is
+##   &"rising"  coming up for your fly
+##   &"take"    took the fly: the hook-set window is open
+##   &"spat"    you waited too long and it spat the fly
 
-enum State { HOLDING, RISING, TAKEN, HOOKED, COOLDOWN, GONE }
+enum State { HOLDING, WAITING, RISING, TAKEN, HOOKED, GONE }
 enum SetResult { HOOKED, TOO_EARLY, TOO_LATE, NO_FISH }
 
-const LOOK_UPSTREAM := 26.0  # px upstream it can see a fly coming
-const DECIDE_AT := -6.0  # it decides once the fly is this close upstream
-const LOOK_DOWNSTREAM := 4.0
-const LOOK_SIDE := 9.0
+const PRESENTATION_FACTOR := {"Delicate": 1.0, "Fair": 0.6, "Splashy": 0.25}
+const CLOSE_RANGE := 8.0  # px: inside this the distance doesn't lower the chance
 const RISE_TIME := 0.35
-const COOLDOWN_TIME := 4.0
-const GONE_TIME := 10.0
+const BITE_DELAY := Vector2(0.6, 2.0)  # seconds after landing before it rises
+const DIMPLE_EVERY := Vector2(3.0, 6.0)
+const GONE_TIME := 4.0
 
 var species: FishSpecies
 var lie := Vector2.ZERO
@@ -30,9 +31,11 @@ var length_in := 0.0
 var state := State.HOLDING
 ## Time since the take, while TAKEN.
 var since_take := 0.0
+## The bite chance rolled for the last cast that landed.
+var last_bite_chance := 0.0
 
 var _timer := 0.0
-var _looked := false
+var _dimple_timer := 0.0
 var _rng: RandomNumberGenerator
 
 
@@ -49,43 +52,57 @@ func respawn() -> void:
 	pos = lie
 	length_in = snappedf(_rng.randf_range(species.min_length_in, species.max_length_in), 0.5)
 	state = State.HOLDING
-	_looked = false
+	_dimple_timer = _rng.randf_range(0.5, DIMPLE_EVERY.y)
 
 
-## Visible in the water (not off sulking somewhere).
+## Visible in the water (not gone off somewhere).
 func is_present() -> bool:
 	return state != State.GONE
 
 
-## A fresh cast landed. Returns true if it landed hard enough nearby to spook the fish.
-func on_landing(at: Vector2, presentation: String) -> bool:
-	_looked = false
-	if state != State.HOLDING and state != State.COOLDOWN:
-		return false
+## 0..1 chance this fish bites a fly landing at `at` with the given presentation.
+func bite_chance_for(at: Vector2, presentation: String) -> float:
 	var d := at.distance_to(lie)
-	var spooked := d < 3.0 \
-		or (presentation == "Splashy" and d < 18.0) \
-		or (presentation == "Fair" and d < 7.0)
-	if spooked:
-		leave()
-	return spooked
+	if d > species.bite_range:
+		return 0.0
+	var closeness := 1.0 - clampf((d - CLOSE_RANGE) / (species.bite_range - CLOSE_RANGE), 0.0, 1.0)
+	return species.bite_chance * closeness * PRESENTATION_FACTOR.get(presentation, 0.5)
 
 
-func update(dt: float, fly: Vector2, fly_id: StringName, drag: float, fly_on_water: bool) -> StringName:
+## A cast landed: roll for a bite. Returns the chance that was rolled.
+func on_landing(at: Vector2, presentation: String) -> float:
+	if state == State.GONE or state == State.HOOKED:
+		return 0.0
+	last_bite_chance = bite_chance_for(at, presentation)
+	if _rng.randf() < last_bite_chance:
+		state = State.WAITING
+		_timer = _rng.randf_range(BITE_DELAY.x, BITE_DELAY.y)
+	else:
+		_settle()
+	return last_bite_chance
+
+
+func update(dt: float, fly: Vector2, fly_on_water: bool) -> StringName:
 	_timer -= dt
 	match state:
-		State.COOLDOWN:
-			if _timer <= 0.0:
-				state = State.HOLDING
 		State.GONE:
 			if _timer <= 0.0:
 				respawn()
 		State.HOLDING:
-			if fly_on_water and not _looked:
-				return _judge(fly, fly_id, drag)
+			_dimple_timer -= dt
+			if _dimple_timer <= 0.0:
+				_dimple_timer = _rng.randf_range(DIMPLE_EVERY.x, DIMPLE_EVERY.y)
+				return &"dimple"
+		State.WAITING:
+			if not fly_on_water:
+				_settle()
+			elif _timer <= 0.0:
+				state = State.RISING
+				_timer = RISE_TIME
+				return &"rising"
 		State.RISING:
 			if not fly_on_water:
-				_cooldown()
+				_settle()
 				return &""
 			pos = lie.lerp(fly, clampf(1.0 - _timer / RISE_TIME, 0.0, 1.0))
 			if _timer <= 0.0:
@@ -97,7 +114,7 @@ func update(dt: float, fly: Vector2, fly_id: StringName, drag: float, fly_on_wat
 			since_take += dt
 			pos = fly
 			if since_take > species.set_max:
-				_cooldown()
+				_settle()
 				return &"spat"
 	return &""
 
@@ -106,50 +123,27 @@ func update(dt: float, fly: Vector2, fly_id: StringName, drag: float, fly_on_wat
 func try_set() -> SetResult:
 	match state:
 		State.RISING:
-			leave()
+			_settle()
 			return SetResult.TOO_EARLY
 		State.TAKEN:
 			if since_take < species.set_min:
-				leave()
+				_settle()
 				return SetResult.TOO_EARLY
 			if since_take > species.set_max:
-				_cooldown()
+				_settle()
 				return SetResult.TOO_LATE
 			state = State.HOOKED
 			return SetResult.HOOKED
 	return SetResult.NO_FISH
 
 
-## Spooked, broke off, or released: gone for a while, then a new fish takes the lie.
+## Landed or broke off: gone for a moment, then a fish takes the lie again.
 func leave() -> void:
 	state = State.GONE
 	_timer = GONE_TIME
 	pos = lie
 
 
-func _judge(fly: Vector2, fly_id: StringName, drag: float) -> StringName:
-	var dx := fly.x - lie.x
-	if absf(fly.y - lie.y) > LOOK_SIDE or dx < -LOOK_UPSTREAM or dx > LOOK_DOWNSTREAM:
-		return &""
-	if dx < DECIDE_AT:
-		return &""
-	_looked = true
-	if drag > species.drag_tolerance:
-		if drag > 0.6 and _rng.randf() < 0.5:
-			leave()
-			return &"spook"
-		_cooldown()
-		return &"refuse_drag"
-	var chance := species.take_chance if species.preferred_flies.has(String(fly_id)) else species.off_pattern_take
-	if _rng.randf() < chance:
-		state = State.RISING
-		_timer = RISE_TIME
-		return &"rising"
-	_cooldown()
-	return &"refuse"
-
-
-func _cooldown() -> void:
-	state = State.COOLDOWN
-	_timer = COOLDOWN_TIME
+func _settle() -> void:
+	state = State.HOLDING
 	pos = lie

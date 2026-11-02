@@ -46,6 +46,20 @@ func _run(main: Node) -> void:
 		_fail("Cast controller script did not load")
 		return
 
+	# Make the stream's trout certain to bite and put it where the cast will land.
+	var fishing := main.get_node_or_null(^"Fishing")
+	if fishing == null or not fishing.has_method(&"current_fly"):
+		_fail("Fishing controller script did not load")
+		return
+	if fishing.fish.size() != 1:
+		_fail("Expected one trout in the stream, found %d" % fishing.fish.size())
+		return
+	var trout: Fish = fishing.fish[0]
+	trout.species = trout.species.duplicate()
+	trout.species.bite_chance = 1.0
+	trout.lie = Vector2(166, 99)
+	trout.pos = trout.lie
+
 	# Play one real cast through the input system: R back cast, overlap into L,
 	# hold L, let go, and check the fly lands on the water.
 	var ideal: float = cast.model.tuning.base_stroke_time + cast.model.tuning.line_start * cast.model.tuning.stroke_time_per_px
@@ -65,32 +79,15 @@ func _run(main: Node) -> void:
 		return
 	var landing: Vector2 = cast.fly_pos
 
-
-	# The fly is drifting. Plant a brook trout just downstream of it, tie on the
-	# fly it likes, and play the whole catch through the input system.
-	var fishing := main.get_node_or_null(^"Fishing")
-	if fishing == null or not fishing.has_method(&"current_fly"):
-		_fail("Fishing controller script did not load")
-		return
+	# The fly is drifting over the trout. Wait for the bite, set, and fight it
+	# through the input system.
 	if fishing.phase != 1:  # Phase.DRIFT
 		_fail("Fly landed but no drift started")
 		return
-	var brook: Fish = null
-	for f in fishing.fish:
-		if f.species.id == &"brook":
-			brook = f
-	brook.species = brook.species.duplicate()
-	brook.species.take_chance = 1.0
-	brook.lie = cast.fly_pos + Vector2(14, 0)
-	brook.pos = brook.lie
-	brook.state = Fish.State.HOLDING
-	for i in fishing.flies.size():
-		if fishing.flies[i].id == &"royal_wulff":
-			fishing.fly_index = i
-	if not await _wait_for(cast, func(): return brook.state == Fish.State.TAKEN, 3.0):
-		_fail("Brook trout never took the fly (state %s)" % Fish.State.keys()[brook.state])
+	if not await _wait_for(cast, func(): return trout.state == Fish.State.TAKEN, 4.0):
+		_fail("The trout never took the fly (state %s)" % Fish.State.keys()[trout.state])
 		return
-	await _wait(cast, brook.species.set_min + 0.05)
+	await _wait(cast, trout.species.set_min + 0.05)
 	_stick(Vector2(0, -1))  # flick up to set
 	await _wait(cast, 0.05)
 	if fishing.phase != 2:  # Phase.FIGHT
@@ -111,7 +108,7 @@ func _run(main: Node) -> void:
 		return
 
 	print("Smoke test passed: %d input actions, scripted cast landed %s (%s), %s rose, was hooked and landed." % [
-		REQUIRED_ACTIONS.size(), landing.round(), cast.model.presentation, brook.species.display_name])
+		REQUIRED_ACTIONS.size(), landing.round(), cast.model.presentation, trout.species.display_name])
 	quit(0)
 
 
