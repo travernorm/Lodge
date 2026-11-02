@@ -2,25 +2,27 @@ extends Node
 ## Lodge control names and stick helpers, loaded as the `Controls` autoload.
 ##
 ## Steam Deck / Xbox-style layout:
-##   R bumper (RB)   cast_back     hold to time the back cast
-##   L bumper (LB)   cast_forward  overlap with R to shoot the forward cast
+##   L bumper (LB)   cast_back     hold to time the back cast
+##   R bumper (RB)   cast_forward  overlap with L to shoot the forward cast
 ##   Right stick     rod_*         mend loops, set the hook, strip and twitch the fly
+##   X (Square)      mend          flip the line's belly upstream, same as a stick loop
 ##   Left stick/D-pad move_*       walk the bank
 ##   A               interact      sets the hook while fishing; later perception checks, talk
 ##   Y               change_fly    open the fly box (next fly) while reeled in
-##   X               cycle_bite_rules  switch bite rules while reeled in
+##   L trigger (LT/L2)  cycle_bite_rules  switch bite rules while reeled in
 ##   B               back          cancel or reel in
 ##   Start/Menu      pause
 ##   L3 (click left stick)   practice_mode  casting practice range on/off
 ##   R3 (click right stick)  cycle_rules    switch casting rule set
 ##   Select/View     toggle_debug  cycle debug views (controller, read the water)
 ##
-## Keyboard fallbacks (for working on a laptop): WASD move, IJKL rod, E = R bumper,
-## Q = L bumper, Space interact / set hook, Backspace back, F change fly, Esc pause, F1 debug,
+## Keyboard fallbacks (for working on a laptop): WASD move, IJKL rod, Q = L bumper,
+## E = R bumper, M mend, Space interact / set hook, Backspace back, F change fly, Esc pause, F1 debug,
 ## T practice mode, Tab switch casting rules, R switch bite rules.
 
 const CAST_BACK := &"cast_back"
 const CAST_FORWARD := &"cast_forward"
+const MEND := &"mend"
 const INTERACT := &"interact"
 const CHANGE_FLY := &"change_fly"
 const PRACTICE_MODE := &"practice_mode"
@@ -33,7 +35,7 @@ const TOGGLE_DEBUG := &"toggle_debug"
 const ALL_ACTIONS: Array[StringName] = [
 	&"move_left", &"move_right", &"move_up", &"move_down",
 	&"rod_left", &"rod_right", &"rod_up", &"rod_down",
-	CAST_BACK, CAST_FORWARD, INTERACT, CHANGE_FLY, BACK, PAUSE, TOGGLE_DEBUG, PRACTICE_MODE, CYCLE_RULES,
+	CAST_BACK, CAST_FORWARD, MEND, INTERACT, CHANGE_FLY, BACK, PAUSE, TOGGLE_DEBUG, PRACTICE_MODE, CYCLE_RULES,
 	CYCLE_BITE_RULES,
 ]
 

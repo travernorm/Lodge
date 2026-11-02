@@ -8,7 +8,8 @@ extends SceneTree
 ##   * the debug views (controller, read the water) cycled during a drift and a
 ##     fight without breaking either
 ##   * practice mode under every rule set: fish never bite, every landing scores
-##   * a catch under every bite rules set (TakeRules), switched with X / R
+##   * a catch under every bite rules set (TakeRules), switched with L2 / R
+##   * the mend button (Square / M) mends a drift, like a stick loop
 ##   * walking only while reeled in, and B reeling in a drift
 ##
 ##   godot --headless --path . --script res://tests/playthrough_test.gd
@@ -97,7 +98,7 @@ func _run() -> void:
 		print("  ok    bite rules %s: caught a %s" % [take_rules.display_name, _trout.species.display_name])
 		await _tap(&"cycle_bite_rules")
 		if take_count > 1 and _fishing.take_rules == take_rules:
-			_fail("X / R didn't switch the bite rules")
+			_fail("L2 / R didn't switch the bite rules")
 			return
 	if _fishing.take_rules != _fishing.take_chassis[0]:
 		_fail("Cycling every bite rules set didn't come back to the default")
@@ -120,6 +121,10 @@ func _run() -> void:
 		_fail("B didn't reel in the drift (cast %s, phase %d)" % [CastModel.State.keys()[_cast.model.state], _fishing.phase])
 		return
 	print("  ok    B reels in a drift, no walking with line out")
+
+	# 2a. The mend button flips the belly upstream during a drift.
+	if not await _mend_button_pass():
+		return
 
 	# 2b. The fly box: Y / F cycles every fly while reeled in and comes back
 	# round, and the fly tied on reaches the bite rules (a catch on the Caddis).
@@ -160,6 +165,31 @@ func _run() -> void:
 ## Cycles the whole fly box with Y / F, then catches the trout on the second
 ## fly (the Elk Hair Caddis, a partial match for the redband) under the default
 ## bite rules, and ties the first fly back on.
+## Square / M mends a drift: the belly flips upstream by the mend shift, the
+## same as a right-stick loop. The trout is kept off the fly so a take can't
+## block the mend.
+func _mend_button_pass() -> bool:
+	var chance: float = _trout.species.bite_chance
+	_trout.species.bite_chance = 0.0
+	await _cast_once(0)
+	var ok := true
+	if _fishing.phase != 1:
+		_fail("Cast for the mend pass didn't start a drift")
+		ok = false
+	else:
+		var before: float = _fishing.drift.bow()
+		await _tap(&"mend")
+		var after: float = _fishing.drift.bow()
+		if after > before - 0.5:  # the line length caps how far a short cast's belly can flip
+			_fail("Square / M didn't mend (bow %.2f m -> %.2f m)" % [before, after])
+			ok = false
+	await _tap(&"back")
+	_trout.species.bite_chance = chance
+	if ok:
+		print("  ok    Square / M mends a drift")
+	return ok
+
+
 func _fly_box_pass() -> bool:
 	var count: int = _fishing.flies.size()
 	if count < 2:
@@ -248,8 +278,8 @@ func _catch_one(false_casts: int, debug_views: bool) -> bool:
 
 
 ## A clean cast through the input system with the given number of false casts:
-## hold R, overlap into L, (hold L, overlap back into R, hold R, overlap into L)
-## per false cast, then let go of L to deliver.
+## hold cast_back (L1), overlap into cast_forward (R1), (hold R1, overlap back
+## into L1, hold L1, overlap into R1) per false cast, then let go of R1 to deliver.
 func _cast_once(false_casts: int) -> void:
 	Input.action_press(&"cast_back")
 	await _wait(_cast.model.ideal_stroke_time())

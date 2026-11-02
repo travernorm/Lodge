@@ -1,20 +1,21 @@
 class_name CastModel
 extends RefCounted
 ## The bumper casting rhythm as pure logic, with no drawing or input reading.
-## Call update() every frame with the time and whether R and L are held, then read
-## the state and listen to the signals. Kept apart from the scene so the rhythm
+## Call update() every frame with the time and whether L and R are held, then read
+## the state and listen to the signals. (update()'s `r` argument is the back-cast
+## action, cast_back, and `l` is cast_forward: the names predate the bumper swap.) Kept apart from the scene so the rhythm
 ## can be tested headless (see tests/cast_test.gd).
 ##
 ## The rhythm:
-##   1. Hold R: back cast. The line unrolls behind you. Wait for it to straighten
+##   1. Hold L: back cast. The line unrolls behind you. Wait for it to straighten
 ##      (the ideal time grows with the line that's out).
-##   2. Press L while still holding R, then let go of R: a slight overlap shoots
+##   2. Press R while still holding L, then let go of L: a slight overlap shoots
 ##      the forward cast.
-##   3. While L is held the line unrolls forward. Either:
-##      - overlap back into R for a false cast, which adds line, or
-##      - let go of L to deliver the fly.
+##   3. While R is held the line unrolls forward. Either:
+##      - overlap back into L for a false cast, which adds line, or
+##      - let go of R to deliver the fly.
 ##
-## Mistakes: letting go of R before pressing L collapses the cast; holding a
+## Mistakes: letting go of L before pressing R collapses the cast; holding a
 ## stroke too long drops the line; overlapping the bumpers too long throws a
 ## tailing loop or tangles the leader.
 ##
@@ -159,16 +160,16 @@ func update(now: float, r: bool, l: bool) -> void:
 				_gap_start = now
 				state = State.GAP
 			elif now - phase_start - phase_ideal > tuning.drop_time:
-				_collapse("Held R too long. The line ticked the grass behind you.")
+				_collapse("Held L too long. The line ticked the grass behind you.")
 
 		State.GAP:
 			if l:
-				_push(0.35, "Gap between bumpers. Press L before letting go of R.")
+				_push(0.35, "Gap between bumpers. Press R before letting go of L.")
 				_start_forward()
 			elif r:
 				_start_back()
 			elif now - _gap_start > tuning.gap_grace:
-				_collapse("Let go of R without pressing L. Overlap them slightly.")
+				_collapse("Let go of L without pressing R. Overlap them slightly.")
 
 		State.BACK_TO_FORWARD:
 			if l and not r:
@@ -195,7 +196,7 @@ func update(now: float, r: bool, l: bool) -> void:
 				_score_stroke("forward")
 				_deliver()
 			elif now - phase_start - phase_ideal > tuning.drop_time:
-				_push(0.15, "Held L too long. The line slapped down.")
+				_push(0.15, "Held R too long. The line slapped down.")
 				_deliver()
 
 		State.FORWARD_TO_BACK:

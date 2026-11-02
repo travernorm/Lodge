@@ -8,10 +8,11 @@ extends Node2D
 ##   flick it up             set the hook when a fish takes
 ##   push and hold           rod pressure while fighting a fish
 ##
-## Shortcut: A / Cross / Space sets the hook too, and holding it while fighting
-## is full pressure straight up.
+## Shortcuts: X / Square (M on keyboard) mends, the same as a stick loop.
+## A / Cross / Space sets the hook too, and holding it while fighting is full
+## pressure straight up.
 ##
-## X / Square (R on keyboard) switches the bite rules while reeled in: see
+## L2 / left trigger (R on keyboard) switches the bite rules while reeled in: see
 ## TakeRules. The odds for each roll show at the top of the screen.
 
 enum Phase { NONE, DRIFT, FIGHT, REEL }
@@ -29,7 +30,7 @@ enum Phase { NONE, DRIFT, FIGHT, REEL }
 	preload("res://data/fish/redband.tres"),
 ]
 
-## The bite rules to switch between with X / Square (R). The first is the default.
+## The bite rules to switch between with L2 (R). The first is the default.
 @export var take_chassis: Array[TakeRules] = [
 	preload("res://data/take_rules/match_fly.tres"),
 	preload("res://data/take_rules/drift_past.tres"),
@@ -271,7 +272,7 @@ func _update_drift(delta: float) -> void:
 		_end_drift()  # picked up for another cast, or reeled in
 		return
 	drift.tip = _tip_m()
-	if _gestures.looped and not _fly_taken:
+	if (_gestures.looped or Input.is_action_just_pressed(Controls.MEND)) and not _fly_taken:
 		drift.mend()
 		if drift.over_mended:
 			_cast.show_message("Mended too soon. The fly skated.", 0.3)
