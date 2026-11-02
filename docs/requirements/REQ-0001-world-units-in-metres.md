@@ -1,6 +1,6 @@
 # REQ-0001: World units in metres
 
-Status: approved (Traver, 2026-11-02, at 8 px per metre)
+Status: implemented (approved by Traver 2026-11-02 at 8 px per metre; landed in PRs #14, #15, #16 and #19)
 
 Traver decided on 2026-11-02 that game rules should use metres, not screen pixels. This REQ plans the switch. It needs the casting and river threads to agree, and Traver's approval, before any game code changes.
 
