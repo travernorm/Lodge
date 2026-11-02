@@ -5,35 +5,37 @@ on:
     branches: [main]
   pull_request:
 
+# A newer push to the same PR cancels the older run.
+concurrency:
+  group: godot-check-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  smoke-test:
+  tests:
+    # On a pull request, GitHub checks out the PR merged into the latest main,
+    # so this also catches two PRs that pass alone but break each other.
     runs-on: ubuntu-latest
     env:
       GODOT_VERSION: 4.3-stable
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache Godot
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: godot
+          key: godot-${{ env.GODOT_VERSION }}-linux
+
       - name: Download Godot
+        if: steps.godot-cache.outputs.cache-hit != 'true'
         run: |
           curl -sSL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
           unzip -q godot.zip
           mv "Godot_v${GODOT_VERSION}_linux.x86_64" godot
-          ./godot --version
 
-      - name: Import project
-        run: ./godot --headless --path . --import
-
-      - name: Smoke test
-        run: ./godot --headless --path . --script res://tests/smoke_test.gd
-
-      - name: Cast tests
-        run: ./godot --headless --path . --script res://tests/cast_test.gd
-
-      - name: Cast rules tests
-        run: ./godot --headless --path . --script res://tests/cast_rules_test.gd
-
-      - name: Fishing tests
-        run: ./godot --headless --path . --script res://tests/fishing_test.gd
-
-      - name: River tests
-        run: ./godot --headless --path . --script res://tests/river_test.gd
+      # Runs the import, the input map check and every tests/*_test.gd, and fails
+      # on any script or engine error in the output. New test files are picked
+      # up automatically, so this file doesn't need editing for each one.
+      - name: All tests
+        run: GODOT=./godot tools/run_tests.sh
