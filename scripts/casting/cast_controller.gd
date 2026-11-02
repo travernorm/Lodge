@@ -98,6 +98,10 @@ func rod_pose() -> Vector2:
 		CastModel.State.FORWARD, CastModel.State.FLIGHT:
 			return dir
 		CastModel.State.LANDED:
+			if _fishing != null:
+				var snap: Vector2 = _fishing.hook_set_pose()
+				if snap != Vector2.ZERO:
+					return snap
 			var target: Vector2 = _fishing.line_target() if _fishing != null else fly_pos
 			return ((target - _stream.hand_position()).normalized() + Vector2(0.0, -1.0)).normalized()
 	return Vector2.ZERO
