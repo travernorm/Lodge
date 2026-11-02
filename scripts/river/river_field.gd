@@ -18,11 +18,17 @@ extends RefCounted
 ##   little back-flow right behind it) and a seam off each side.
 ## - Trout hold in slow, deep-enough water with fast water close by.
 
-## Grid spacing in px. 2 px keeps one screen to a few thousand cells.
-const CELL := 2.0
+## Units: metres and metres per second throughout (REQ-0001). Views convert to
+## pixels with WorldScale. Depth is relative (1 = deepest water in the reach).
 
-## Speed (px/s) over the thalweg at the head of the stream; sets the total flow.
-const RIFFLE_THALWEG_SPEED := 55.0
+## Grid spacing in metres. 0.25 m keeps one screen to a few thousand cells.
+const CELL := 0.25
+
+## The one water-speed number: the speed (m/s) over the thalweg at the head of
+## the stream, which sets the total flow. Every other speed below is a fraction
+## of it, so slowing the water toward a real creek (about 1.2 m/s on a riffle)
+## is a one-number change. Today's 6.875 m/s is the speed the prototype was tuned at.
+const WATER_SPEED := 6.875
 ## Exponent in v ~ depth^k.
 const DEPTH_SPEED_EXP := 2.0 / 3.0
 ## Shallowest water at the very edge, as a fraction of the thalweg depth.
@@ -35,17 +41,18 @@ const WAKE_SPREAD := 0.12
 ## 1 = dead slack right behind the rock; a bit more gives a little back-flow.
 const WAKE_STRENGTH := 1.12
 
-## Lie scoring, in px/s and relative depth.
-const HOLD_SPEED := Vector2(8.0, 20.0)  # comfortable below x, too fast above y
-const FOOD_SPEED := Vector2(14.0, 32.0)  # nearby water this fast brings food
-const FOOD_REACH := 5  # cells: how far a trout will dart for food (10 px)
+## Lie scoring. Speeds are fractions of WATER_SPEED; depth is relative.
+const HOLD_SPEED := Vector2(8.0, 20.0) / 55.0  # comfortable below x, too fast above y
+const FOOD_SPEED := Vector2(14.0, 32.0) / 55.0  # nearby water this fast brings food
+const FOOD_REACH := 1.25  # m: how far a trout will dart for food
 const DEPTH_NEEDED := Vector2(0.12, 0.35)
-const SEAM_FULL := 3.0  # speed change (px/s per px) that counts as a strong seam
+## A strong seam: speed changing by this fraction of WATER_SPEED per metre across the flow.
+const SEAM_FULL := 24.0 / 55.0
 const SEAM_DEPTH := Vector2(0.08, 0.2)  # ignore seams in ankle-deep edge water
 
-var top := 0.0  # far bank, y
-var bottom := 0.0  # near bank, y
-var width := 0.0  # screen width, x
+var top := 0.0  # far bank, y (m)
+var bottom := 0.0  # near bank, y (m)
+var width := 0.0  # reach length, x (m)
 var cols := 0
 var rows := 0
 
@@ -53,7 +60,7 @@ var velocity := PackedVector2Array()
 var depth := PackedFloat32Array()  # 0..1, 1 = deepest water in the reach
 var seam := PackedFloat32Array()  # 0..1
 var lie := PackedFloat32Array()  # 0..1
-## Boulders: x, y = centre, z = radius.
+## Boulders: x, y = centre, z = radius (m).
 var rocks: Array[Vector3] = []
 
 var _thalweg_y: Callable
@@ -61,9 +68,9 @@ var _thalweg_depth: Callable
 
 
 ## Builds the field.
-##   p_top, p_bottom: banks (y). p_width: reach length (x).
-##   thalweg_y(x): where the deepest line runs. thalweg_depth(x): how deep it is (0..1).
-##   p_rocks: boulders as Vector3(x, y, radius).
+##   p_top, p_bottom: banks (y, m). p_width: reach length (x, m).
+##   thalweg_y(x): where the deepest line runs (m). thalweg_depth(x): how deep it is (0..1).
+##   p_rocks: boulders as Vector3(x, y, radius), in metres.
 func build(p_top: float, p_bottom: float, p_width: float, thalweg_y: Callable,
 		thalweg_depth: Callable, p_rocks: Array[Vector3] = []) -> void:
 	top = p_top
@@ -72,8 +79,8 @@ func build(p_top: float, p_bottom: float, p_width: float, thalweg_y: Callable,
 	_thalweg_y = thalweg_y
 	_thalweg_depth = thalweg_depth
 	rocks = p_rocks
-	cols = int(ceilf(width / CELL)) + 1
-	rows = int(ceilf((bottom - top) / CELL)) + 1
+	cols = int(ceilf(width / CELL - 0.001)) + 1
+	rows = int(ceilf((bottom - top) / CELL - 0.001)) + 1
 	var n := cols * rows
 	velocity.resize(n)
 	depth.resize(n)
@@ -97,7 +104,7 @@ func is_rock(p: Vector2) -> bool:
 	return false
 
 
-## Current (px/s) at a point. Zero on the bank and inside rocks.
+## Current (m/s) at a point (m). Zero on the bank and inside rocks.
 func flow_at(p: Vector2) -> Vector2:
 	if not is_water(p):
 		return Vector2.ZERO
@@ -166,8 +173,8 @@ func cell_pos(i: int, j: int) -> Vector2:
 # --- Building ---------------------------------------------------------------
 
 func _build_flow() -> void:
-	# Total flow is set by the first column: RIFFLE_THALWEG_SPEED over the thalweg.
-	var k0 := RIFFLE_THALWEG_SPEED / pow(_thalweg_depth.call(0.0), DEPTH_SPEED_EXP)
+	# Total flow is set by the first column: WATER_SPEED over the thalweg.
+	var k0 := WATER_SPEED / pow(_thalweg_depth.call(0.0), DEPTH_SPEED_EXP)
 	var q := k0 * _section_sum(0.0)
 	for i in cols:
 		var x := i * CELL
@@ -186,7 +193,7 @@ func _bed_depth(p: Vector2) -> float:
 	var ty: float = _thalweg_y.call(p.x)
 	var td: float = _thalweg_depth.call(p.x)
 	var reach := (ty - top) if p.y < ty else (bottom - ty)
-	var n := clampf(absf(p.y - ty) / maxf(reach, 1.0), 0.0, 1.0)
+	var n := clampf(absf(p.y - ty) / maxf(reach, CELL * 0.5), 0.0, 1.0)
 	return td * maxf(EDGE_DEPTH, 1.0 - n * n)
 
 
@@ -228,18 +235,21 @@ func _build_seams() -> void:
 			var sx := (_speed(i + 1, j) - _speed(i - 1, j)) / (2.0 * CELL)
 			var sy := (_speed(i, j + 1) - _speed(i, j - 1)) / (2.0 * CELL)
 			var idx := j * cols + i
-			seam[idx] = clampf(Vector2(sx, sy).length() / SEAM_FULL, 0.0, 1.0) \
+			seam[idx] = clampf(Vector2(sx, sy).length() / (SEAM_FULL * WATER_SPEED), 0.0, 1.0) \
 				* smoothstep(SEAM_DEPTH.x, SEAM_DEPTH.y, depth[idx])
 
 
 func _build_lies() -> void:
 	# Fastest water within FOOD_REACH, as a separable max filter.
+	var reach := roundi(FOOD_REACH / CELL)
+	var hold_speed := HOLD_SPEED * WATER_SPEED
+	var food_speed := FOOD_SPEED * WATER_SPEED
 	var row_max := PackedFloat32Array()
 	row_max.resize(cols * rows)
 	for j in rows:
 		for i in cols:
 			var m := 0.0
-			for o in range(-FOOD_REACH, FOOD_REACH + 1):
+			for o in range(-reach, reach + 1):
 				m = maxf(m, _speed(i + o, j))
 			row_max[j * cols + i] = m
 	for j in rows:
@@ -250,11 +260,11 @@ func _build_lies() -> void:
 				lie[idx] = 0.0
 				continue
 			var near := 0.0
-			for o in range(-FOOD_REACH, FOOD_REACH + 1):
+			for o in range(-reach, reach + 1):
 				var jj := clampi(j + o, 0, rows - 1)
 				near = maxf(near, row_max[jj * cols + i])
-			var hold := 1.0 - smoothstep(HOLD_SPEED.x, HOLD_SPEED.y, velocity[idx].length())
-			var food := smoothstep(FOOD_SPEED.x, FOOD_SPEED.y, near)
+			var hold := 1.0 - smoothstep(hold_speed.x, hold_speed.y, velocity[idx].length())
+			var food := smoothstep(food_speed.x, food_speed.y, near)
 			var deep := smoothstep(DEPTH_NEEDED.x, DEPTH_NEEDED.y, depth[idx])
 			lie[idx] = hold * food * deep
 

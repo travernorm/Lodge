@@ -98,7 +98,7 @@ func _water_cells(river: RiverField, area: Rect2) -> int:
 	while y <= area.end.y:
 		var x := area.position.x
 		while x <= area.end.x:
-			if river.is_water(Vector2(x, y)):
+			if river.is_water(WorldScale.vec_to_m(Vector2(x, y))):  # lie_area is still px
 				n += 1
 			x += 4.0
 		y += 4.0

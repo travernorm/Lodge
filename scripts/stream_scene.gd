@@ -9,17 +9,29 @@ extends Node2D
 ## seams, and where trout would hold. The drift, the streaks and the water colour
 ## all read that one field.
 ##
+## Units (REQ-0001): the river's layout and the field work in metres; this scene
+## draws in pixels through WorldScale. flow_at() and is_water() still take and
+## return pixels for casting and fishing, until the fishing step of REQ-0001
+## converts them; the river itself is river.flow_at() in metres.
+##
 ## The angler stands on the near (bottom) bank facing upstream across the water.
 
 const VIEW := Vector2(320, 200)
-const BANK_TOP := 58.0
-const BANK_BOTTOM := 148.0
-const RIFFLE_END_X := 130.0
 
-## Boulders: x, y = centre, z = radius.
-const ROCKS: Array[Vector3] = [Vector3(142, 90, 5)]
-## Water faster than this (px/s) shows white foam streaks.
-const FOAM_SPEED := 36.0
+# River layout, in metres. One screen is 40 m by 25 m.
+const REACH_M := 40.0
+const BANK_TOP_M := 7.25  # far bank
+const BANK_BOTTOM_M := 18.5  # near bank: about 11 m of water
+const RIFFLE_END_M := 16.25  # where the riffle drops into the pool
+## Boulders: x, y = centre, z = radius, in metres.
+const ROCKS_M: Array[Vector3] = [Vector3(17.75, 11.25, 0.625)]
+
+# The same banks in screen pixels, for drawing and for code not yet in metres.
+const BANK_TOP := BANK_TOP_M * WorldScale.PX_PER_M
+const BANK_BOTTOM := BANK_BOTTOM_M * WorldScale.PX_PER_M
+
+## Water faster than this fraction of RiverField.WATER_SPEED shows white foam streaks.
+const FOAM_SPEED := 36.0 / 55.0
 const STREAK_COUNT := 90
 const STREAK_LIFE := Vector2(3.0, 8.0)
 
@@ -89,32 +101,34 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 
-## Current velocity (px/s) at a point on screen. The fly's drift uses this, and
-## mending exists to fight the difference between the fly's lane and the line's.
+## Current velocity (px/s) at a point on screen (px). The fly's drift uses this,
+## and mending exists to fight the difference between the fly's lane and the line's.
+## Temporary pixel wrapper over river.flow_at() (metres); see REQ-0001 step 4.
 func flow_at(p: Vector2) -> Vector2:
-	return river.flow_at(p)
+	return WorldScale.vec_to_px(river.flow_at(WorldScale.vec_to_m(p)))
 
 
+## Temporary pixel wrapper over river.is_water() (metres); see REQ-0001 step 4.
 func is_water(p: Vector2) -> bool:
-	return river.is_water(p)
+	return river.is_water(WorldScale.vec_to_m(p))
 
 
-## Where the deepest, fastest line runs: it drifts from the far side of the
+## Where the deepest, fastest line runs (m): it drifts from the far side of the
 ## riffle toward the near bank through the pool.
 func thalweg_y(x: float) -> float:
-	return lerpf(94.0, 106.0, smoothstep(60.0, 240.0, x))
+	return lerpf(11.75, 13.25, smoothstep(7.5, 30.0, x))
 
 
-## How deep the thalweg is (1 = deepest): a shallow riffle dropping into the
-## pool, which shallows again into a tail-out at the right edge.
+## How deep the thalweg is (1 = deepest) at x (m): a shallow riffle dropping into
+## the pool, which shallows again into a tail-out at the right edge.
 func thalweg_depth(x: float) -> float:
-	return lerpf(0.35, 1.0, smoothstep(RIFFLE_END_X - 30.0, RIFFLE_END_X + 40.0, x)) \
-		- 0.2 * smoothstep(270.0, 330.0, x)
+	return lerpf(0.35, 1.0, smoothstep(RIFFLE_END_M - 3.75, RIFFLE_END_M + 5.0, x)) \
+		- 0.2 * smoothstep(33.75, 41.25, x)
 
 
 func _make_river() -> RiverField:
 	var r := RiverField.new()
-	r.build(BANK_TOP, BANK_BOTTOM, VIEW.x, thalweg_y, thalweg_depth, ROCKS)
+	r.build(BANK_TOP_M, BANK_BOTTOM_M, REACH_M, thalweg_y, thalweg_depth, ROCKS_M)
 	return r
 
 
@@ -144,7 +158,7 @@ func _make_water_texture() -> ImageTexture:
 	var dither: Array[float] = [-0.03, 0.01, 0.03, -0.01]
 	for y in h:
 		for x in int(VIEW.x):
-			var p := Vector2(x + 0.5, BANK_TOP + y + 0.5)
+			var p := WorldScale.vec_to_m(Vector2(x + 0.5, BANK_TOP + y + 0.5))
 			var d := river.depth_at(p) + dither[(y % 2) * 2 + (x % 2)]
 			var band := 0
 			while band < cuts.size() and d > cuts[band]:
@@ -182,11 +196,12 @@ func _draw() -> void:
 		if speed < 1.0:
 			continue
 		var length := clampf(speed * 0.12, 1.0, 7.0)
-		var col := COL_FOAM if speed > FOAM_SPEED or river.seam_at(s) > 0.6 else COL_STREAK
+		var foam := WorldScale.to_px(FOAM_SPEED * RiverField.WATER_SPEED)
+		var col := COL_FOAM if speed > foam or river.seam_at(WorldScale.vec_to_m(s)) > 0.6 else COL_STREAK
 		draw_line(s.floor(), (s + v / speed * length).floor(), col, 1.0)
 
-	for r in ROCKS:
-		_draw_rock(Vector2(r.x, r.y), r.z)
+	for r in ROCKS_M:
+		_draw_rock(WorldScale.vec_to_px(Vector2(r.x, r.y)), WorldScale.to_px(r.z))
 
 	_draw_angler()
 

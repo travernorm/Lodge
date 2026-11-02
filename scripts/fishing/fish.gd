@@ -61,7 +61,12 @@ func respawn() -> void:
 	var a := species.lie_area
 	var spot := Vector2.INF
 	if river != null:
-		spot = river.pick_lie(a, _rng, MIN_LIE_SCORE)
+		# The river works in metres; lie_area and lie are still pixels until the
+		# fishing step of REQ-0001.
+		var area_m := Rect2(WorldScale.vec_to_m(a.position), WorldScale.vec_to_m(a.size))
+		var spot_m := river.pick_lie(area_m, _rng, MIN_LIE_SCORE)
+		if spot_m != Vector2.INF:
+			spot = WorldScale.vec_to_px(spot_m)
 	if spot == Vector2.INF:
 		spot = Vector2(_rng.randf_range(a.position.x, a.end.x), _rng.randf_range(a.position.y, a.end.y))
 	lie = spot.floor()
