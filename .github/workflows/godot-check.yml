@@ -31,3 +31,6 @@ jobs:
 
       - name: Fishing tests
         run: ./godot --headless --path . --script res://tests/fishing_test.gd
+
+      - name: River tests
+        run: ./godot --headless --path . --script res://tests/river_test.gd

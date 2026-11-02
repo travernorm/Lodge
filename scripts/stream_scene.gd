@@ -1,7 +1,13 @@
 extends Node2D
 ## Placeholder test stream: one screen, a fast riffle on the left feeding a slow
-## pool on the right. Everything is drawn with primitives so casting feel can be
-## tuned before any real art exists. Swap in Aseprite tiles later.
+## pool on the right, with a boulder at the head of the pool. Everything is drawn
+## with primitives so casting feel can be tuned before any real art exists. Swap
+## in Aseprite tiles later.
+##
+## The current comes from a RiverField (scripts/river/river_field.gd): the
+## thalweg (deepest, fastest line), slow edges, the boulder's cushion, pocket and
+## seams, and where trout would hold. The drift, the streaks and the water colour
+## all read that one field.
 ##
 ## The angler stands on the near (bottom) bank facing upstream across the water.
 
@@ -10,9 +16,12 @@ const BANK_TOP := 58.0
 const BANK_BOTTOM := 148.0
 const RIFFLE_END_X := 130.0
 
-const RIFFLE_SPEED := 55.0  # px/s at mid-channel
-const POOL_SPEED := 16.0
-const EDGE_FACTOR := 0.35  # current near the banks, as a fraction of mid-channel
+## Boulders: x, y = centre, z = radius.
+const ROCKS: Array[Vector3] = [Vector3(142, 90, 5)]
+## Water faster than this (px/s) shows white foam streaks.
+const FOAM_SPEED := 36.0
+const STREAK_COUNT := 90
+const STREAK_LIFE := Vector2(3.0, 8.0)
 
 const ANGLER_SPEED := 40.0
 const ROD_LENGTH := 26.0
@@ -22,7 +31,12 @@ const COL_TUFT := Color("5f8446")
 const COL_GRAVEL := Color("8a7e62")
 const COL_WATER := Color("3f6e7a")
 const COL_POOL := Color("2c5260")
+const COL_DEEP := Color("244550")
 const COL_RIFFLE := Color("5e8f96")
+const COL_SHALLOW := Color("6f9188")
+const COL_ROCK := Color("6d6a5e")
+const COL_ROCK_LIGHT := Color("8f8a78")
+const COL_ROCK_DARK := Color("4f4c43")
 const COL_FOAM := Color("c9dcd6")
 const COL_STREAK := Color("4f8290")
 const COL_WADERS := Color("5a5a48")
@@ -32,17 +46,23 @@ const COL_SKIN := Color("e0b48a")
 const COL_ROD := Color("e8d8a8")
 
 var angler_pos := Vector2(160, BANK_BOTTOM + 16)
+var river := _make_river()
 
 var _streaks: Array[Vector2] = []
+var _streak_life: Array[float] = []
+var _water_tex: ImageTexture
 var _tufts: Array[Vector2] = []
 var _rng := RandomNumberGenerator.new()
 @onready var _cast: Node = get_node_or_null(^"Cast")
 
 
 func _ready() -> void:
+	add_to_group(&"stream")
 	_rng.seed = 1979
-	for i in 70:
+	_water_tex = _make_water_texture()
+	for i in STREAK_COUNT:
 		_streaks.append(_random_water_point())
+		_streak_life.append(_rng.randf_range(0.0, STREAK_LIFE.y))
 	for i in 40:
 		var y := _rng.randf_range(0, BANK_TOP - 8) if i % 2 == 0 else _rng.randf_range(BANK_BOTTOM + 8, VIEW.y)
 		_tufts.append(Vector2(_rng.randf_range(0, VIEW.x), y).floor())
@@ -53,29 +73,49 @@ func _process(delta: float) -> void:
 	angler_pos.x = clampf(angler_pos.x + move.x * ANGLER_SPEED * delta, 12.0, VIEW.x - 12.0)
 
 	for i in _streaks.size():
-		var s := _streaks[i] + flow_at(_streaks[i]) * delta
-		if s.x > VIEW.x + 8.0:
+		var s := _streaks[i]
+		s += flow_at(s) * delta
+		_streak_life[i] -= delta
+		if s.x > VIEW.x + 2.0:
+			# Leaving downstream: feed a new one in at the top of the screen.
 			s = _random_water_point()
-			s.x = -8.0
+			s.x = 0.0
+			_streak_life[i] = _rng.randf_range(STREAK_LIFE.x, STREAK_LIFE.y)
+		elif _streak_life[i] <= 0.0 or not is_water(s):
+			# Faded, or swirled into the rock or onto the bank.
+			s = _random_water_point()
+			_streak_life[i] = _rng.randf_range(STREAK_LIFE.x, STREAK_LIFE.y)
 		_streaks[i] = s
 	queue_redraw()
 
 
-## Current velocity (px/s) at a point on screen. The fly's drift will use this,
-## and mending exists to fight the difference between the fly's lane and the line's.
+## Current velocity (px/s) at a point on screen. The fly's drift uses this, and
+## mending exists to fight the difference between the fly's lane and the line's.
 func flow_at(p: Vector2) -> Vector2:
-	if p.y < BANK_TOP or p.y > BANK_BOTTOM:
-		return Vector2.ZERO
-	var half := (BANK_BOTTOM - BANK_TOP) * 0.5
-	var mid := BANK_TOP + half
-	var channel := 1.0 - absf(p.y - mid) / half  # 1 mid-channel, 0 at banks
-	var speed := lerpf(RIFFLE_SPEED, POOL_SPEED, smoothstep(RIFFLE_END_X - 30.0, RIFFLE_END_X + 30.0, p.x))
-	speed *= lerpf(EDGE_FACTOR, 1.0, channel)
-	return Vector2(speed, 0.0)
+	return river.flow_at(p)
 
 
 func is_water(p: Vector2) -> bool:
-	return p.y >= BANK_TOP and p.y <= BANK_BOTTOM
+	return river.is_water(p)
+
+
+## Where the deepest, fastest line runs: it drifts from the far side of the
+## riffle toward the near bank through the pool.
+func thalweg_y(x: float) -> float:
+	return lerpf(94.0, 106.0, smoothstep(60.0, 240.0, x))
+
+
+## How deep the thalweg is (1 = deepest): a shallow riffle dropping into the
+## pool, which shallows again into a tail-out at the right edge.
+func thalweg_depth(x: float) -> float:
+	return lerpf(0.35, 1.0, smoothstep(RIFFLE_END_X - 30.0, RIFFLE_END_X + 40.0, x)) \
+		- 0.2 * smoothstep(270.0, 330.0, x)
+
+
+func _make_river() -> RiverField:
+	var r := RiverField.new()
+	r.build(BANK_TOP, BANK_BOTTOM, VIEW.x, thalweg_y, thalweg_depth, ROCKS)
+	return r
 
 
 func rod_tip() -> Vector2:
@@ -87,7 +127,30 @@ func hand_position() -> Vector2:
 
 
 func _random_water_point() -> Vector2:
-	return Vector2(_rng.randf_range(0, VIEW.x), _rng.randf_range(BANK_TOP + 3, BANK_BOTTOM - 3))
+	for attempt in 8:
+		var p := Vector2(_rng.randf_range(0, VIEW.x), _rng.randf_range(BANK_TOP + 3, BANK_BOTTOM - 3))
+		if is_water(p):
+			return p
+	return Vector2(4, BANK_TOP + 6)
+
+
+## Water colour from depth, in four pixel-art bands with a 2x2 dither between
+## them: pale shallows at the edges, light riffle, darker run, dark pool.
+func _make_water_texture() -> ImageTexture:
+	var h := int(BANK_BOTTOM - BANK_TOP)
+	var img := Image.create(int(VIEW.x), h, false, Image.FORMAT_RGBA8)
+	var bands: Array[Color] = [COL_SHALLOW, COL_RIFFLE, COL_WATER, COL_POOL, COL_DEEP]
+	var cuts: Array[float] = [0.1, 0.38, 0.62, 0.86]
+	var dither: Array[float] = [-0.03, 0.01, 0.03, -0.01]
+	for y in h:
+		for x in int(VIEW.x):
+			var p := Vector2(x + 0.5, BANK_TOP + y + 0.5)
+			var d := river.depth_at(p) + dither[(y % 2) * 2 + (x % 2)]
+			var band := 0
+			while band < cuts.size() and d > cuts[band]:
+				band += 1
+			img.set_pixel(x, y, bands[band])
+	return ImageTexture.create_from_image(img)
 
 
 ## The casting controller poses the rod during a cast; otherwise the right stick
@@ -111,17 +174,30 @@ func _draw() -> void:
 
 	draw_rect(Rect2(0, BANK_TOP - 5, VIEW.x, 5), COL_GRAVEL)
 	draw_rect(Rect2(0, BANK_BOTTOM, VIEW.x, 6), COL_GRAVEL)
-	draw_rect(Rect2(0, BANK_TOP, VIEW.x, BANK_BOTTOM - BANK_TOP), COL_WATER)
-	draw_rect(Rect2(RIFFLE_END_X, BANK_TOP + 12, VIEW.x - RIFFLE_END_X, BANK_BOTTOM - BANK_TOP - 24), COL_POOL)
-	draw_rect(Rect2(0, BANK_TOP + 8, RIFFLE_END_X - 24, BANK_BOTTOM - BANK_TOP - 16), COL_RIFFLE)
+	draw_texture(_water_tex, Vector2(0, BANK_TOP))
 
 	for s in _streaks:
-		var speed := flow_at(s).x
+		var v := flow_at(s)
+		var speed := v.length()
+		if speed < 1.0:
+			continue
 		var length := clampf(speed * 0.12, 1.0, 7.0)
-		var col := COL_FOAM if s.x < RIFFLE_END_X - 24 else COL_STREAK
-		draw_line(s.floor(), (s + Vector2(length, 0)).floor(), col, 1.0)
+		var col := COL_FOAM if speed > FOAM_SPEED or river.seam_at(s) > 0.6 else COL_STREAK
+		draw_line(s.floor(), (s + v / speed * length).floor(), col, 1.0)
+
+	for r in ROCKS:
+		_draw_rock(Vector2(r.x, r.y), r.z)
 
 	_draw_angler()
+
+
+## A boulder with a foam cushion piling up on its upstream face.
+func _draw_rock(c: Vector2, radius: float) -> void:
+	c = c.floor()
+	draw_arc(c + Vector2(-1, 0), radius + 1.5, PI * 0.6, PI * 1.4, 8, COL_FOAM, 1.0)
+	draw_circle(c, radius, COL_ROCK_DARK)
+	draw_circle(c + Vector2(-0.5, -0.5), radius - 1.0, COL_ROCK)
+	draw_rect(Rect2(c + Vector2(-radius * 0.5, -radius * 0.6), Vector2(2, 1)), COL_ROCK_LIGHT)
 
 
 func _draw_angler() -> void:
