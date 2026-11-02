@@ -43,11 +43,11 @@ Press **Tab** (or click the **right stick, R3**) to switch between casting rule 
 
 | Rule set | Rhythm | How you get distance |
 |---|---|---|
+| **Count the false casts** (default) | A steady beat: 0.42 s at Short, stretching by 0.05 s with each step up | 0 false casts is Short, 1 is Middle, 2 or more is Long. A sloppy false cast doesn't climb a step |
 | **Classic** | Strokes get longer as line goes out | Each clean false cast shoots 4 to 16 px of line. About 0 false casts is Short, 2 is Middle, 4 is Long |
-| **Count the false casts** | One steady beat (0.42 s) for every stroke | 0 false casts is Short, 1 is Middle, 2 or more is Long. A sloppy false cast doesn't climb a step |
 | **Find your tempo** | Your first back cast sets the beat, fast or slow | Each false cast adds line in proportion to how well it kept your beat |
 
-A bad delivery stroke still falls short of the line you have out, in every rule set. The numbers for each rule set live in `data/cast_rules/`, so they can be tuned in the Godot inspector. Fishing uses whichever rule set is selected, so you can also fish with each one.
+A bad delivery stroke still falls short of the line you have out, in every rule set. The numbers for each rule set live in `data/cast_rules/`, so they can be tuned in the Godot inspector. Fishing uses whichever rule set is selected, so you can also fish with each one. The game starts with Count the false casts (the `rules` property on the **Cast** node).
 
 ## How to fish
 
