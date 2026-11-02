@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="DriftPastRules" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing/rules/drift_past_rules.gd" id="1_rules"]
+
+[resource]
+script = ExtResource("1_rules")
+display_name = "Drift past"
+description = "Each trout judges the fly as it drifts within 1 m: a third for coming through its lane, a third for a delicate landing near it, a third for a drag-free drift."

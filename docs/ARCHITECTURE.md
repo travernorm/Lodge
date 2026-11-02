@@ -237,7 +237,7 @@ The plan, the scale and the per-system steps are in [REQ-0001](requirements/REQ-
 | 7 | `Cast` ⇄ `Fishing` ⇄ `Practice` call each other via `get_node` | **Drifts** | Two-way dependency between siblings; no single phase owner. |
 | 8 | Fly position written by both `Cast` and `Fishing` | **Drifts** | Should be one `FlyState` owned by the line model. |
 | 9 | Presentation as `String`, fish events as `StringName` | **Drifts** | Make enums. |
-| 10 | Bite rule constants inside `Fish`, rolled once per cast | **Drifts** | Move to `TakeRules` data, rolled once per presentation. See FISH_LOGIC.md. |
+| 10 | Bite rule constants inside `Fish`, rolled once per cast | **Partly fixed** | A first `TakeRules` chassis landed early (2026-11-02, Traver's call): "Landing roll" (the old roll) and "Drift past" (one roll per pass, data in `data/take_rules/`). It reads `DriftModel` and the presentation string directly until `FlyState` (step B) exists. See FISH_LOGIC.md. |
 | 11 | `FishSpecies.lie_area` is a screen rectangle | **Drifts** | PR #7 moves lies to the river field. |
 | 12 | Fishing code reads `stream.VIEW`, `BANK_TOP`, `BANK_BOTTOM`, and every rule measures in pixels | **Drifts** | Screen constants and units leaking into rules. REQ-0001 moves rules to metres. |
 | 13 | `catches` holds resources in dictionaries | **Drifts** | Needs `CatchRecord` with ids before saves. |
@@ -259,7 +259,7 @@ Small steps, each its own REQ and PR, each leaving the game playing the same unl
 | **B** | Add `FishingSession` as the single phase owner. `Cast` stops calling `Fishing`; `Practice` becomes a session mode. Introduce `FlyState` and make the line model its only writer. | None | A |
 | **C** | Enums for presentation and fish events; move `try_set` into `HookSetModel`. | None | B, coordinated with the casting thread (it changes the `landed` signal's argument type) |
 | **D** | `CatchRecord` and `CatchJournal` with ids; a `FlyBox` model. | None visible | A |
-| **E** | `TakeRules` chassis with today's odds as the default (numbers moved into data), then the first layers from FISH_LOGIC.md as feel experiments: drift, then refusals and streak protection. | Only in the experiments | B, C, PR #7 merged |
+| **E** | `TakeRules` chassis with today's odds as the default (numbers moved into data), then the first layers from FISH_LOGIC.md as feel experiments: drift, then refusals and streak protection. The chassis and the drift layer were built ahead of B and C (2026-11-02); they move onto `FlyState` when B lands. | Only in the experiments | B, C, PR #7 merged |
 | **F** | Metres in models and data ([REQ-0001](requirements/REQ-0001-world-units-in-metres.md): `WorldScale`, then river, casting, fishing), then a `Stretch` resource. | None (exact conversion) | Casting and river threads' agreement. Can start before A; its fishing step pairs well with A |
 | **G** | `Clock` autoload and `Conditions` with one fixed hatch, then `MoodRules` by time of day, then `Population` from lies. | Yes, layer by layer | E, F |
 | **Later** | Nymph (`DepthDriftModel`), streamer (`RetrieveModel`), hatches, fly tying, saves. Each is a REQ that adds a model and data, not edits to existing models. | Yes | The above |

@@ -4,7 +4,7 @@ extends SceneTree
 ## a new rule set, a new action) that something elsewhere still depends on.
 ##   godot --headless --path . --script res://tests/data_test.gd
 ##
-## Every file in data/flies, data/fish and data/cast_rules is checked, so new
+## Every file in data/flies, data/fish, data/cast_rules and data/take_rules is checked, so new
 ## data is covered without touching this file.
 
 const VIEW := Rect2(0, 0, 320, 200)
@@ -24,6 +24,7 @@ func _initialize() -> void:
 	_test_scene_wiring(flies, fish, rules)
 	_test_input_parity()
 	_test_stretches(fish)
+	_test_take_rules()
 	_main.free()
 	if _failures == 0:
 		print("Data tests passed.")
@@ -141,6 +142,35 @@ func _test_scene_wiring(flies: Dictionary, fish: Dictionary, rules: Dictionary) 
 	for path in rules:
 		_check(in_chassis.has(path), "scene: %s is in the Practice chassis (or players can't pick it)" % path.trim_prefix("res://"))
 	_check(cast.rules != null and in_chassis.has(cast.rules.resource_path), "scene: the default rule set is in the chassis")
+
+
+## Every bite rules file loads, has a name and description for the screen, and
+## is in the fishing controller's chassis so players can switch to it.
+func _test_take_rules() -> void:
+	var rules := _load_dir("res://data/take_rules", "TakeRules")
+	var names := {}
+	for path in rules:
+		var r: TakeRules = rules[path]
+		var stem: String = path.get_file().get_basename()
+		_check(r.display_name != "" and r.description != "", "bite rules %s: has a name and description" % stem)
+		_check(not names.has(r.display_name), "bite rules %s: display name is unique" % stem)
+		names[r.display_name] = true
+		if r is DriftPastRules:
+			var d := r as DriftPastRules
+			_check(d.window_m > 0.0 and d.slip_full > d.slip_free, "bite rules %s: window and slip limits are valid" % stem)
+			_check(is_equal_approx(d.lane_share + d.delicate_share + d.drift_share, 1.0),
+				"bite rules %s: lane, delicate and drift shares add up to 1" % stem)
+	var fishing := _main.get_node_or_null(^"Fishing")
+	if fishing == null:
+		return
+	_check(fishing.take_chassis.size() > 0, "scene: the bite rules chassis isn't empty")
+	var in_chassis := {}
+	for r in fishing.take_chassis:
+		_check(r != null and rules.has(r.resource_path), "scene: bite rules entry %s is a data/take_rules file" % _path(r))
+		if r != null:
+			in_chassis[r.resource_path] = true
+	for path in rules:
+		_check(in_chassis.has(path), "scene: %s is in the bite rules chassis (or players can't pick it)" % path.trim_prefix("res://"))
 
 
 ## Every action works on both a controller and a keyboard, every action the code

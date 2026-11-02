@@ -33,6 +33,9 @@ var downstream := Vector2.RIGHT
 var drag := 0.0
 ## Set by the last mend(): it moved the fly.
 var over_mended := false
+## How fast (m/s) the fly moved against the water under it in the last update:
+## 0 when it rides the current, more when drag, a jolt or a tight line pulls it.
+var slip := 0.0
 
 var _jolt := 0.0
 
@@ -44,6 +47,7 @@ func start(p_tip: Vector2, p_fly: Vector2) -> void:
 	var reach := tip.distance_to(fly)
 	line_length = reach + SLACK + reach * SLACK_PER_M
 	drag = 0.0
+	slip = 0.0
 	_jolt = 0.0
 	over_mended = false
 
@@ -55,6 +59,8 @@ func bow() -> float:
 
 ## flow: Callable taking a position (m) and returning the current there (m/s).
 func update(dt: float, flow: Callable) -> void:
+	var fly_before := fly
+	var water: Vector2 = flow.call(fly)
 	belly += flow.call(belly) * dt
 
 	var bow_drag := clampf((bow() - BOW_FREE) / BOW_RANGE, 0.0, 1.0)
@@ -66,7 +72,7 @@ func update(dt: float, flow: Callable) -> void:
 	drag = move_toward(drag, target, DRAG_RESPONSE * dt)
 
 	var pull := (belly - fly).normalized() if not belly.is_equal_approx(fly) else Vector2.ZERO
-	fly += (flow.call(fly) + pull * drag * DRAG_SPEED) * dt
+	fly += (water + pull * drag * DRAG_SPEED) * dt
 
 	# The line can't stretch: the fly swings on a taut line, and the belly
 	# straightens out when there's no slack left for it.
@@ -75,6 +81,8 @@ func update(dt: float, flow: Callable) -> void:
 	var excess := tip.distance_to(belly) + belly.distance_to(fly) - line_length
 	if excess > 0.0:
 		belly = belly.move_toward((tip + fly) * 0.5, excess)
+	if dt > 0.0:
+		slip = ((fly - fly_before) / dt - water).length()
 
 
 func mend() -> void:
