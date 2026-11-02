@@ -48,11 +48,11 @@ func _test_every_chassis_short_and_long() -> void:
 		var m := _model(path)
 		_play(m, 0)
 		_check(CastRules.distance_label(m.last_reach) == "Short",
-			"%s: no false casts lands Short (%.0f px)" % [m.rules.display_name, m.last_reach])
+			"%s: no false casts lands Short (%.1f m)" % [m.rules.display_name, m.last_reach])
 		m = _model(path)
 		_play(m, 5)
 		_check(CastRules.distance_label(m.last_reach) == "Long",
-			"%s: five clean false casts land Long (%.0f px)" % [m.rules.display_name, m.last_reach])
+			"%s: five clean false casts land Long (%.1f m)" % [m.rules.display_name, m.last_reach])
 		_check(m.presentation == "Delicate", "%s: clean cast is delicate, got %s" % [m.rules.display_name, m.presentation])
 
 
@@ -62,7 +62,7 @@ func _test_tiered_steps() -> void:
 		var m := _model(CHASSIS[1])
 		_play(m, n)
 		var got := CastRules.distance_label(m.last_reach)
-		_check(got == expected[n], "tiered: %d false cast(s) -> %s, got %s (%.0f px)" % [n, expected[n], got, m.last_reach])
+		_check(got == expected[n], "tiered: %d false cast(s) -> %s, got %s (%.1f m)" % [n, expected[n], got, m.last_reach])
 
 
 func _test_tiered_sloppy_does_not_climb() -> void:
@@ -70,7 +70,7 @@ func _test_tiered_sloppy_does_not_climb() -> void:
 	# One false cast with both strokes badly rushed.
 	_play(m, 1, [0.15, 0.15, IDEAL, IDEAL])
 	_check(_messages.any(func(s: String): return s.begins_with("Sloppy")), "tiered: rushed false cast is called sloppy")
-	_check(CastRules.distance_label(m.last_reach) == "Short", "tiered: sloppy false cast stays Short (%.0f px)" % m.last_reach)
+	_check(CastRules.distance_label(m.last_reach) == "Short", "tiered: sloppy false cast stays Short (%.1f m)" % m.last_reach)
 
 
 func _test_tiered_beat_grows_per_step() -> void:
@@ -111,7 +111,7 @@ func _test_tempo_broken_rhythm() -> void:
 	_check(m.presentation != "Delicate", "tempo: broken rhythm is not delicate, got %s" % m.presentation)
 	var steady := _model(CHASSIS[2])
 	_play(steady, 3, _steady(0.4, 3))
-	_check(m.last_reach < steady.last_reach - 10.0, "tempo: broken rhythm falls short (%.0f vs %.0f px)" % [m.last_reach, steady.last_reach])
+	_check(m.last_reach < steady.last_reach - 1.25, "tempo: broken rhythm falls short (%.1f vs %.1f m)" % [m.last_reach, steady.last_reach])
 
 
 func _test_tempo_rushed_first_stroke() -> void:

@@ -184,7 +184,7 @@ func _update_drift(delta: float) -> void:
 			_cast.show_message("Mend", 1.0)
 	drift.update(delta, _stream.flow_at)
 	_cast.fly_pos = drift.fly
-	_cast.model.line_out = clampf(drift.tip.distance_to(drift.fly), _cast.tuning.line_start, _cast.tuning.line_max)
+	_cast.model.line_out = clampf(WorldScale.to_m(drift.tip.distance_to(drift.fly)), _cast.tuning.line_start, _cast.tuning.line_max)
 
 	if _gestures.flicked or Input.is_action_just_pressed(Controls.INTERACT):
 		_try_set()
