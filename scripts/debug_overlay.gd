@@ -94,7 +94,11 @@ func _draw() -> void:
 			draw_rect(Rect2(x0, 19, seg, 7), COL_L)
 
 	# Readouts
-	var info := Rect2(4, 33, 150, 30)
+	var lines := PackedStringArray()
+	var cast := get_tree().get_first_node_in_group(&"cast")
+	if cast != null:
+		lines = cast.debug_lines()
+	var info := Rect2(4, 33, 150, 30 + 9 * lines.size())
 	draw_rect(info, COL_PANEL)
 	draw_string(font, Vector2(8, 42), "R held %d ms   L held %d ms" % [_last_r_ms, _last_l_ms],
 		HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_TEXT)
@@ -102,6 +106,8 @@ func _draw() -> void:
 		HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_TEXT)
 	draw_string(font, Vector2(8, 60), "%s  %d fps" % [Controls.pad_name().left(22), Engine.get_frames_per_second()],
 		HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_TEXT)
+	for i in lines.size():
+		draw_string(font, Vector2(8, 69 + 9 * i), lines[i], HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_TEXT)
 
 	# Sticks
 	_draw_stick(Vector2(20, size.y - 20), Controls.move_vector(), "move")

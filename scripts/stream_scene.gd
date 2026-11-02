@@ -31,11 +31,12 @@ const COL_HAT := Color("6b4a2a")
 const COL_SKIN := Color("e0b48a")
 const COL_ROD := Color("e8d8a8")
 
-var angler_pos := Vector2(160, BANK_BOTTOM + 22)
+var angler_pos := Vector2(160, BANK_BOTTOM + 16)
 
 var _streaks: Array[Vector2] = []
 var _tufts: Array[Vector2] = []
 var _rng := RandomNumberGenerator.new()
+@onready var _cast: Node = get_node_or_null(^"Cast")
 
 
 func _ready() -> void:
@@ -48,7 +49,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	var move := Controls.move_vector()
+	var move := Controls.move_vector() if _cast == null or _cast.allows_walking() else Vector2.ZERO
 	angler_pos.x = clampf(angler_pos.x + move.x * ANGLER_SPEED * delta, 12.0, VIEW.x - 12.0)
 
 	for i in _streaks.size():
@@ -78,24 +79,24 @@ func is_water(p: Vector2) -> bool:
 
 
 func rod_tip() -> Vector2:
-	return _hand() + _rod_direction() * ROD_LENGTH
+	return hand_position() + _rod_direction() * ROD_LENGTH
+
+
+func hand_position() -> Vector2:
+	return angler_pos + Vector2(3, -9)
 
 
 func _random_water_point() -> Vector2:
 	return Vector2(_rng.randf_range(0, VIEW.x), _rng.randf_range(BANK_TOP + 3, BANK_BOTTOM - 3))
 
 
-func _hand() -> Vector2:
-	return angler_pos + Vector2(3, -9)
-
-
-## Placeholder rod posture: the right stick aims the tip; holding R tips it back
-## (behind the angler), holding L tips it forward over the water.
+## The casting controller poses the rod during a cast; otherwise the right stick
+## aims the tip.
 func _rod_direction() -> Vector2:
-	if Input.is_action_pressed(Controls.CAST_BACK) and not Input.is_action_pressed(Controls.CAST_FORWARD):
-		return Vector2(0.25, 1.0).normalized()
-	if Input.is_action_pressed(Controls.CAST_FORWARD):
-		return Vector2(0.15, -1.0).normalized()
+	if _cast != null:
+		var pose: Vector2 = _cast.rod_pose()
+		if pose != Vector2.ZERO:
+			return pose
 	var stick := Controls.rod_vector()
 	if stick.length() > 0.25:
 		return stick.normalized()
@@ -129,4 +130,4 @@ func _draw_angler() -> void:
 	draw_rect(Rect2(p + Vector2(-3, -12), Vector2(6, 6)), COL_JACKET)
 	draw_rect(Rect2(p + Vector2(-2, -16), Vector2(4, 4)), COL_SKIN)
 	draw_rect(Rect2(p + Vector2(-3, -17), Vector2(6, 2)), COL_HAT)
-	draw_line(_hand().floor(), rod_tip().floor(), COL_ROD, 1.0)
+	draw_line(hand_position().floor(), rod_tip().floor(), COL_ROD, 1.0)

@@ -28,6 +28,16 @@ godot --headless --path . --script res://tools/setup_input_map.gd
 
 That rewrites the `[input]` section of `project.godot`. Game code refers to actions through the `Controls` autoload (`Controls.CAST_BACK`, `Controls.rod_vector()`, and so on) rather than typing raw action strings.
 
+## Tuning the cast
+
+All the casting feel numbers live in `data/cast_tuning.tres`. Open it in Godot and edit them in the inspector, then press F5 to try the result. The ones you'll most likely touch:
+
+- **Stroke timing:** `base_stroke_time` and `stroke_time_per_px` set how long each stroke should be held. `perfect_window` and `ok_window` set how forgiving that is, and `drop_time` sets how late you can be before the line falls.
+- **Bumper overlap:** `overlap_good_min`/`overlap_good_max` is the overlap that feels right, `tailing_overlap` is where it becomes a fault, and `gap_grace` is how long you can let go of both bumpers.
+- **Line:** `line_start`, `line_max`, and how much line a clean false cast adds.
+
+With the debug overlay open, you can read the real hold and overlap times from the Deck and set the windows from them. If you change the rules rather than just the numbers, run the cast tests afterwards.
+
 ## Testing on the Steam Deck
 
 The Deck runs Linux, so export the **Steam Deck (Linux x86_64)** preset.
@@ -42,14 +52,16 @@ The debug overlay is on in debug exports. Use it to check that the bumpers and s
 
 ## Checks
 
-- `tests/smoke_test.gd` verifies every input action exists, loads the main scene, runs 30 frames and sanity-checks the current model. Run it locally with:
+- `tests/smoke_test.gd` verifies every input action exists, loads the main scene, checks the current model, then plays one real cast through the input system and checks it lands on the water.
+- `tests/cast_test.gd` tests the cast rhythm on its own: clean casts, false casts adding line, collapses, ticking the grass, tailing loops, early strokes, aim and pick-ups.
 
   ```
   godot --headless --path . --script res://tests/smoke_test.gd
+  godot --headless --path . --script res://tests/cast_test.gd
   ```
 
-- GitHub Actions runs the same test on every pull request (`.github/workflows/godot-check.yml`).
-- `tools/capture_screenshot.gd` renders the scene to a PNG with scripted bumper presses. It needs a display; on a headless Linux machine, wrap it in `xvfb-run`.
+- GitHub Actions runs both on every pull request (`.github/workflows/godot-check.yml`).
+- `tools/capture_screenshot.gd` plays a scripted cast and saves screenshots. It needs a display; on a headless Linux machine, wrap it in `xvfb-run`.
 
 ## Platform notes
 

@@ -39,8 +39,41 @@ func _run(main: Node) -> void:
 	if main.flow_at(Vector2(160, 20)) != Vector2.ZERO:
 		_fail("Bank should have no current")
 		return
-	print("Smoke test passed: %d frames, %d input actions." % [FRAMES, REQUIRED_ACTIONS.size()])
+
+	# Every node script compiled (a parse error leaves the node without its methods).
+	var cast := main.get_node_or_null(^"Cast")
+	if cast == null or not cast.has_method(&"rod_pose"):
+		_fail("Cast controller script did not load")
+		return
+
+	# Play one real cast through the input system: R back cast, overlap into L,
+	# hold L, let go, and check the fly lands on the water.
+	var ideal: float = cast.model.tuning.base_stroke_time + cast.model.tuning.line_start * cast.model.tuning.stroke_time_per_px
+	Input.action_press(&"cast_back")
+	await _wait(cast, ideal)
+	Input.action_press(&"cast_forward")
+	await _wait(cast, 0.08)
+	Input.action_release(&"cast_back")
+	await _wait(cast, ideal)
+	Input.action_release(&"cast_forward")
+	await _wait(cast, cast.model.tuning.flight_time + 0.1)
+	if cast.model.state != CastModel.State.LANDED:
+		_fail("Scripted cast did not land (state %s)" % CastModel.State.keys()[cast.model.state])
+		return
+	if not main.is_water(cast.fly_pos):
+		_fail("Scripted cast landed out of the water at %s" % cast.fly_pos)
+		return
+
+	print("Smoke test passed: %d input actions, scene runs, scripted cast landed %s (%s)." % [
+		REQUIRED_ACTIONS.size(), cast.fly_pos.round(), cast.model.presentation])
 	quit(0)
+
+
+## Wait for the given game time to pass, as measured by the cast controller.
+func _wait(cast: Node, seconds: float) -> void:
+	var until: float = cast._time + seconds
+	while cast._time < until:
+		await process_frame
 
 
 func _fail(message: String) -> void:
