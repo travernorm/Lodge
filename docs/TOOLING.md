@@ -78,6 +78,7 @@ Open the debug overlay with View (Create on a PS5 pad). Use it to check that the
 
 - `tests/smoke_test.gd` verifies every input action exists, loads the main scene, then plays a whole catch through the input system: a cast, the trout rising, the hook set and the fight.
 - `tests/cast_test.gd` tests the cast rhythm on its own: clean casts, false casts adding line, collapses, ticking the grass, tailing loops, early strokes, aim and pick-ups.
+- `tests/recast_test.gd` checks that every new cast, including a pick-up off the water, starts back at Short for every rule set.
 - `tests/cast_rules_test.gd` plays casts under each rule set: no false casts lands Short and five clean ones land Long for every set, the tiered steps, sloppy false casts not climbing, and the tempo rules accepting any steady beat but not a broken one.
 - `tests/fishing_test.gd` tests the stick gestures (mend loop, hook-set flick), drift and mending, the bite odds (including that 2,000 simulated casts bite at the advertised rate), rises, hook-set timing, and fight outcomes.
 - `tests/river_test.gd` tests the river field's hydraulics: thalweg, conservation, the boulder's cushion, pocket and seams.

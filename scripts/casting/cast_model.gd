@@ -136,8 +136,9 @@ func update(now: float, r: bool, l: bool) -> void:
 	match state:
 		State.IDLE, State.LANDED:
 			if r and not l:
-				if state == State.IDLE:
-					line_out = rules.start_line(self)
+				# Every cast starts from the rules' starting line, even a pick-up
+				# off the water, so reaching Middle or Long always takes false casts.
+				line_out = rules.start_line(self)
 				strokes.clear()
 				_scores.clear()
 				false_casts = 0

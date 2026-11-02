@@ -46,7 +46,7 @@ func ok_window(model: CastModel) -> float:
 
 
 func after_false_cast(model: CastModel, q: float) -> String:
-	# Re-sync from line_out in case the cast started from a pick-up.
+	# Re-sync from line_out in case something else changed it mid-cast.
 	_step = _step_for(model.line_out)
 	if q < climb_quality:
 		return "Sloppy false cast. Still %s." % CastRules.distance_label(step_lengths[_step])
