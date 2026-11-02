@@ -74,8 +74,9 @@ func _ready() -> void:
 	_stream = get_parent() as Node2D
 	_cast = _stream.get_node(^"Cast")
 	_cast.model.landed.connect(_on_landed)
+	var river: RiverField = _stream.get(&"river")
 	for species in stocking:
-		fish.append(Fish.new(species, _rng))
+		fish.append(Fish.new(species, _rng, river))
 
 
 func current_fly() -> FlyPattern:

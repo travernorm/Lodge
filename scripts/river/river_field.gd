@@ -134,6 +134,31 @@ func best_lie(area := Rect2()) -> Vector3:
 	return best
 
 
+## A lie for a trout to hold in: a random cell inside `area` scoring at least
+## `min_score`, with better lies more likely (weight = score squared). Returns
+## Vector2.INF when the area has no lie that good.
+func pick_lie(area: Rect2, rng: RandomNumberGenerator, min_score := 0.4) -> Vector2:
+	var cells: Array[Vector2] = []
+	var weights := PackedFloat32Array()
+	var total := 0.0
+	for j in rows:
+		for i in cols:
+			var p := cell_pos(i, j)
+			var s := lie[j * cols + i]
+			if s >= min_score and area.has_point(p) and is_water(p):
+				cells.append(p)
+				weights.append(s * s)
+				total += s * s
+	if cells.is_empty():
+		return Vector2.INF
+	var roll := rng.randf() * total
+	for k in cells.size():
+		roll -= weights[k]
+		if roll <= 0.0:
+			return cells[k]
+	return cells[-1]
+
+
 func cell_pos(i: int, j: int) -> Vector2:
 	return Vector2(i * CELL, top + j * CELL)
 

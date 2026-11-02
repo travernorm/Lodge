@@ -6,7 +6,7 @@
 script = ExtResource("1_species")
 id = &"redband"
 display_name = "Redband Rainbow"
-description = "The desert-side rainbow of Eastern Oregon. Holds in the middle of the pool and sips mayflies off the top."
+description = "The desert-side rainbow of Eastern Oregon. Holds in the slack water behind the boulder at the head of the pool, darting out to sip mayflies drifting down the seams."
 color = Color(0.3, 0.34, 0.3, 1)
 lie_area = Rect2(150, 74, 50, 24)
 preferred_flies = PackedStringArray("parachute_adams")

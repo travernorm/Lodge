@@ -10,7 +10,8 @@ extends Control
 ##
 ## Read-the-water view draws the river field the fly drifts on: current arrows
 ## (longer and whiter is faster), the thalweg (deepest, fastest line), seams
-## (where the speed changes sharply) and green cells where a trout would hold.
+## (where the speed changes sharply), green cells where a trout would hold, and
+## a white ring where each trout is actually holding.
 
 const HISTORY_SECONDS := 2.0
 const FONT_SIZE := 8
@@ -188,10 +189,15 @@ func _draw_water() -> void:
 			x += ARROW_GRID
 		y += ARROW_GRID
 
+	# Where each trout is holding.
+	var fishing := get_tree().get_first_node_in_group(&"fishing")
+	if fishing != null:
+		for f in fishing.fish:
+			draw_arc(f.lie, 3.5, 0.0, TAU, 12, COL_FAST, 1.0)
+
 	# Key, and what the water is doing under the fly.
 	var font := ThemeDB.fallback_font
 	var fly_line := ""
-	var fishing := get_tree().get_first_node_in_group(&"fishing")
 	if fishing != null and fishing.phase == 1:  # drifting
 		var fly: Vector2 = fishing.drift.fly
 		fly_line = "fly lane %d px/s  seam %.1f  lie %.1f" % [
