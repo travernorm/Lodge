@@ -1,6 +1,6 @@
 # REQ-0003: Fly choice affects the bite
 
-Status: review (waiting on Traver)
+Status: approved (Traver, 2026-11-02)
 
 ## Problem
 
@@ -164,5 +164,5 @@ On the keyboard and the DualSense:
 ## Open questions
 
 1. **What decides whether a trout wants the fly?** Decided (Traver, 2026-11-02): what it's eating, through the shared `Insect` files and diet weights above.
-2. **Multiply or add?** Recommended: multiply the fly match, as above. The alternative is a fourth equal share (each worth 15%), which makes the fly matter less.
-3. **Make Match the fly the default bite rules?** Recommended: yes, with the others one press away.
+2. **Multiply or add?** Decided (Traver, 2026-11-02): multiply the fly match.
+3. **Make Match the fly the default bite rules?** Decided (Traver, 2026-11-02): yes, with the others one press away.
