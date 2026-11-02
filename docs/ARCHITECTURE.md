@@ -216,7 +216,7 @@ Autoloads: Controls, Clock, SaveGame
 
 **Decided (Traver, 2026-11-02): models and data work in metres.** Cast reach, line out, drift, fight distance, bite range, river cells and current speeds are all in metres and metres per second. Only views convert to pixels, through one constant in a small static class, `WorldScale.PX_PER_M`. That makes multi-screen stretches, scrolling, zoom and the Switch possible without retuning every number, and lets the river bake use real cell sizes.
 
-The proposed scale is **8 px per metre**: one screen is 40 m by 25 m and the test creek is about 11 m wide. At that scale today's casting distances already match a real small stream (Short up to 6 m, Middle up to 10 m, line max about 15 m). Water speeds don't: they're tuned for the screen and come out several times faster than a real riffle. The switch converts every number exactly, so the game plays the same, and slowing the water toward real speeds is a separate feel experiment afterwards.
+The approved scale is **8 px per metre**: one screen is 40 m by 25 m and the test creek is about 11 m wide. At that scale today's casting distances already match a real small stream (Short up to 6 m, Middle up to 10 m, line max about 15 m). Water speeds don't: they're tuned for the screen and come out several times faster than a real riffle. The switch converts every number exactly, so the game plays the same, and slowing the water toward real speeds is a separate feel experiment afterwards.
 
 The plan, the scale and the per-system steps are in [REQ-0001](requirements/REQ-0001-world-units-in-metres.md). It needs the casting and river threads to agree, and Traver's approval, before game code changes.
 
@@ -314,11 +314,11 @@ Short entries, newest last. A later session reads these before changing somethin
 | 2026-11-02 | River flow baked offline, sampled at runtime | No compute shaders on GL Compatibility; cheap on Deck and Switch. |
 | 2026-11-02 | Start simple: one fish, one fly, visible odds | Hidden multi-condition bite rules felt broken in playtest. |
 | draft | Four layers, one phase owner, `FlyState` contract, `TakeRules` chassis, ids in saves | This document. Traver said it "seems okay" (2026-11-02). |
-| 2026-11-02 | Models and data use metres; views convert with `WorldScale.PX_PER_M` (proposed 8 px/m) | Traver's call. Multi-screen stretches, real-world data and the river bake all need real units. See REQ-0001. |
+| 2026-11-02 | Models and data use metres; views convert with `WorldScale.PX_PER_M` = 8 px/m (approved) | Traver's call. Multi-screen stretches, real-world data and the river bake all need real units. See REQ-0001. |
 | draft | Fish logic in three steps: generation, mood, take. Conditions feed the hatch and water, which feed mood; one take roll per presentation with a floor, a ceiling, refusals and streak protection | Brainstorm with Traver, 2026-11-02. See FISH_LOGIC.md. |
 
 ## 11. Open questions for Traver
 
 1. Does the migration order make sense, and should step A (splitting `fishing_controller.gd`) start as soon as PRs #5 and #7 merge?
-2. ~~Metres in models?~~ Decided: metres (2026-11-02). Still open: is 8 px per metre the right scale? (REQ-0001)
+2. ~~Metres in models?~~ Decided: metres (2026-11-02). Scale approved at 8 px per metre (REQ-0001).
 3. The fish logic questions at the end of [FISH_LOGIC.md](FISH_LOGIC.md).
