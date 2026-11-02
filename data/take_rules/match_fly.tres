@@ -1,8 +1,0 @@
-[gd_resource type="Resource" script_class="MatchFlyRules" load_steps=2 format=3]
-
-[ext_resource type="Script" path="res://scripts/fishing/rules/match_fly_rules.gd" id="1_rules"]
-
-[resource]
-script = ExtResource("1_rules")
-display_name = "Match the fly"
-description = "Drift past, times how well your fly matches what the trout is eating. A fly it doesn't eat keeps (1 - selectivity) of the odds."

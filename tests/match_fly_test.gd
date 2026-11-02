@@ -1,13 +1,11 @@
 extends SceneTree
 ## Headless tests for fly matching (REQ-0003): what a fly imitates against what
-## a trout eats, scaled by its selectivity, and the "Match the fly" bite rules.
+## a trout eats, scaled by its selectivity, in the Drift past bite rules.
 ##   godot --headless --path . --script res://tests/match_fly_test.gd
 
 var _failures := 0
 var _rng := RandomNumberGenerator.new()
-var _match: MatchFlyRules = load("res://data/take_rules/match_fly.tres")
-var _drift_past: DriftPastRules = load("res://data/take_rules/drift_past.tres")
-var _landing_roll: TakeRules = load("res://data/take_rules/landing_roll.tres")
+var _match: DriftPastRules = load("res://data/take_rules/drift_past.tres")
 var _caddis: FlyPattern = load("res://data/flies/elk_hair_caddis.tres")
 var _adams: FlyPattern = load("res://data/flies/parachute_adams.tres")
 var _wulff: FlyPattern = load("res://data/flies/royal_wulff.tres")
@@ -23,7 +21,7 @@ func _initialize() -> void:
 	_test_no_fly_is_a_match()
 	_test_perfect_pass_odds()
 	_test_partial_appetite_odds()
-	_test_other_rules_ignore_the_fly()
+	_test_the_fly_changes_the_odds()
 	_test_odds_text()
 	_test_tie_on_text()
 	_test_same_inputs_same_odds()
@@ -69,7 +67,7 @@ func _test_no_fly_is_a_match() -> void:
 	_check(is_equal_approx(_cutthroat.fly_match(null), 1.0), "match: nothing tied on counts as x1")
 	var f := Fish.new(_cutthroat, _rng)
 	var odds := _match.pass_odds(f, f.lie, "Delicate", 0.0)
-	_check(is_equal_approx(odds.chance, _cutthroat.bite_chance), "match: no fly gives the plain drift past odds")
+	_check(is_equal_approx(odds.chance, _cutthroat.bite_chance), "match: no fly gives the plain lane + landing + drift odds")
 
 
 ## A delicate, drag-free pass: full bite_chance with the right fly,
@@ -94,16 +92,13 @@ func _test_partial_appetite_odds() -> void:
 	_check(is_equal_approx(odds.chance, 0.3), "odds: the REQ's worked example comes to 30%% (%.3f)" % odds.chance)
 
 
-func _test_other_rules_ignore_the_fly() -> void:
+## The tied-on fly moves the odds of the same pass: the bite rules weigh it.
+func _test_the_fly_changes_the_odds() -> void:
 	var f := Fish.new(_cutthroat, _rng)
 	var near := f.lie + Vector2(-1.5, 0)
-	var a: float = _drift_past.pass_odds(f, near, "Delicate", 0.0, _caddis).chance
-	var b: float = _drift_past.pass_odds(f, near, "Delicate", 0.0, _wulff).chance
-	_check(is_equal_approx(a, b), "rules: drift past doesn't care which fly")
-	var at := f.lie + Vector2(-0.625, 0)
-	_check(is_equal_approx(_landing_roll.landing_odds(f, at, "Fair", _caddis).chance,
-		_landing_roll.landing_odds(f, at, "Fair", _wulff).chance), "rules: landing roll doesn't care which fly")
-	_check(_match.rolls_on_landing() == false, "rules: match the fly rolls as the fly drifts past, like drift past")
+	var a: float = _match.pass_odds(f, near, "Delicate", 0.0, _caddis).chance
+	var b: float = _match.pass_odds(f, near, "Delicate", 0.0, _wulff).chance
+	_check(a > b, "rules: a cutthroat takes the caddis over the Wulff on the same pass (%.2f vs %.2f)" % [a, b])
 
 
 func _test_odds_text() -> void:

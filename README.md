@@ -68,7 +68,7 @@ For now the stream holds **one Redband Rainbow**, holding in a good lie at the h
 
 Mend the line by pressing **Square** (X on an Xbox pad, **M** on keyboard) or looping the right stick when it bows downstream. Mend too early, with no bow to fix, and the fly skates.
 
-**Bite rules.** Press **R** (or **L2**, the left trigger, on a controller) while reeled in to switch between bite rules, a feel experiment like the casting rule sets. **Match the fly** (above) is the default. **Drift past** is the same without the fly match. **Landing roll** is the original: one roll the moment the fly lands, 60% for a delicate landing right by the fish, falling off to nothing 5 m out, with fair landings getting 60% of that and splashy ones 25%; the drift after that doesn't matter. The numbers live in `data/take_rules/`.
+The bite numbers live in `data/take_rules/drift_past.tres`.
 
 
 ## Controls
@@ -89,7 +89,6 @@ Mend the line by pressing **Square** (X on an Xbox pad, **M** on keyboard) or lo
 | View (Select) | F1 | Cycle debug views: controller, read the water, hidden |
 | Left stick click (L3) | T | Casting practice on/off |
 | Right stick click (R3) | Tab | Switch casting rule set |
-| Left trigger (L2) | R | Switch bite rules (when reeled in) |
 
 The debug views start hidden. The first press opens the controller view and gives a short rumble to test the controller's haptics. Its top strip shows the last 2 seconds of L and R bumper presses, plus hold times and overlap in milliseconds, so the cast rhythm can be tuned with real numbers.
 

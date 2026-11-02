@@ -12,8 +12,8 @@ extends Node2D
 ## A / Cross / Space sets the hook too, and holding it while fighting is full
 ## pressure straight up.
 ##
-## L2 / left trigger (R on keyboard) switches the bite rules while reeled in: see
-## TakeRules. The odds for each roll show at the top of the screen.
+## Bites follow the Drift past rules (DriftPastRules). The odds for each roll
+## show at the top of the screen.
 
 enum Phase { NONE, DRIFT, FIGHT, REEL }
 
@@ -30,12 +30,8 @@ enum Phase { NONE, DRIFT, FIGHT, REEL }
 	preload("res://data/fish/redband.tres"),
 ]
 
-## The bite rules to switch between with L2 (R). The first is the default.
-@export var take_chassis: Array[TakeRules] = [
-	preload("res://data/take_rules/match_fly.tres"),
-	preload("res://data/take_rules/drift_past.tres"),
-	preload("res://data/take_rules/landing_roll.tres"),
-]
+## The bite rules: each trout rolls as the fly drifts past it.
+@export var take_rules: DriftPastRules = preload("res://data/take_rules/drift_past.tres")
 
 const CARD_SECONDS := 3.5
 const ODDS_SECONDS := 3.0  # how long the last roll's odds stay on screen
@@ -71,8 +67,6 @@ var fight: FightModel
 var fish: Array[Fish] = []
 var hooked: Fish
 var fly_index := 0
-## The bite rules in play (one of take_chassis).
-var take_rules: TakeRules
 ## Every fish landed this session: {species, length_in, fly}.
 var catches: Array[Dictionary] = []
 
@@ -87,8 +81,7 @@ var _rings: Array[Vector3] = []
 var _card_lines := PackedStringArray()
 var _card_at := -100.0
 var _set_at := -100.0
-var _take_index := 0
-## Where the fly landed (m) and how, for the drift-past rules.
+## Where the fly landed (m) and how, for the bite rules.
 var _landed_at := Vector2.INF
 var _landed_presentation := ""
 ## The last roll's odds, spelled out, and when it was rolled.
@@ -103,7 +96,6 @@ func _ready() -> void:
 	_cast = _stream.get_node(^"Cast")
 	_cast.model.landed.connect(_on_landed)
 	_river = _stream.get(&"river")
-	take_rules = take_chassis[0] if not take_chassis.is_empty() else TakeRules.new()
 	# A stretch brings its own trout, spread over the whole river.
 	var stretch: Stretch = _stream.get(&"stretch")
 	var area := Rect2()
@@ -125,22 +117,6 @@ func _lies_except(me: Fish) -> PackedVector2Array:
 
 func current_fly() -> FlyPattern:
 	return flies[fly_index]
-
-
-## Switches to take_chassis[index] (wrapping). Only while reeled in, so a drift
-## never changes rules halfway. Returns whether it switched.
-func select_take_rules(index: int) -> bool:
-	if take_chassis.is_empty():
-		return false
-	if _cast.model.state != CastModel.State.IDLE:
-		_cast.show_message("Reel in first (Circle / Backspace) to switch bite rules.", 0.5)
-		return false
-	_take_index = posmod(index, take_chassis.size())
-	take_rules = take_chassis[_take_index]
-	_cast.show_message("Bite rules: %s" % take_rules.display_name, 1.0)
-	_odds_text = take_rules.description
-	_odds_at = _time
-	return true
 
 
 func can_pick_up() -> bool:
@@ -183,8 +159,6 @@ func _process(delta: float) -> void:
 
 	if Input.is_action_just_pressed(Controls.CHANGE_FLY):
 		_change_fly()
-	if Input.is_action_just_pressed(Controls.CYCLE_BITE_RULES):
-		select_take_rules(_take_index + 1)
 
 	match phase:
 		Phase.DRIFT:
@@ -232,27 +206,12 @@ func _on_landed(_presentation: String, _quality: float) -> void:
 	_landed_presentation = presentation
 	for f in fish:
 		f.reset_pass()
-	if not take_rules.rolls_on_landing():
-		_cast.show_message("%s landing." % presentation, _cast.model.last_cast_quality)
-		return
-	var best := {"chance": 0.0, "text": ""}
-	for f in fish:
-		if f.state == Fish.State.GONE or f.state == Fish.State.HOOKED:
-			continue
-		var odds := take_rules.landing_odds(f, at, presentation, current_fly())
-		f.roll(odds.chance, take_rules.rise_delay())
-		if odds.chance > best.chance:
-			best = odds
-	if best.chance <= 0.0:
-		_cast.show_message("%s landing. Too far from the fish for a bite." % presentation, 0.4)
-	else:
-		_cast.show_message("%s landing. %d%% chance of a bite." % [presentation, roundi(best.chance * 100.0)], best.chance / 0.6)
-		_show_odds(best.text)
+	_cast.show_message("%s landing." % presentation, _cast.model.last_cast_quality)
 
 
-## Drift-past rules: each fish the fly drifts past rolls once per pass.
+## Each fish the fly drifts past rolls once per pass.
 func _watch_passes(delta: float) -> void:
-	if take_rules.rolls_on_landing() or _fly_taken:
+	if _fly_taken:
 		return
 	for f in fish:
 		if f == hooked or not f.watch_pass(drift.fly, drift.slip, take_rules.window(), delta):

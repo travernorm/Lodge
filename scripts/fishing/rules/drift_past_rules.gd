@@ -1,10 +1,14 @@
 class_name DriftPastRules
-extends TakeRules
-## "Drift past": a fish judges the fly as it drifts past, not where it landed.
+extends Resource
+## The bite rules: whether a trout takes the fly. Their numbers live in
+## data/take_rules/drift_past.tres.
 ##
+## "Drift past": a fish judges the fly as it drifts past, not where it landed.
 ## When the fly comes within window_m of a fish, that's a pass. The fish rolls
 ## once per pass, as the fly is closest to it (right away if the fly landed on
-## top of it). The chance is the species' bite_chance, split three ways:
+## top of it). The chance is the species' bite_chance, split three ways, then
+## multiplied by how well the tied-on fly matches what the fish is eating
+## (REQ-0003):
 ##
 ##   In lane    the fly came through the fish's window at all
 ##   Landing    a delicate landing near the fish (a fair one gets half). A
@@ -13,7 +17,18 @@ extends TakeRules
 ##   Drift      the fly rode the current through the pass, judged by its worst
 ##              moment: drag, skating or the jolt of an early mend all move the
 ##              fly differently from the water under it (DriftModel.slip)
+##
+##   take = (Lane + Landing + Drift) x Fly match
+##   Fly match = 1 - selectivity x (1 - appetite)
+##
+## appetite is the fish's highest diet weight among the bugs the fly imitates
+## (FishSpecies.appetite_for), so the right bug is x1 and a bug it doesn't eat
+## keeps (1 - selectivity). The fly is a gate ("does this look like food?"),
+## not one more bonus, so it scales the other three.
 
+## Shown on screen (debug view).
+@export var display_name := "Drift past"
+@export_multiline var description := ""
 ## The fish's window (m): the fly has to come this close.
 @export var window_m := 1.0
 ## A landing this close (m) to the fish counts for the landing share.
@@ -34,23 +49,23 @@ extends TakeRules
 @export var rise_delay_s := Vector2(0.2, 0.5)
 
 
-func rolls_on_landing() -> bool:
-	return false
-
-
-func landing_odds(_fish: Fish, _at: Vector2, presentation: String, _fly: FlyPattern = null) -> Dictionary:
-	return {"chance": 0.0, "text": "%s landing" % presentation}
-
-
+## How close (m) the fly has to come for a pass to count.
 func window() -> float:
 	return window_m
 
 
-## The tied-on fly doesn't matter under these rules.
-func pass_odds(fish: Fish, landed_at: Vector2, presentation: String, worst_slip: float, _fly: FlyPattern = null) -> Dictionary:
+## The odds for a fly drifting past `fish`: {chance, match, text}. text spells
+## the odds out for the screen. `fly` is what's tied on (null if nothing, which
+## counts as a match).
+func pass_odds(fish: Fish, landed_at: Vector2, presentation: String, worst_slip: float, fly: FlyPattern = null) -> Dictionary:
 	var s := shares(fish, landed_at, presentation, worst_slip)
-	var chance := clampf(s.sum, 0.0, 1.0)
-	return {"chance": chance, "text": "%s = %d%%" % [s.text, _pct(chance)]}
+	var match_factor := fish.species.fly_match(fly)
+	var chance := clampf(s.sum * match_factor, 0.0, 1.0)
+	return {
+		"chance": chance,
+		"match": match_factor,
+		"text": "(%s) × %s %s = %d%%" % [s.text, match_label(fish, fly), _factor(match_factor), _pct(chance)],
+	}
 
 
 ## The three shares for a pass, added up: {lane, landing, drift, sum, text}.
@@ -74,9 +89,28 @@ func shares(fish: Fish, landed_at: Vector2, presentation: String, worst_slip: fl
 	}
 
 
+## Seconds from a successful roll to the rise.
 func rise_delay() -> Vector2:
 	return rise_delay_s
 
 
+## The bug that matched ("PMD"), or "No match" when the fish eats none of what
+## the fly imitates. With nothing tied on, "Any fly".
+static func match_label(fish: Fish, fly: FlyPattern) -> String:
+	if fly == null:
+		return "Any fly"
+	var best := fish.species.appetite_for(fly)
+	var insect: Insect = best.insect
+	return insect.display_name if insect != null else "No match"
+
+
 static func _pct(x: float) -> int:
 	return roundi(x * 100.0)
+
+
+## 1 -> "1", 0.5 -> "0.5", 0.75 -> "0.75".
+static func _factor(x: float) -> String:
+	var r := snappedf(x, 0.01)
+	if is_equal_approx(r, roundf(r)):
+		return str(roundi(r))
+	return ("%.2f" % r).rstrip("0")

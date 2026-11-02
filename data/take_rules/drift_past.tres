@@ -5,4 +5,4 @@
 [resource]
 script = ExtResource("1_rules")
 display_name = "Drift past"
-description = "Each trout judges the fly as it drifts within 1 m: a third for coming through its lane, a third for a delicate landing near it, a third for a drag-free drift."
+description = "Each trout judges the fly as it drifts within 1 m: a third for coming through its lane, a third for a delicate landing near it, a third for a drag-free drift. Then times how well your fly matches what the trout is eating: a fly it doesn't eat keeps (1 - selectivity) of the odds."

@@ -51,8 +51,6 @@ func _run() -> void:
 	trout.species.bite_chance = 1.0
 	trout.lie = WorldScale.vec_to_m(_cast.fly_pos) + Vector2(0.25, 0.375)
 	trout.pos = trout.lie
-	if _fishing.take_rules.rolls_on_landing():
-		trout.on_landing(WorldScale.vec_to_m(_cast.fly_pos), "Delicate")
 	await _wait(0.3)
 	await _save("drift")
 	while trout.state != Fish.State.TAKEN:
