@@ -2,15 +2,15 @@
 
 A cabin-core fly fishing game. A laid-off father inherits his late dad's cabin, rod and fly box in the Oregon Cascades, learns the river, and grows a guiding lodge. The game is built for Steam Deck first, with a Game Boy-inspired look and tactile bumper-and-stick casting.
 
-| False casting (back cast) | Delivered: delicate landing |
-|---|---|
-| ![Back cast with the timing meter beside the angler](docs/screenshots/cast-backcast.png) | ![Fly landed on the pool with a small rise ring](docs/screenshots/cast-landed.png) |
+| Fly on the water, 46% bite chance | Fish on | Landed |
+|---|---|---|
+| ![Fly on the pool with the trout's shadow nearby](docs/screenshots/drift.png) | ![Fighting a fish with the tension meter](docs/screenshots/fight.png) | ![Catch card for a redband rainbow](docs/screenshots/caught.png) |
 
 ## Current milestone: dry fly minigame
 
 1. **Tooling and project skeleton** (done). Godot project, Deck control map, placeholder stream, controller debug overlay.
-2. **Casting** (this step). Hold R for the back cast, overlap into L for the forward cast, and alternate R/L to shoot line for distance.
-3. **Drift, rise, set and fight.** The fly drifts on the current, the right stick mends, a fish rises, you flick to set, then hold and play line tension. Starts with 3 flies and 3 trout.
+2. **Casting** (done). Hold R for the back cast, overlap into L for the forward cast, and alternate R/L to shoot line for distance.
+3. **Rise, set and fight** (this step). One trout, one fly, a simple bite chance per cast, flick to set, then play line tension.
 4. **Tune on the Deck.** Timing windows, rumble, and how readable the bite cue is.
 
 ## Quick start
@@ -31,6 +31,17 @@ A cabin-core fly fishing game. A laid-off father inherits his late dad's cabin, 
 
 The longer the line, the longer each stroke needs, just like a real cast. Strokes that are too early fall short and splash down. Strokes that are too late drop the line onto the grass or the water.
 
+## How to fish
+
+For now the stream holds **one Redband Rainbow** in the middle of the pool, and you have **one fly**, a Parachute Adams. Watch for the rings where it rises on its own to find it.
+
+1. **Cast near the fish.** When the fly lands you'll see your chance of a bite. A delicate landing right by the fish gives the best odds (60%). Fair landings get about 60% of that and splashy ones 25%, and the chance falls off with distance until about 40 px out, where it's zero.
+2. **Wait for the rise.** If the fish bites, it comes up for the fly a second or two later and the fly disappears.
+3. **Set the hook.** **Flick the right stick up** (tap **I** on keyboard). You have about a second.
+4. **Fight.** **Push the right stick** (hold **I**) to pull it in, and watch the tension bar. Don't let the line go slack for long or it throws the hook. Pushing sideways against a run tires it faster. Reel it in close once it's tired to land it.
+
+You can also mend the line by looping the right stick, but drag doesn't affect bites yet. More flies (`data/flies/`) and two more trout (`data/fish/`) are already set up as data and can be added back when we want more depth.
+
 ## Controls
 
 | Steam Deck / Xbox pad | Keyboard | Action |
@@ -39,12 +50,16 @@ The longer the line, the longer each stroke needs, just like a real cast. Stroke
 | L bumper | Q | Forward cast (overlap with R) |
 | Right stick | I J K L | Rod tip: mend, set the hook, strip |
 | Left stick / D-pad | W A S D | Walk the bank |
+| Right stick loop | — | Mend the line |
+| Right stick flick up | I (tap) | Set the hook |
+| Right stick hold | I J K L | Pressure while fighting |
+| Y | F | Change fly (when reeled in) |
 | A | Space | Interact / perception check |
 | B | Backspace | Back / reel in |
 | Menu (Start) | Esc | Pause |
 | View (Select) | F1 | Toggle controller debug overlay |
 
-With the debug overlay open, press A to test rumble. The top strip shows the last 2 seconds of R and L presses, plus hold times and overlap in milliseconds, so the cast rhythm can be tuned with real numbers.
+The debug overlay starts hidden. With it open, press A to test rumble. The top strip shows the last 2 seconds of R and L presses, plus hold times and overlap in milliseconds, so the cast rhythm can be tuned with real numbers.
 
 ## Project layout
 
@@ -55,11 +70,17 @@ scripts/stream_scene.gd     Placeholder river, current model (flow_at), angler a
 scripts/casting/            Cast rhythm logic (cast_model.gd), scene glue and drawing
                             (cast_controller.gd), tunables (cast_tuning.gd)
 data/cast_tuning.tres       Casting feel numbers; edit in the Godot inspector
+scripts/fishing/            Drift and mending (drift_model.gd), fish behaviour (fish.gd),
+                            fight (fight_model.gd), stick gestures, and the scene glue
+                            (fishing_controller.gd)
+data/flies/*.tres           Fly patterns (FlyPattern)
+data/fish/*.tres            Trout species: habitat, bite odds, hook-set window, fight
 scripts/debug_overlay.gd    Bumper timeline, stick readouts, rumble test
 tools/setup_input_map.gd    Source of truth for the input map (regenerates project.godot)
-tools/capture_screenshot.gd Plays a scripted cast and saves screenshots
-tests/smoke_test.gd         Headless check: scene loads and a scripted cast lands
+tools/capture_screenshot.gd Plays a scripted catch and saves screenshots
+tests/smoke_test.gd         Headless check: a scripted cast, drift, hook set and fight end in a catch
 tests/cast_test.gd          Headless tests for the cast rhythm
+tests/fishing_test.gd       Headless tests for gestures, drift, rises, hook sets and fights
 export_presets.cfg          Linux x86_64 export for Steam Deck
 docs/TOOLING.md             Tools, Steam Deck testing, conventions
 ```

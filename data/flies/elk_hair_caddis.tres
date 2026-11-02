@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="FlyPattern" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing/fly_pattern.gd" id="1_fly"]
+
+[resource]
+script = ExtResource("1_fly")
+id = &"elk_hair_caddis"
+display_name = "Elk Hair Caddis"
+description = "Tan elk-hair wing that rides high in fast, broken water. Caddis flutter off the riffle at dusk."
+body_color = Color(0.42, 0.45, 0.25, 1)
+wing_color = Color(0.79, 0.64, 0.42, 1)
+hackle_color = Color(0.55, 0.4, 0.25, 1)

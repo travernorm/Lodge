@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="FishSpecies" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1_species"]
+
+[resource]
+script = ExtResource("1_species")
+id = &"cutthroat"
+display_name = "Westslope Cutthroat"
+description = "Red slash under the jaw. Holds in the riffle and rises slow and deliberate, so don't rush the set."
+color = Color(0.36, 0.36, 0.22, 1)
+lie_area = Rect2(30, 68, 80, 48)
+preferred_flies = PackedStringArray("elk_hair_caddis")
+bite_chance = 0.6
+bite_range = 40.0
+set_min = 0.25
+set_max = 0.85
+pull = 0.75
+toughness = 1.0
+min_length_in = 9.0
+max_length_in = 16.0

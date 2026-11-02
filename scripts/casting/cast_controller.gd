@@ -1,7 +1,8 @@
 extends Node2D
 ## Connects the casting rhythm (CastModel) to the stream scene. It reads the
-## bumpers, draws the line, fly, timing meter and coaching text, plays the rumble
-## "tug" when the line loads, and drifts the fly once it lands.
+## bumpers, draws the line in the air, the fly, timing meter and coaching text, and
+## plays the rumble "tug" when the line loads. Once the fly lands, the sibling
+## Fishing node takes over the drift, rises and fights.
 ##
 ## Expects its parent to be the stream scene (scripts/stream_scene.gd).
 
@@ -34,6 +35,7 @@ var model: CastModel
 var fly_pos := Vector2.ZERO
 
 var _stream: Node2D
+var _fishing: Node
 var _time := 0.0
 var _feedback := ""
 var _feedback_quality := 1.0
@@ -49,8 +51,9 @@ var _snagged := false
 func _ready() -> void:
 	add_to_group(&"cast")
 	_stream = get_parent() as Node2D
+	_fishing = _stream.get_node_or_null(^"Fishing")
 	model = CastModel.new(tuning)
-	model.feedback.connect(_on_feedback)
+	model.feedback.connect(show_message)
 	model.delivered.connect(_on_delivered)
 	model.landed.connect(_on_landed)
 	model.collapsed.connect(func(_reason: String): Controls.rumble(0.5, 0.2, 0.2))
@@ -63,12 +66,15 @@ func _process(delta: float) -> void:
 	elif model.state == CastModel.State.IDLE:
 		model.aim = move_toward(model.aim, 0.0, delta * 2.0)
 
-	if model.state == CastModel.State.LANDED:
-		_drift(delta)
+	var fighting: bool = _fishing != null and not _fishing.can_pick_up()
+	if model.state == CastModel.State.LANDED and not fighting:
+		if _fishing == null:
+			_drift(delta)
 		if Input.is_action_just_pressed(Controls.BACK):
-			_reel_in("Reeled in.")
+			reel_in_line("Reeled in.")
 
-	model.update(_time, Input.is_action_pressed(Controls.CAST_BACK), Input.is_action_pressed(Controls.CAST_FORWARD))
+	var r: bool = Input.is_action_pressed(Controls.CAST_BACK) and not fighting
+	model.update(_time, r, Input.is_action_pressed(Controls.CAST_FORWARD))
 	_tug()
 	queue_redraw()
 
@@ -90,7 +96,8 @@ func rod_pose() -> Vector2:
 		CastModel.State.FORWARD, CastModel.State.FLIGHT:
 			return dir
 		CastModel.State.LANDED:
-			return ((fly_pos - _stream.hand_position()).normalized() + Vector2(0.0, -1.0)).normalized()
+			var target: Vector2 = _fishing.line_target() if _fishing != null else fly_pos
+			return ((target - _stream.hand_position()).normalized() + Vector2(0.0, -1.0)).normalized()
 	return Vector2.ZERO
 
 
@@ -120,16 +127,18 @@ func _drift(delta: float) -> void:
 	var out := fly_pos.distance_to(_stream.rod_tip())
 	model.line_out = clampf(out, tuning.line_start, tuning.line_max)
 	if fly_pos.x > _stream.VIEW.x - 4.0 or out > tuning.line_max + 24.0:
-		_reel_in("Drift's done. Reeled in.")
+		reel_in_line("Drift's done. Reeled in.")
 
 
-func _reel_in(message: String) -> void:
+func reel_in_line(message: String) -> void:
 	model.reel_in()
 	_snagged = false
-	_on_feedback(message, 1.0)
+	if message != "":
+		show_message(message, 1.0)
 
 
-func _on_feedback(text: String, quality: float) -> void:
+## Shows a coaching line at the bottom of the screen. quality 0..1 picks the colour.
+func show_message(text: String, quality: float) -> void:
 	_feedback = text
 	_feedback_quality = quality
 	_feedback_at = _time
@@ -147,10 +156,10 @@ func _on_landed(presentation: String, quality: float) -> void:
 	_rings.append(Vector3(fly_pos.x, fly_pos.y, _time))
 	if not _stream.is_water(fly_pos):
 		_snagged = true
-		_on_feedback("Snagged on the bank. Press B to reel in.", 0.0)
+		show_message("Snagged on the bank. Press B to reel in.", 0.0)
 		Controls.rumble(0.4, 0.0, 0.12)
 		return
-	_on_feedback("%s landing. %d px out." % [presentation, roundi(fly_pos.distance_to(_stream.rod_tip()))], quality)
+	show_message("%s landing. %d px out." % [presentation, roundi(fly_pos.distance_to(_stream.rod_tip()))], quality)
 	Controls.rumble(lerpf(0.5, 0.05, quality), 0.0, 0.08)
 
 
@@ -166,7 +175,8 @@ func _draw() -> void:
 		CastModel.State.FLIGHT:
 			_draw_flight(tip)
 		CastModel.State.LANDED:
-			_draw_on_water(tip)
+			if _fishing == null:
+				_draw_on_water(tip)
 	_draw_rings()
 	if model.is_busy():
 		_draw_target(tip)
@@ -236,6 +246,9 @@ func _draw_curve(a: Vector2, control: Vector2, b: Vector2, color: Color) -> void
 
 
 func _draw_fly(p: Vector2) -> void:
+	if _fishing != null:
+		_fishing.current_fly().draw_at(self, p)
+		return
 	var q := p.floor()
 	draw_rect(Rect2(q + Vector2(-1, 0), Vector2(3, 2)), COL_FLY)
 	draw_rect(Rect2(q + Vector2(0, -1), Vector2(1, 1)), COL_FLY_POST)
@@ -297,6 +310,6 @@ func _draw_feedback() -> void:
 	col.a = clampf((FEEDBACK_SECONDS - age) / 0.4, 0.0, 1.0)
 	var font := ThemeDB.fallback_font
 	var width := font.get_string_size(_feedback, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
-	var pos := Vector2(roundf((_stream.VIEW.x - width) * 0.5), _stream.VIEW.y - 6)
+	var pos := Vector2(roundf((_stream.VIEW.x - width) * 0.5), _stream.VIEW.y - 24)
 	draw_rect(Rect2(pos + Vector2(-3, -8), Vector2(width + 6, 10)), Color(0, 0, 0, 0.5 * col.a))
 	draw_string(font, pos, _feedback, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, col)

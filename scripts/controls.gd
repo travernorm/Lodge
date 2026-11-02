@@ -7,16 +7,18 @@ extends Node
 ##   Right stick     rod_*         mend loops, set the hook, strip and twitch the fly
 ##   Left stick/D-pad move_*       walk the bank
 ##   A               interact      perception checks, talk, confirm
+##   Y               change_fly    open the fly box (next fly) while reeled in
 ##   B               back          cancel or reel in
 ##   Start/Menu      pause
 ##   Select/View     toggle_debug  controller debug overlay
 ##
 ## Keyboard fallbacks (for working on a laptop): WASD move, IJKL rod, E = R bumper,
-## Q = L bumper, Space interact, Backspace back, Esc pause, F1 debug.
+## Q = L bumper, Space interact, Backspace back, F change fly, Esc pause, F1 debug.
 
 const CAST_BACK := &"cast_back"
 const CAST_FORWARD := &"cast_forward"
 const INTERACT := &"interact"
+const CHANGE_FLY := &"change_fly"
 const BACK := &"back"
 const PAUSE := &"pause"
 const TOGGLE_DEBUG := &"toggle_debug"
@@ -24,7 +26,7 @@ const TOGGLE_DEBUG := &"toggle_debug"
 const ALL_ACTIONS: Array[StringName] = [
 	&"move_left", &"move_right", &"move_up", &"move_down",
 	&"rod_left", &"rod_right", &"rod_up", &"rod_down",
-	CAST_BACK, CAST_FORWARD, INTERACT, BACK, PAUSE, TOGGLE_DEBUG,
+	CAST_BACK, CAST_FORWARD, INTERACT, CHANGE_FLY, BACK, PAUSE, TOGGLE_DEBUG,
 ]
 
 
