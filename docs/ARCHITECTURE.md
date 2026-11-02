@@ -214,7 +214,11 @@ Autoloads: Controls, Clock, SaveGame
 
 ## 5. Units and space
 
-Everything today is in screen pixels on one 320×200 screen. The river thread has an open question about how many metres a screen represents. Recommendation: **models work in metres** (cast reach, drift, fight distance, bite range, river cells), and only views convert to pixels with one scale constant. It costs little now and makes multi-screen stretches, zoom and the Switch's different screen possible without retuning every number. Needs Traver's call and the river thread's agreement before anything changes.
+**Decided (Traver, 2026-11-02): models and data work in metres.** Cast reach, line out, drift, fight distance, bite range, river cells and current speeds are all in metres and metres per second. Only views convert to pixels, through one constant in a small static class, `WorldScale.PX_PER_M`. That makes multi-screen stretches, scrolling, zoom and the Switch possible without retuning every number, and lets the river bake use real cell sizes.
+
+The proposed scale is **8 px per metre**: one screen is 40 m by 25 m and the test creek is about 11 m wide. At that scale today's casting distances already match a real small stream (Short up to 6 m, Middle up to 10 m, line max about 15 m). Water speeds don't: they're tuned for the screen and come out several times faster than a real riffle. The switch converts every number exactly, so the game plays the same, and slowing the water toward real speeds is a separate feel experiment afterwards.
+
+The plan, the scale and the per-system steps are in [REQ-0001](requirements/REQ-0001-world-units-in-metres.md). It needs the casting and river threads to agree, and Traver's approval, before game code changes.
 
 ---
 
@@ -233,7 +237,7 @@ Everything today is in screen pixels on one 320×200 screen. The river thread ha
 | 9 | Presentation as `String`, fish events as `StringName` | **Drifts** | Make enums. |
 | 10 | Bite rule constants inside `Fish`, rolled once per cast | **Drifts** | Move to `TakeRules` data, rolled once per presentation. See FISH_LOGIC.md. |
 | 11 | `FishSpecies.lie_area` is a screen rectangle | **Drifts** | PR #7 moves lies to the river field. |
-| 12 | Fishing code reads `stream.VIEW`, `BANK_TOP`, `BANK_BOTTOM` | **Drifts** | Screen constants leaking into rules. |
+| 12 | Fishing code reads `stream.VIEW`, `BANK_TOP`, `BANK_BOTTOM`, and every rule measures in pixels | **Drifts** | Screen constants and units leaking into rules. REQ-0001 moves rules to metres. |
 | 13 | `catches` holds resources in dictionaries | **Drifts** | Needs `CatchRecord` with ids before saves. |
 | 14 | Coaching text owned by `cast_controller.gd` | **Drifts** | Move to `Hud`. |
 | 15 | Each controller keeps its own `_time` | **Minor** | Fine until pause and time of day; then `Clock`. |
@@ -254,7 +258,7 @@ Small steps, each its own REQ and PR, each leaving the game playing the same unl
 | **C** | Enums for presentation and fish events; move `try_set` into `HookSetModel`. | None | B, coordinated with the casting thread (it changes the `landed` signal's argument type) |
 | **D** | `CatchRecord` and `CatchJournal` with ids; a `FlyBox` model. | None visible | A |
 | **E** | `TakeRules` chassis with today's odds as the default (numbers moved into data), then the first layers from FISH_LOGIC.md as feel experiments: drift, then refusals and streak protection. | Only in the experiments | B, C, PR #7 merged |
-| **F** | Units decision (metres) and a `Stretch` resource. | None if done right | River thread agreement |
+| **F** | Metres in models and data ([REQ-0001](requirements/REQ-0001-world-units-in-metres.md): `WorldScale`, then river, casting, fishing), then a `Stretch` resource. | None (exact conversion) | Casting and river threads' agreement. Can start before A; its fishing step pairs well with A |
 | **G** | `Clock` autoload and `Conditions` with one fixed hatch, then `MoodRules` by time of day, then `Population` from lies. | Yes, layer by layer | E, F |
 | **Later** | Nymph (`DepthDriftModel`), streamer (`RetrieveModel`), hatches, fly tying, saves. Each is a REQ that adds a model and data, not edits to existing models. | Yes | The above |
 
@@ -310,10 +314,11 @@ Short entries, newest last. A later session reads these before changing somethin
 | 2026-11-02 | River flow baked offline, sampled at runtime | No compute shaders on GL Compatibility; cheap on Deck and Switch. |
 | 2026-11-02 | Start simple: one fish, one fly, visible odds | Hidden multi-condition bite rules felt broken in playtest. |
 | draft | Four layers, one phase owner, `FlyState` contract, `TakeRules` chassis, ids in saves | This document. Traver said it "seems okay" (2026-11-02). |
+| 2026-11-02 | Models and data use metres; views convert with `WorldScale.PX_PER_M` (proposed 8 px/m) | Traver's call. Multi-screen stretches, real-world data and the river bake all need real units. See REQ-0001. |
 | draft | Fish logic in three steps: generation, mood, take. Conditions feed the hatch and water, which feed mood; one take roll per presentation with a floor, a ceiling, refusals and streak protection | Brainstorm with Traver, 2026-11-02. See FISH_LOGIC.md. |
 
 ## 11. Open questions for Traver
 
 1. Does the migration order make sense, and should step A (splitting `fishing_controller.gd`) start as soon as PRs #5 and #7 merge?
-2. Metres in models (section 5): yes, or stay in pixels until there's a second screen?
+2. ~~Metres in models?~~ Decided: metres (2026-11-02). Still open: is 8 px per metre the right scale? (REQ-0001)
 3. The fish logic questions at the end of [FISH_LOGIC.md](FISH_LOGIC.md).
