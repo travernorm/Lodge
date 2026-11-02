@@ -91,7 +91,9 @@ The debug views start hidden. The first press opens the controller view and give
 
 The stream's current comes from a river field (`scripts/river/river_field.gd`) that follows real hydraulic rules: the same water passes every cross-section, so the shallow riffle runs fast and the deep pool runs slow; the fastest water follows the thalweg (the deepest line) and the banks are slow; and the boulder at the head of the pool makes a slow cushion in front, a slack pocket behind and a seam off each side. The field also scores where a trout would hold: slow, deep-enough water with fast water close by. The trout picks its lie from those scores, so it sits where a real one would. The drift, the foam streaks and the water colour all read the same field.
 
-Press **View / F1** twice for the read-the-water view. It draws the current, the thalweg, seams, trout lies and a ring where the trout is holding, and shows the speed of the lane your fly is drifting in. For now the field is built from those rules when the scene loads; later it will be baked from a water solver in the editor, using the same layers.
+Press **View / F1** twice for the read-the-water view. It draws the current, the thalweg, seams, trout lies and a ring where the trout is holding, and shows the speed of the lane your fly is drifting in, in metres per second. For now the field is built from those rules when the scene loads; later it will be baked from a water solver in the editor, using the same layers.
+
+The river works in metres (see REQ-0001): one screen is 40 m by 25 m, and the test creek is about 11 m wide. All of its speeds hang off one number, `RiverField.WATER_SPEED` (the riffle's fastest line, 6.9 m/s today, several times a real creek's 1 to 1.5 m/s). The speeds where trout hold and feed, and what counts as a seam, are fractions of it, so slowing the water toward real speeds changes one number.
 
 ## Project layout
 

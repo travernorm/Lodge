@@ -286,8 +286,9 @@ func _test_fish_hold_in_good_lies() -> void:
 	var outside := 0
 	for i in 40:
 		var f := Fish.new(_redband, _rng, river)
-		worst = minf(worst, river.lie_at(f.lie))
-		if not _redband.lie_area.grow(1.0).has_point(f.lie) or not river.is_water(f.lie):
+		var lie_m := WorldScale.vec_to_m(f.lie)  # fish lies are still px until REQ-0001 step 4
+		worst = minf(worst, river.lie_at(lie_m))
+		if not _redband.lie_area.grow(1.0).has_point(f.lie) or not river.is_water(lie_m):
 			outside += 1
 	_check(worst >= Fish.MIN_LIE_SCORE * 0.8, "lies: the redband only holds in good water (worst lie %.2f)" % worst)
 	_check(outside == 0, "lies: always in its own area and never in the rock (%d strays)" % outside)

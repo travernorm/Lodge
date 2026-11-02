@@ -27,7 +27,6 @@ const COL_THALWEG := Color("f2c35a")
 const COL_SEAM := Color("f2a65a")
 const COL_LIE := Color("8fd16a")
 const ARROW_GRID := 12.0
-const FAST_SPEED := 55.0
 
 enum View { HIDDEN, CONTROLS, WATER }
 
@@ -151,37 +150,42 @@ func _draw_water() -> void:
 	var stream := get_tree().get_first_node_in_group(&"stream")
 	if stream == null:
 		return
+	# The river works in metres; this view draws in pixels.
 	var river: RiverField = stream.river
+	var cell_px := WorldScale.to_px(RiverField.CELL)
 
 	# Trout lies: green, brighter where a fish would hold.
 	for j in river.rows:
 		for i in river.cols:
 			var score := river.lie[j * river.cols + i]
 			if score > 0.15:
-				draw_rect(Rect2(river.cell_pos(i, j) - Vector2.ONE, Vector2(2, 2)), Color(COL_LIE, 0.2 + 0.6 * score))
+				var c := WorldScale.vec_to_px(river.cell_pos(i, j))
+				draw_rect(Rect2(c - Vector2.ONE * cell_px * 0.5, Vector2.ONE * cell_px), Color(COL_LIE, 0.2 + 0.6 * score))
 
 	# Seams: orange dots where the speed changes sharply.
 	for j in range(0, river.rows, 2):
 		for i in range(0, river.cols, 2):
 			if river.seam[j * river.cols + i] > 0.55:
-				draw_rect(Rect2(river.cell_pos(i, j), Vector2.ONE), COL_SEAM)
+				draw_rect(Rect2(WorldScale.vec_to_px(river.cell_pos(i, j)), Vector2.ONE), COL_SEAM)
 
 	# Thalweg: dotted line along the deepest, fastest water.
-	for x in range(0, int(river.width), 4):
-		draw_rect(Rect2(x, roundf(river.thalweg_y(x)), 2, 1), COL_THALWEG)
+	var width_px := WorldScale.to_px(river.width)
+	for x in range(0, int(width_px), 4):
+		var ty := WorldScale.to_px(river.thalweg_y(WorldScale.to_m(x)))
+		draw_rect(Rect2(x, roundf(ty), 2, 1), COL_THALWEG)
 
 	# Current arrows.
-	var y := river.top + ARROW_GRID * 0.5
-	while y < river.bottom:
+	var y := WorldScale.to_px(river.top) + ARROW_GRID * 0.5
+	while y < WorldScale.to_px(river.bottom):
 		var x := ARROW_GRID * 0.5
-		while x < river.width:
+		while x < width_px:
 			var p := Vector2(x, y)
-			var v := river.flow_at(p)
+			var v := WorldScale.vec_to_px(river.flow_at(WorldScale.vec_to_m(p)))
 			var speed := v.length()
 			if speed > 0.5:
 				var dir := v / speed
 				var tip := p + dir * clampf(speed * 0.18, 1.5, 9.0)
-				var col := COL_SLOW.lerp(COL_FAST, clampf(speed / FAST_SPEED, 0.0, 1.0))
+				var col := COL_SLOW.lerp(COL_FAST, clampf(speed / WorldScale.to_px(RiverField.WATER_SPEED), 0.0, 1.0))
 				draw_line(p, tip, col, 1.0)
 				draw_rect(Rect2(tip.floor(), Vector2.ONE), col)
 				draw_rect(Rect2((tip - dir * 1.5 + dir.orthogonal()).floor(), Vector2.ONE), col)
@@ -199,9 +203,9 @@ func _draw_water() -> void:
 	var font := ThemeDB.fallback_font
 	var fly_line := ""
 	if fishing != null and fishing.phase == 1:  # drifting
-		var fly: Vector2 = fishing.drift.fly
-		fly_line = "fly lane %d px/s  seam %.1f  lie %.1f" % [
-			roundi(river.flow_at(fly).length()), river.seam_at(fly), river.lie_at(fly)]
+		var fly := WorldScale.vec_to_m(fishing.drift.fly)
+		fly_line = "fly lane %.1f m/s  seam %.1f  lie %.1f" % [
+			river.flow_at(fly).length(), river.seam_at(fly), river.lie_at(fly)]
 	var panel := Rect2(4, 4, 208, 22 if fly_line.is_empty() else 31)
 	draw_rect(panel, COL_PANEL)
 	draw_string(font, Vector2(8, 12), "READ THE WATER", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_TEXT)
