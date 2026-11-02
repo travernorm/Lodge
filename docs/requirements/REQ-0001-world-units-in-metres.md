@@ -70,7 +70,15 @@ Each PR plays exactly the same as before it, and passes every test.
 
 1. **`WorldScale` and the views.** Add the class and a test for it. Nothing uses it yet except a new `tests/units_test.gd` that checks `to_px(to_m(x)) == x`. It changes no behaviour, but it is still game code, so it waits for approval with the rest.
 2. **River (with the river thread).** `RiverField` and the stream scene work in metres. The stream scene draws through `WorldScale`. `flow_at()` takes and returns metres; a thin pixel wrapper stays on the stream scene for one PR so casting and fishing keep working. Best done before the river thread's bake prototype, so the bake is in metres from day one.
-3. **Casting (with the casting thread).** `CastTuning`, `CastRules`, the rule sets and their `.tres` files, `CastModel`. Practice targets and the meter convert in the view. Timed between casting PRs.
+3. **Casting (owned by the casting thread, which has agreed).** Land it right after PR #5 merges; no other casting code PRs are in flight. Everything that converts:
+   * `CastTuning`: `line_start`, `line_max`, `line_gain_min`, `line_gain_max`, and `stroke_time_per_px`, renamed to `stroke_time_per_m`.
+   * `CastRules.SHORT_MAX` and `MIDDLE_MAX` (48 and 82 px).
+   * `TieredCastRules.step_lengths` (36, 66, 100 px).
+   * `TempoCastRules`: line start, line max and line gain.
+   * `CastModel` reach and line out.
+   * `CastPractice.TARGET_REACH` (32, 65, 100 px) and its ruler drawing.
+   * Pixel thresholds in `tests/cast_test.gd` and `tests/cast_rules_test.gd` (for example "falls short by more than 10 px").
+   * The README's rule-set table, which quotes pixel values.
 4. **Fishing.** `DriftModel`, `FightModel`, `Fish`, `FishSpecies` and the fish files. Remove the pixel wrapper from step 2. This step can merge with ARCHITECTURE.md step A (splitting views out of `fishing_controller.gd`) if both are approved, since both touch the same lines.
 
 Before each PR: screenshots before and after (`tools/capture_screenshot.gd`) to show nothing moved, and the full `tools/run_tests.sh`.
@@ -95,5 +103,5 @@ The standard manual playtest from DEVELOPMENT_PROCESS.md after each of steps 2 t
 ## Open questions
 
 1. **For Traver and the river thread:** is 8 px per metre (a 40 m by 25 m screen, an 11 m wide creek) right?
-2. **For the casting thread:** any objection to renaming `stroke_time_per_px` to `stroke_time_per_m` and converting the rule sets' step lengths, timed between casting PRs?
+2. ~~For the casting thread: any objection to the rename?~~ Answered 2026-11-02: no objection, 8 px/m sounds right, and the casting thread will own step 3 right after PR #5 merges.
 3. **For the river thread:** should the bake prototype wait for step 2, so it starts in metres?
