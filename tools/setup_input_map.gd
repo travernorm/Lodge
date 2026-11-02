@@ -26,6 +26,8 @@ func _initialize() -> void:
 		"back": [_button(JOY_BUTTON_B), _key(KEY_BACKSPACE)],
 		"pause": [_button(JOY_BUTTON_START), _key(KEY_ESCAPE)],
 		"toggle_debug": [_button(JOY_BUTTON_BACK), _key(KEY_F1)],
+		"practice_mode": [_button(JOY_BUTTON_LEFT_STICK), _key(KEY_T)],
+		"cycle_rules": [_button(JOY_BUTTON_RIGHT_STICK), _key(KEY_TAB)],
 	}
 	for action_name in actions:
 		ProjectSettings.set_setting("input/" + action_name, {

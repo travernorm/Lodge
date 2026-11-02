@@ -17,6 +17,9 @@ extends RefCounted
 ## Mistakes: letting go of R before pressing L collapses the cast; holding a
 ## stroke too long drops the line; overlapping the bumpers too long throws a
 ## tailing loop or tangles the leader.
+##
+## How strokes turn into line and distance is up to `rules` (a CastRules
+## "chassis"), so different rhythms can be swapped in and compared.
 
 enum State { IDLE, BACK, BACK_TO_FORWARD, GAP, FORWARD, FORWARD_TO_BACK, FLIGHT, LANDED }
 
@@ -30,6 +33,14 @@ signal landed(presentation: String, quality: float)
 signal collapsed(reason: String)
 
 var tuning: CastTuning
+## The chassis: how strokes become line and distance. Swap it any time the line
+## is reeled in.
+var rules: CastRules
+## Every stroke and overlap of the current cast, oldest first, for practice mode:
+## {kind: "back" | "forward" | "overlap", seconds, ideal, quality}
+var strokes: Array[Dictionary] = []
+## Reach (px) of the last delivery.
+var last_reach := 0.0
 var state := State.IDLE
 ## Line out in px. 0 when reeled in.
 var line_out := 0.0
@@ -59,8 +70,9 @@ var _rng := RandomNumberGenerator.new()
 var _needs_release := false
 
 
-func _init(p_tuning: CastTuning = null, rng_seed := 0) -> void:
+func _init(p_tuning: CastTuning = null, rng_seed := 0, p_rules: CastRules = null) -> void:
 	tuning = p_tuning if p_tuning != null else CastTuning.new()
+	rules = p_rules if p_rules != null else CastRules.new()
 	if rng_seed != 0:
 		_rng.seed = rng_seed
 	else:
@@ -73,7 +85,16 @@ func is_busy() -> bool:
 
 
 func ideal_stroke_time() -> float:
-	return tuning.base_stroke_time + line_out * tuning.stroke_time_per_px
+	return rules.stroke_ideal(self)
+
+
+## +/- seconds counted as perfect / okay for the stroke being held now.
+func perfect_window() -> float:
+	return rules.perfect_window(self)
+
+
+func ok_window() -> float:
+	return rules.ok_window(self)
 
 
 ## 0 at the start of a stroke, 1 at its ideal moment, above 1 when late.
@@ -110,7 +131,8 @@ func update(now: float, r: bool, l: bool) -> void:
 		State.IDLE, State.LANDED:
 			if r and not l:
 				if state == State.IDLE:
-					line_out = tuning.line_start
+					line_out = rules.start_line(self)
+				strokes.clear()
 				_scores.clear()
 				false_casts = 0
 				_start_back()
@@ -189,12 +211,7 @@ func update(now: float, r: bool, l: bool) -> void:
 
 ## Maps how far off the ideal moment a stroke ended (seconds) to 0..1.
 func timing_quality(error: float) -> float:
-	var a := absf(error)
-	if a <= tuning.perfect_window:
-		return 1.0
-	if a <= tuning.ok_window:
-		return lerpf(1.0, 0.6, (a - tuning.perfect_window) / (tuning.ok_window - tuning.perfect_window))
-	return clampf(lerpf(0.6, 0.15, (a - tuning.ok_window) / (tuning.ok_window * 0.5)), 0.15, 0.6)
+	return CastRules.timing_quality(error, perfect_window(), ok_window())
 
 
 func overlap_quality(overlap: float) -> float:
@@ -220,12 +237,11 @@ func _start_forward() -> void:
 
 
 func _score_stroke(stroke_name: String) -> void:
-	var error := (_now - phase_start) - phase_ideal
-	var q := timing_quality(error)
-	var msg := ""
-	if q < 1.0:
-		msg = ("Early on the %s cast" if error < 0.0 else "Late on the %s cast") % stroke_name
-	_push(q, msg)
+	var elapsed := _now - phase_start
+	var ideal := phase_ideal
+	var result := rules.score_stroke(self, elapsed, stroke_name)
+	strokes.append({"kind": stroke_name, "seconds": elapsed, "ideal": ideal, "quality": result[0]})
+	_push(result[0], result[1])
 
 
 func _score_overlap(overlap: float) -> void:
@@ -237,6 +253,7 @@ func _score_overlap(overlap: float) -> void:
 		msg = "Tailing loop. Let go of the first bumper sooner."
 	elif q < 1.0:
 		msg = "Overlap ran a little long"
+	strokes.append({"kind": "overlap", "seconds": overlap, "ideal": tuning.overlap_good_max * 0.5, "quality": q})
 	_push(q, msg, 0.5 if q >= 0.7 else 1.0)
 
 
@@ -251,19 +268,15 @@ func _push(q: float, msg: String, weight := 1.0) -> void:
 func _finish_false_cast() -> void:
 	var q := _average(_cycle)
 	false_casts += 1
-	if q < tuning.line_gain_threshold:
-		feedback.emit("Sloppy false cast. No line gained.", q)
-		return
-	var gain := lerpf(tuning.line_gain_min, tuning.line_gain_max,
-		inverse_lerp(tuning.line_gain_threshold, 1.0, q))
-	line_out = minf(line_out + gain, tuning.line_max)
-	if q >= 0.95:
-		feedback.emit("Tight loop", q)
+	var msg := rules.after_false_cast(self, q)
+	if msg != "":
+		feedback.emit(msg, q)
 
 
 func _deliver() -> void:
 	var q := _average(_scores)
-	var reach := line_out * lerpf(tuning.short_cast_factor, 1.0, q)
+	var reach := rules.delivery_reach(self, q)
+	last_reach = reach
 	var scatter := _rng.randf_range(-1.0, 1.0) * tuning.max_scatter_degrees * (1.0 - q)
 	landing_offset = aim_direction().rotated(deg_to_rad(scatter)) * reach
 	last_cast_quality = q

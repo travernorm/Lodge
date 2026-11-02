@@ -7,6 +7,8 @@ extends Node2D
 ## Expects its parent to be the stream scene (scripts/stream_scene.gd).
 
 @export var tuning: CastTuning = preload("res://data/cast_tuning.tres")
+## The casting rule set ("chassis") to start with. Practice mode can swap it live.
+@export var rules: CastRules = preload("res://data/cast_rules/classic.tres")
 
 const FEEDBACK_SECONDS := 1.8
 const AIM_SPEED := 1.6  # aim units per second at full stick
@@ -52,7 +54,7 @@ func _ready() -> void:
 	add_to_group(&"cast")
 	_stream = get_parent() as Node2D
 	_fishing = _stream.get_node_or_null(^"Fishing")
-	model = CastModel.new(tuning)
+	model = CastModel.new(tuning, 0, rules)
 	model.feedback.connect(show_message)
 	model.delivered.connect(_on_delivered)
 	model.landed.connect(_on_landed)
@@ -114,7 +116,7 @@ func _tug() -> void:
 	var stroke := model.state == CastModel.State.BACK or model.state == CastModel.State.FORWARD
 	if not stroke or is_equal_approx(_tugged_stroke, model.phase_start):
 		return
-	var early_edge := 1.0 - tuning.perfect_window / model.phase_ideal
+	var early_edge := 1.0 - model.perfect_window() / model.phase_ideal
 	if model.stroke_progress() >= early_edge:
 		_tugged_stroke = model.phase_start
 		Controls.rumble(0.0, 0.35, 0.06)
@@ -268,12 +270,12 @@ func _draw_meter() -> void:
 	draw_rect(rect.grow(1), COL_METER_BG)
 	var stroke := model.state == CastModel.State.BACK or model.state == CastModel.State.FORWARD
 	var ideal := model.phase_ideal if model.phase_ideal > 0.0 else model.ideal_stroke_time()
-	_meter_band(rect, 1.0, tuning.ok_window / ideal, COL_METER_OK)
-	_meter_band(rect, 1.0, tuning.perfect_window / ideal, COL_METER_PERFECT)
+	_meter_band(rect, 1.0, model.ok_window() / ideal, COL_METER_OK)
+	_meter_band(rect, 1.0, model.perfect_window() / ideal, COL_METER_PERFECT)
 	if stroke:
 		var p := clampf(model.stroke_progress() / METER_SPAN, 0.0, 1.0)
 		var h := roundf(METER_SIZE.y * p)
-		var in_zone := absf(model.stroke_progress() - 1.0) * ideal <= tuning.perfect_window
+		var in_zone := absf(model.stroke_progress() - 1.0) * ideal <= model.perfect_window()
 		var col := COL_METER_PERFECT if in_zone else COL_METER_FILL
 		draw_rect(Rect2(rect.position + Vector2(1, METER_SIZE.y - h), Vector2(METER_SIZE.x - 2, h)), col)
 	var label := "R" if model.state in [CastModel.State.BACK, CastModel.State.GAP] else "L"

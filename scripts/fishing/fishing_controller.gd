@@ -43,6 +43,8 @@ const COL_TENSION_DANGER := Color("e8553a")
 const COL_STAMINA := Color("6ec3e0")
 
 var phase := Phase.NONE
+## Off in casting practice: landings don't start a drift and fish don't bite.
+var enabled := true
 var drift := DriftModel.new()
 var fight: FightModel
 var fish: Array[Fish] = []
@@ -147,7 +149,7 @@ func _change_fly() -> void:
 
 func _on_landed(_presentation: String, _quality: float) -> void:
 	var at: Vector2 = _cast.fly_pos
-	if not _stream.is_water(at):
+	if not enabled or not _stream.is_water(at):
 		return
 	phase = Phase.DRIFT
 	_fly_taken = false
