@@ -25,6 +25,10 @@ var tip := Vector2.ZERO
 var fly := Vector2.ZERO
 var belly := Vector2.ZERO
 var line_length := 0.0
+## Which way is downstream here (unit vector): the bow is measured along it and
+## a mend flips the belly back against it. The fishing controller sets it from
+## the current where the fly lands; the test screen's river runs +x.
+var downstream := Vector2.RIGHT
 ## 0 = drag-free drift, 1 = the fly is skating.
 var drag := 0.0
 ## Set by the last mend(): it moved the fly.
@@ -46,7 +50,7 @@ func start(p_tip: Vector2, p_fly: Vector2) -> void:
 
 ## How far the belly is bowed downstream of the straight line to the fly.
 func bow() -> float:
-	return belly.x - (tip.x + fly.x) * 0.5
+	return (belly - (tip + fly) * 0.5).dot(downstream)
 
 
 ## flow: Callable taking a position (m) and returning the current there (m/s).
@@ -74,7 +78,7 @@ func update(dt: float, flow: Callable) -> void:
 
 
 func mend() -> void:
-	belly.x -= MEND_SHIFT
+	belly -= downstream * MEND_SHIFT
 	over_mended = bow() < -OVER_MEND
 	if over_mended:
 		_jolt = JOLT_TIME

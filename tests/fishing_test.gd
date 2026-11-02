@@ -22,6 +22,7 @@ func _initialize() -> void:
 	_test_faster_belly_drags()
 	_test_mend_buys_a_drag_free_drift()
 	_test_early_mend_jolts_fly()
+	_test_mend_works_any_way_the_river_runs()
 	_test_bite_chance_by_distance_and_presentation()
 	_test_bite_rate_matches_the_odds()
 	_test_bite_becomes_a_take()
@@ -131,6 +132,29 @@ func _test_mend_buys_a_drag_free_drift() -> void:
 		worst_mended = maxf(worst_mended, mended.drag)
 	_check(worst_mended < 0.35 and worst_mended < worst_unmended,
 		"drift: mending as the line bows keeps drag down (%.2f vs %.2f unmended)" % [worst_mended, worst_unmended])
+
+
+## The same drift turned a quarter turn (the river running down the screen):
+## the bow and the mend follow the current, so mending still keeps drag down.
+func _test_mend_works_any_way_the_river_runs() -> void:
+	var flow := func(p: Vector2): return Vector2(0, 6.25 if p.x < 9.375 else 1.5)
+	var unmended := DriftModel.new()
+	unmended.start(Vector2(3.75, 20), Vector2(11.25, 20))
+	unmended.downstream = Vector2.DOWN
+	var mended := DriftModel.new()
+	mended.start(Vector2(3.75, 20), Vector2(11.25, 20))
+	mended.downstream = Vector2.DOWN
+	var worst_unmended := 0.0
+	var worst_mended := 0.0
+	for i in 120:
+		unmended.update(DT, flow)
+		mended.update(DT, flow)
+		if mended.bow() > 1.0:
+			mended.mend()
+		worst_unmended = maxf(worst_unmended, unmended.drag)
+		worst_mended = maxf(worst_mended, mended.drag)
+	_check(worst_unmended > 0.5 and worst_mended < 0.35,
+		"drift down the screen: the line bows downstream and mending fixes it (%.2f vs %.2f unmended)" % [worst_mended, worst_unmended])
 
 
 func _test_early_mend_jolts_fly() -> void:

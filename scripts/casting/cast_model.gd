@@ -46,6 +46,9 @@ var state := State.IDLE
 var line_out := 0.0
 ## -1 (cast angled left) .. 1 (angled right). 0 is straight across the river.
 var aim := 0.0
+## Which way "across the river" is, as an angle from straight up the screen.
+## The stream sets it from where the angler stands; 0 on the test screen.
+var facing_angle := 0.0
 ## When the current stroke (back or forward) started, and its ideal length.
 var phase_start := 0.0
 var phase_ideal := 0.0
@@ -109,10 +112,12 @@ func flight_progress() -> float:
 	return clampf((_now - _flight_start) / tuning.flight_time, 0.0, 1.0)
 
 
-## Unit vector the cast travels along. Up the screen is straight across the river.
+## Unit vector the cast travels along. Aim 0 is straight across the river
+## (up the screen, turned by facing_angle).
 func aim_direction() -> Vector2:
 	var angle := deg_to_rad(aim * tuning.max_aim_degrees)
-	return Vector2(sin(angle), -cos(angle))
+	var dir := Vector2(sin(angle), -cos(angle))
+	return dir.rotated(facing_angle) if facing_angle != 0.0 else dir
 
 
 func reel_in() -> void:

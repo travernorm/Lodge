@@ -29,12 +29,19 @@ const GONE_TIME := 4.0
 
 ## Only lies scoring at least this in the river field are taken.
 const MIN_LIE_SCORE := 0.4
+## Trout sharing water keep at least this far (m) from each other's lies.
+const LIE_GAP := 3.0
 
 var species: FishSpecies
 ## Where it holds the rest of the time.
 var lie := Vector2.ZERO
 ## The river it lives in; optional.
 var river: RiverField
+## Where it may hold (m). Its species' lie_area_m unless the water says otherwise.
+var area := Rect2()
+## Optional: returns the lies (m) of the other trout in the same water, as a
+## PackedVector2Array, so this one keeps clear of them. Takes this fish.
+var other_lies: Callable
 ## Where to draw it. Moves to the fly during a rise.
 var pos := Vector2.ZERO
 var length_in := 0.0
@@ -49,19 +56,23 @@ var _dimple_timer := 0.0
 var _rng: RandomNumberGenerator
 
 
-func _init(p_species: FishSpecies, rng: RandomNumberGenerator, p_river: RiverField = null) -> void:
+func _init(p_species: FishSpecies, rng: RandomNumberGenerator, p_river: RiverField = null,
+		p_area := Rect2(), p_other_lies := Callable()) -> void:
 	species = p_species
 	_rng = rng
 	river = p_river
+	area = p_area if p_area.has_area() else species.lie_area_m
+	other_lies = p_other_lies
 	respawn()
 
 
 ## Picks a new lie in its habitat, as a new fish.
 func respawn() -> void:
-	var a := species.lie_area_m
+	var a := area
 	var spot := Vector2.INF
 	if river != null:
-		spot = river.pick_lie(a, _rng, MIN_LIE_SCORE)
+		var taken: PackedVector2Array = other_lies.call(self) if other_lies.is_valid() else PackedVector2Array()
+		spot = river.pick_lie(a, _rng, MIN_LIE_SCORE, taken, LIE_GAP)
 	if spot == Vector2.INF:
 		spot = Vector2(_rng.randf_range(a.position.x, a.end.x), _rng.randf_range(a.position.y, a.end.y))
 	lie = spot

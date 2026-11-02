@@ -48,9 +48,9 @@ func _run() -> void:
 	var trout: Fish = _fishing.fish[0]
 	trout.species = trout.species.duplicate()
 	trout.species.bite_chance = 1.0
-	trout.lie = _cast.fly_pos + Vector2(16, 3)
+	trout.lie = WorldScale.vec_to_m(_cast.fly_pos) + Vector2(2, 0.375)
 	trout.pos = trout.lie
-	trout.on_landing(_cast.fly_pos, "Delicate")
+	trout.on_landing(WorldScale.vec_to_m(_cast.fly_pos), "Delicate")
 	await _wait(0.3)
 	await _save("drift")
 	while trout.state != Fish.State.TAKEN:

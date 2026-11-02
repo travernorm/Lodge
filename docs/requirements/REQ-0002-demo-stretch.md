@@ -82,6 +82,17 @@ This lands after REQ-0001's fishing step, so everything is already in metres.
 
 Walk the whole stretch both ways. Find each trout using only the water (read-the-water view off), then check with it on. Cast the cut-bank pool from the point bar. Drop a fly in the eddy and watch it ride back upstream and circle; drift one down the eddy line. Keyboard and DualSense, plus the browser build.
 
+## As built
+
+* `Stretch` resource (`scripts/river/stretch.gd`) and the demo data in `data/stretches/demo_freestone.tres`. `main.tscn` loads it; without a stretch the stream scene falls back to the one-screen test creek.
+* `RiverField.build_stretch()` lays the river along a Catmull-Rom centreline. Bends push the thalweg outward from the curvature. Logs slow the water beside them. The eddy is a Gaussian stream-function vortex that turns back upstream along its nearer bank. The build takes about a second when the scene loads.
+* The picture shows cut banks (earth) on the outside of bends and point bars (gravel) on the inside, drawn from the same field.
+* The angler walks in 2D on dry land and always faces the nearest water. `CastModel.facing_angle` turns the cast, the rod poses and the practice targets, and the left stick still aims right as the angler sees it. The drift's bow and mends follow the local current (`DriftModel.downstream`), so in the eddy you mend against the reversed current.
+* Five trout (three redband, a cutthroat and a brook) each take a lie at least 3 m from the others. Trout are drawn facing into the current at their lie.
+* The camera smooth-scrolls with the angler and looks a little toward the water. HUD text stays fixed on screen.
+* Tests: `river_test` covers the hard bend, every boulder, the eddy (reversed current, a closed loop, zero divergence, the eddy-line seam and lie) and five trout lies. `data_test` validates stretches, `cast_test` and `fishing_test` check casting and mending when the river runs another way, and `smoke_test` plays a catch on the stretch.
+* Not yet: bigger fish taking the better lies, a playthrough catch in two different water types, and a Deck fps check.
+
 ## Open questions
 
 1. ~~Scrolling or flip-screen?~~ Decided (Traver, 2026-11-02): smooth scrolling.

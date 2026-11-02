@@ -71,7 +71,7 @@ You can also mend the line by looping the right stick, but drag doesn't affect b
 | R bumper | E | Back cast (hold to time it) |
 | L bumper | Q | Forward cast (overlap with R) |
 | Right stick | I J K L | Rod tip: mend, set the hook, strip |
-| Left stick / D-pad | W A S D | Walk the bank |
+| Left stick / D-pad | W A S D | Walk the bank (the camera follows) |
 | Right stick loop | — | Mend the line |
 | A or right stick flick up | Space | Set the hook |
 | Right stick hold | Space or I J K L | Pressure while fighting |
@@ -87,13 +87,17 @@ The debug views start hidden. The first press opens the controller view and give
 
 ## The river
 
-![Read-the-water debug view: current arrows, the thalweg, seams and trout lies around the boulder](docs/screenshots/read-the-water.png)
+The demo is a stretch of freestone river, 16 m bank to bank, that winds across three screens by three ([REQ-0002](docs/requirements/REQ-0002-demo-stretch.md)). Walk the bank from the head riffle, past a boulder garden of pocket water, to a pool with an eddy and a fallen log, over a crossover riffle, and out onto the gravel point bar of a hard bend whose outside is a deep, undercut cut bank. The camera scrolls with you, and you always face the water: casting straight across goes wherever the river is from where you stand. Five trout hold in the best lies along the way. The layout is data, `data/stretches/demo_freestone.tres` (a `Stretch`: the centreline, width, depth along the river, rocks, logs and eddies).
 
-The stream's current comes from a river field (`scripts/river/river_field.gd`) that follows real hydraulic rules: the same water passes every cross-section, so the shallow riffle runs fast and the deep pool runs slow; the fastest water follows the thalweg (the deepest line) and the banks are slow; and the boulder at the head of the pool makes a slow cushion in front, a slack pocket behind and a seam off each side. The field also scores where a trout would hold: slow, deep-enough water with fast water close by. The trout picks its lie from those scores, so it sits where a real one would. The drift, the foam streaks and the water colour all read the same field.
+![The hard bend: a gravel point bar on the inside, the deep cut-bank pool on the outside](docs/screenshots/demo-stretch.png)
 
-Press **View / F1** twice for the read-the-water view. It draws the current, the thalweg, seams, trout lies and a ring where the trout is holding, and shows the speed of the lane your fly is drifting in, in metres per second. For now the field is built from those rules when the scene loads; later it will be baked from a water solver in the editor, using the same layers.
+![Read-the-water view at the first pool: pocket water behind the boulders, the eddy along the near bank and the fallen log](docs/screenshots/read-the-water.png)
 
-The river works in metres (see REQ-0001): one screen is 40 m by 25 m, and the test creek is about 11 m wide. All of its speeds hang off one number, `RiverField.WATER_SPEED` (the riffle's fastest line, 6.9 m/s today, several times a real creek's 1 to 1.5 m/s). The speeds where trout hold and feed, and what counts as a seam, are fractions of it, so slowing the water toward real speeds changes one number.
+The stream's current comes from a river field (`scripts/river/river_field.gd`) that follows real hydraulic rules: the same water passes every cross-section, so the shallow riffle runs fast and the deep pool runs slow; the fastest water follows the thalweg (the deepest line) and the banks are slow; and the boulder at the head of the pool makes a slow cushion in front, a slack pocket behind and a seam off each side. The field also scores where a trout would hold: slow, deep-enough water with fast water close by. Each trout picks its lie from those scores, at least 3 m from the others, so they sit where real ones would. In a bend the thalweg swings to the outside, so the cut bank runs deep and fast and the inside shallows into a point bar. The eddy is a real circulation (a stream-function vortex): water runs back upstream along the bank, swings out along the eddy line and curls back in, so a fly dropped in it comes back round, and trout in it face downstream into its current. The drift, the foam streaks and the water colour all read the same field.
+
+Press **View / F1** twice for the read-the-water view. It draws the current, the thalweg, seams, trout lies and a ring where the trout is holding, and shows the speed of the lane your fly is drifting in, in metres per second. For now the field is built from those rules when the scene loads (about a second for the demo stretch); later it will be baked from a water solver in the editor, using the same layers.
+
+The river works in metres (see REQ-0001): one screen is 40 m by 25 m. The original one-screen test creek (about 11 m wide) is still there when the stream scene has no stretch; the river tests use it. All of its speeds hang off one number, `RiverField.WATER_SPEED` (the riffle's fastest line, 6.9 m/s today, several times a real creek's 1 to 1.5 m/s). The speeds where trout hold and feed, and what counts as a seam, are fractions of it, so slowing the water toward real speeds changes one number.
 
 ## Project layout
 
