@@ -7,6 +7,9 @@ extends Node2D
 ##   loop it (half a circle)  mend: flip the line's belly back upstream
 ##   flick it up             set the hook when a fish takes
 ##   push and hold           rod pressure while fighting a fish
+##
+## Shortcut: A / Cross / Space sets the hook too, and holding it while fighting
+## is full pressure straight up.
 
 enum Phase { NONE, DRIFT, FIGHT }
 
@@ -117,6 +120,8 @@ func _process(delta: float) -> void:
 		Phase.DRIFT:
 			_update_drift(delta)
 		Phase.FIGHT:
+			if Input.is_action_pressed(Controls.INTERACT) and stick.length() < 0.5:
+				stick = Vector2(0, -1)
 			_update_fight(delta, stick)
 
 	var on_water := phase == Phase.DRIFT and not _fly_taken
@@ -172,7 +177,7 @@ func _update_drift(delta: float) -> void:
 	_cast.fly_pos = drift.fly
 	_cast.model.line_out = clampf(drift.tip.distance_to(drift.fly), _cast.tuning.line_start, _cast.tuning.line_max)
 
-	if _gestures.flicked:
+	if _gestures.flicked or Input.is_action_just_pressed(Controls.INTERACT):
 		_try_set()
 		if phase != Phase.DRIFT:
 			return
@@ -226,7 +231,7 @@ func _start_fight(f: Fish) -> void:
 	hooked = f
 	var tip: Vector2 = _stream.rod_tip()
 	fight = FightModel.new(f.species, tip.distance_to(drift.fly), (drift.fly - tip).angle(), _rng)
-	_cast.show_message("Fish on! Push the stick to pull. Ease off on runs.", 1.0)
+	_cast.show_message("Fish on! Hold Space or push the stick to pull.", 1.0)
 	Controls.rumble(0.3, 0.8, 0.25)
 
 

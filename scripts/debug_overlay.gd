@@ -5,7 +5,7 @@ extends Control
 ## The top strip is a 2 second timeline of the R and L bumpers, which is how
 ## we'll tune the back cast / forward cast rhythm on a real Steam Deck. It also
 ## shows how long each bumper was last held and how long they overlapped.
-## Press A (Space) while the overlay is open to test rumble.
+## Opening it gives a short rumble, to check the pad's haptics.
 
 const HISTORY_SECONDS := 2.0
 const FONT_SIZE := 8
@@ -34,8 +34,8 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed(Controls.TOGGLE_DEBUG):
 		visible = not visible
-	elif visible and event.is_action_pressed(Controls.INTERACT):
-		Controls.rumble(0.3, 0.7, 0.15)
+		if visible:
+			Controls.rumble(0.3, 0.7, 0.15)  # rumble test
 
 
 func _process(delta: float) -> void:

@@ -88,8 +88,9 @@ func _run(main: Node) -> void:
 		_fail("The trout never took the fly (state %s)" % Fish.State.keys()[trout.state])
 		return
 	await _wait(cast, trout.species.set_min + 0.05)
-	_stick(Vector2(0, -1))  # flick up to set
+	Input.action_press(&"interact")  # Space / A sets the hook
 	await _wait(cast, 0.05)
+	Input.action_release(&"interact")
 	if fishing.phase != 2:  # Phase.FIGHT
 		_fail("Hook set didn't start a fight")
 		return
