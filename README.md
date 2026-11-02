@@ -13,6 +13,10 @@ A cabin-core fly fishing game. A laid-off father inherits his late dad's cabin, 
 3. **Rise, set and fight** (this step). One trout, one fly, a simple bite chance per cast, flick to set, then play line tension.
 4. **Tune on the Deck.** Timing windows, rumble, and how readable the bite cue is.
 
+## Play in the browser
+
+The latest `main` is published at **https://travernorm.github.io/Lodge/** after every merge (`.github/workflows/web.yml`). Click the game once so it gets the keyboard, then use the keyboard controls below. A controller works too in Chrome or Edge: press a button after the page loads so the browser connects it. Rumble isn't available in the browser.
+
 ## Quick start
 
 1. Install [Godot 4.3 or newer](https://godotengine.org/download) (the standard build, not .NET).

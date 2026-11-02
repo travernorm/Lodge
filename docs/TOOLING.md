@@ -96,6 +96,10 @@ Open the debug overlay with View (Create on a PS5 pad). Use it to check that the
 - GitHub Actions runs all of them on every pull request (`.github/workflows/godot-check.yml`).
 - `tools/capture_screenshot.gd` plays a scripted cast and saves screenshots. It needs a display; on a headless Linux machine, wrap it in `xvfb-run`.
 
+## Web build
+
+`export_presets.cfg` has a **Web** preset (single-threaded, so it runs on GitHub Pages without special headers). `.github/workflows/web.yml` exports it and publishes it to GitHub Pages on every push to `main`, or when run by hand from the Actions tab. It needs one setting: **Settings → Pages → Source: GitHub Actions**. To build it locally, install the Godot export templates (Editor → Manage Export Templates), then **Project → Export → Web**, and serve `build/web/` with any static server (for example `python3 -m http.server` in that folder). Opening `index.html` straight from disk doesn't work.
+
 ## Platform notes
 
 - **Steam Deck / PC:** Linux export now. Windows and macOS presets can be added whenever they're needed.
