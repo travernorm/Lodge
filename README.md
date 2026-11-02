@@ -116,8 +116,12 @@ tests/cast_test.gd          Headless tests for the cast rhythm
 tests/cast_rules_test.gd    Headless tests for each casting rule set (Short/Middle/Long)
 tests/fishing_test.gd       Headless tests for gestures, drift, rises, hook sets and fights
 tests/river_test.gd         Headless tests for the river's hydraulics (thalweg, conservation, boulder)
+tests/data_test.gd          Contract checks across data files, scene wiring and the input map
+tests/playthrough_test.gd   Integration playthrough across casting, fishing, practice and debug views
+tools/run_tests.sh          Runs every test the way CI does
 export_presets.cfg          Linux x86_64 export for Steam Deck
 docs/TOOLING.md             Tools, Steam Deck testing, conventions
+docs/DEVELOPMENT_PROCESS.md How changes are planned, tested across systems and handed off
 ```
 
 See [docs/TOOLING.md](docs/TOOLING.md) for the full setup, including how to get builds onto a Steam Deck.

@@ -80,13 +80,18 @@ Open the debug overlay with View (Create on a PS5 pad). Use it to check that the
 - `tests/cast_test.gd` tests the cast rhythm on its own: clean casts, false casts adding line, collapses, ticking the grass, tailing loops, early strokes, aim and pick-ups.
 - `tests/cast_rules_test.gd` plays casts under each rule set: no false casts lands Short and five clean ones land Long for every set, the tiered steps, sloppy false casts not climbing, and the tempo rules accepting any steady beat but not a broken one.
 - `tests/fishing_test.gd` tests the stick gestures (mend loop, hook-set flick), drift and mending, the bite odds (including that 2,000 simulated casts bite at the advertised rate), rises, hook-set timing, and fight outcomes.
+- `tests/river_test.gd` tests the river field's hydraulics: thalweg, conservation, the boulder's cushion, pocket and seams.
+- `tests/data_test.gd` checks the contracts between file sets: every fly, fish and rule set file loads and is valid, the scene's fly box, stocking and rule set list point at real files, every rule set can be picked in game, and every action has both a controller binding and a key.
+- `tests/playthrough_test.gd` plays the real scene across systems: a catch under every rule set, walking the bank, the debug views during a drift and a fight, practice mode under every rule set, and reeling in.
+
+  Run them all with one command. It also checks the input map matches `tools/setup_input_map.gd`, and fails a test that prints a script error even if it exits cleanly:
 
   ```
-  godot --headless --path . --script res://tests/smoke_test.gd
-  godot --headless --path . --script res://tests/cast_test.gd
-  godot --headless --path . --script res://tests/cast_rules_test.gd
-  godot --headless --path . --script res://tests/fishing_test.gd
+  tools/run_tests.sh               # everything
+  tools/run_tests.sh playthrough   # just the tests whose name contains "playthrough"
   ```
+
+  On a Mac it finds Godot in `/Applications`. Otherwise set `GODOT=/path/to/godot`. Any new `tests/*_test.gd` file is picked up automatically. See [DEVELOPMENT_PROCESS.md](DEVELOPMENT_PROCESS.md) for when to add tests and how changes are checked across systems.
 
 - GitHub Actions runs all of them on every pull request (`.github/workflows/godot-check.yml`).
 - `tools/capture_screenshot.gd` plays a scripted cast and saves screenshots. It needs a display; on a headless Linux machine, wrap it in `xvfb-run`.
