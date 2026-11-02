@@ -57,16 +57,25 @@ You can also mend the line by looping the right stick, but drag doesn't affect b
 | A | Space | Set the hook (later: interact / perception check) |
 | B | Backspace | Back / reel in |
 | Menu (Start) | Esc | Pause |
-| View (Select) | F1 | Toggle controller debug overlay |
+| View (Select) | F1 | Cycle debug views: controller, read the water, hidden |
 
-The debug overlay starts hidden. Opening it gives a short rumble to test the controller's haptics. The top strip shows the last 2 seconds of R and L presses, plus hold times and overlap in milliseconds, so the cast rhythm can be tuned with real numbers.
+The debug views start hidden. The first press opens the controller view and gives a short rumble to test the controller's haptics. Its top strip shows the last 2 seconds of R and L presses, plus hold times and overlap in milliseconds, so the cast rhythm can be tuned with real numbers.
+
+## The river
+
+![Read-the-water debug view: current arrows, the thalweg, seams and trout lies around the boulder](docs/screenshots/read-the-water.png)
+
+The stream's current comes from a river field (`scripts/river/river_field.gd`) that follows real hydraulic rules: the same water passes every cross-section, so the shallow riffle runs fast and the deep pool runs slow; the fastest water follows the thalweg (the deepest line) and the banks are slow; and the boulder at the head of the pool makes a slow cushion in front, a slack pocket behind and a seam off each side. The field also scores where a trout would hold: slow, deep-enough water with fast water close by. The drift, the foam streaks and the water colour all read the same field.
+
+Press **View / F1** twice for the read-the-water view. It draws the current, the thalweg, seams and trout lies, and shows the speed of the lane your fly is drifting in. For now the field is built from those rules when the scene loads; later it will be baked from a water solver in the editor, using the same layers.
 
 ## Project layout
 
 ```
 scenes/main.tscn            Test stream scene (entry point)
 scripts/controls.gd         `Controls` autoload: action names and stick helpers
-scripts/stream_scene.gd     Placeholder river, current model (flow_at), angler and rod
+scripts/stream_scene.gd     Placeholder river (bed, boulder, flow_at), angler and rod
+scripts/river/river_field.gd  River field: current, depth, seams and trout lies on a grid
 scripts/casting/            Cast rhythm logic (cast_model.gd), scene glue and drawing
                             (cast_controller.gd), tunables (cast_tuning.gd)
 data/cast_tuning.tres       Casting feel numbers; edit in the Godot inspector
@@ -81,6 +90,7 @@ tools/capture_screenshot.gd Plays a scripted catch and saves screenshots
 tests/smoke_test.gd         Headless check: a scripted cast, drift, hook set and fight end in a catch
 tests/cast_test.gd          Headless tests for the cast rhythm
 tests/fishing_test.gd       Headless tests for gestures, drift, rises, hook sets and fights
+tests/river_test.gd         Headless tests for the river's hydraulics (thalweg, conservation, boulder)
 export_presets.cfg          Linux x86_64 export for Steam Deck
 docs/TOOLING.md             Tools, Steam Deck testing, conventions
 ```

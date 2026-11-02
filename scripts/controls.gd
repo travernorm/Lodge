@@ -10,7 +10,7 @@ extends Node
 ##   Y               change_fly    open the fly box (next fly) while reeled in
 ##   B               back          cancel or reel in
 ##   Start/Menu      pause
-##   Select/View     toggle_debug  controller debug overlay
+##   Select/View     toggle_debug  cycle debug views (controller, read the water)
 ##
 ## Keyboard fallbacks (for working on a laptop): WASD move, IJKL rod, E = R bumper,
 ## Q = L bumper, Space interact / set hook, Backspace back, F change fly, Esc pause, F1 debug.

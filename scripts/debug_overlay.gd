@@ -1,11 +1,16 @@
 extends Control
-## Controller debug overlay. Toggle with Select/View (Create on a PS5 pad, F1 on keyboard).
-## Starts hidden.
+## Debug overlays. Select/View (Create on a PS5 pad, F1 on keyboard) cycles:
+## hidden -> controller view -> read-the-water view -> hidden. Starts hidden.
 ##
+## Controller view:
 ## The top strip is a 2 second timeline of the R and L bumpers, which is how
 ## we'll tune the back cast / forward cast rhythm on a real Steam Deck. It also
 ## shows how long each bumper was last held and how long they overlapped.
 ## Opening it gives a short rumble, to check the pad's haptics.
+##
+## Read-the-water view draws the river field the fly drifts on: current arrows
+## (longer and whiter is faster), the thalweg (deepest, fastest line), seams
+## (where the speed changes sharply) and green cells where a trout would hold.
 
 const HISTORY_SECONDS := 2.0
 const FONT_SIZE := 8
@@ -15,6 +20,17 @@ const COL_R := Color("f2a65a")
 const COL_L := Color("6ec3e0")
 const COL_OFF := Color(1, 1, 1, 0.15)
 const COL_TEXT := Color("f4efe0")
+const COL_SLOW := Color("3a6fd8")
+const COL_FAST := Color("f4efe0")
+const COL_THALWEG := Color("f2c35a")
+const COL_SEAM := Color("f2a65a")
+const COL_LIE := Color("8fd16a")
+const ARROW_GRID := 12.0
+const FAST_SPEED := 55.0
+
+enum View { HIDDEN, CONTROLS, WATER }
+
+var view := View.HIDDEN
 
 var _time := 0.0
 var _history: Array[Vector3] = []  # x = time, y = R held, z = L held
@@ -33,8 +49,9 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed(Controls.TOGGLE_DEBUG):
-		visible = not visible
-		if visible:
+		view = ((view + 1) % View.size()) as View
+		visible = view != View.HIDDEN
+		if view == View.CONTROLS:
 			Controls.rumble(0.3, 0.7, 0.15)  # rumble test
 
 
@@ -70,6 +87,9 @@ func _track(r: bool, l: bool) -> void:
 
 
 func _draw() -> void:
+	if view == View.WATER:
+		_draw_water()
+		return
 	var font := ThemeDB.fallback_font
 	var w := size.x
 
@@ -124,3 +144,65 @@ func _draw_stick(center: Vector2, value: Vector2, label: String) -> void:
 	draw_circle(center + value * radius, 2.5, COL_TEXT)
 	draw_string(ThemeDB.fallback_font, center + Vector2(-radius, -radius - 4), label,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_TEXT)
+
+
+func _draw_water() -> void:
+	var stream := get_tree().get_first_node_in_group(&"stream")
+	if stream == null:
+		return
+	var river: RiverField = stream.river
+
+	# Trout lies: green, brighter where a fish would hold.
+	for j in river.rows:
+		for i in river.cols:
+			var score := river.lie[j * river.cols + i]
+			if score > 0.15:
+				draw_rect(Rect2(river.cell_pos(i, j) - Vector2.ONE, Vector2(2, 2)), Color(COL_LIE, 0.2 + 0.6 * score))
+
+	# Seams: orange dots where the speed changes sharply.
+	for j in range(0, river.rows, 2):
+		for i in range(0, river.cols, 2):
+			if river.seam[j * river.cols + i] > 0.55:
+				draw_rect(Rect2(river.cell_pos(i, j), Vector2.ONE), COL_SEAM)
+
+	# Thalweg: dotted line along the deepest, fastest water.
+	for x in range(0, int(river.width), 4):
+		draw_rect(Rect2(x, roundf(river.thalweg_y(x)), 2, 1), COL_THALWEG)
+
+	# Current arrows.
+	var y := river.top + ARROW_GRID * 0.5
+	while y < river.bottom:
+		var x := ARROW_GRID * 0.5
+		while x < river.width:
+			var p := Vector2(x, y)
+			var v := river.flow_at(p)
+			var speed := v.length()
+			if speed > 0.5:
+				var dir := v / speed
+				var tip := p + dir * clampf(speed * 0.18, 1.5, 9.0)
+				var col := COL_SLOW.lerp(COL_FAST, clampf(speed / FAST_SPEED, 0.0, 1.0))
+				draw_line(p, tip, col, 1.0)
+				draw_rect(Rect2(tip.floor(), Vector2.ONE), col)
+				draw_rect(Rect2((tip - dir * 1.5 + dir.orthogonal()).floor(), Vector2.ONE), col)
+				draw_rect(Rect2((tip - dir * 1.5 - dir.orthogonal()).floor(), Vector2.ONE), col)
+			x += ARROW_GRID
+		y += ARROW_GRID
+
+	# Key, and what the water is doing under the fly.
+	var font := ThemeDB.fallback_font
+	var fly_line := ""
+	var fishing := get_tree().get_first_node_in_group(&"fishing")
+	if fishing != null and fishing.phase == 1:  # drifting
+		var fly: Vector2 = fishing.drift.fly
+		fly_line = "fly lane %d px/s  seam %.1f  lie %.1f" % [
+			roundi(river.flow_at(fly).length()), river.seam_at(fly), river.lie_at(fly)]
+	var panel := Rect2(4, 4, 208, 22 if fly_line.is_empty() else 31)
+	draw_rect(panel, COL_PANEL)
+	draw_string(font, Vector2(8, 12), "READ THE WATER", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_TEXT)
+	draw_string(font, Vector2(132, 12), "F1 / View: hide", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, Color(COL_TEXT, 0.6))
+	draw_string(font, Vector2(8, 21), "current", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_FAST)
+	draw_string(font, Vector2(48, 21), "thalweg", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_THALWEG)
+	draw_string(font, Vector2(92, 21), "seams", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_SEAM)
+	draw_string(font, Vector2(126, 21), "trout lies", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_LIE)
+	if not fly_line.is_empty():
+		draw_string(font, Vector2(8, 30), fly_line, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_TEXT)
