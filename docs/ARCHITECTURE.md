@@ -4,7 +4,7 @@
 
 This is the map every change should be checked against, whoever writes it. If you're new to Godot's vocabulary (nodes, scenes, signals, autoloads, resources), read [GODOT_PRIMER.md](GODOT_PRIMER.md) first.
 
-It covers fishing first: casting, the line and fly on the water, the river, flies, fish and rises, the hook set, the fight and the catch journal, then how nymphing, streamers, fly tying and seasons plug in later. Walking the land, perception checks, the lodge sim and expansions will get their own sections when they're designed.
+It covers fishing first (fish behaviour in detail is in [FISH_LOGIC.md](FISH_LOGIC.md)): casting, the line and fly on the water, the river, flies, fish and rises, the hook set, the fight and the catch journal, then how nymphing, streamers, fly tying and seasons plug in later. Walking the land, perception checks, the lodge sim and expansions will get their own sections when they're designed.
 
 ---
 
@@ -48,10 +48,10 @@ Every fishing style (dry, nymph, streamer) runs the same six stages. What change
 
 ```
  Cast ──landed──▶ Line on the water ──FlyState every frame──▶ Fish decide ──take──▶ Hook set ──hooked──▶ Fight ──landed──▶ Journal
- CastModel        DriftModel (dry)                          FishBrain              HookSetModel         FightModel          CatchJournal
+ CastModel        DriftModel (dry)                          Fish (mood, lies)      HookSetModel         FightModel          CatchJournal
  + CastRules      DepthDriftModel (nymph, later)            + TakeRules            (timing window)      + species data      CatchRecord
-                  RetrieveModel (streamer, later)           + RiverField lies
-                                                            + Conditions
+                  RetrieveModel (streamer, later)           (one roll per drift
+                                                             past each fish)
 ```
 
 The **FishingSession** owns which stage is active:
@@ -127,27 +127,30 @@ Each system lists what it **owns** (writes), **reads**, **emits**, its **data**,
 
 ### 3.5 Fish
 
-Split into three parts that today live together in `fish.gd`:
+The full design is in [FISH_LOGIC.md](FISH_LOGIC.md). In short, fish logic runs in three steps, slowest to fastest:
+
+1. **Generation** (per season or visit): which species, how many and how big, from the stretch's lies and water types, the season, the water temperature and the species table. The biggest fish take the best lies. The population is **kept** between visits, so spooked, released and kept fish all leave a mark.
+2. **Mood** (per game hour): how keen each fish is (0 to 1), and whether it's looking up or down. The **hatch** is the main driver. Then the species' response to temperature, light and season, then its own hunger and wariness.
+3. **Take** (one roll per drift past the fish): `mood × lane × landing × drift × fly match`, with a floor and a ceiling. The result is a take, a refusal, an ignore or a spook, and each one shows the player something.
+
+Time of day, season and weather are not stored on each fish. They build one shared `Conditions` snapshot (section 3.9), which gives the hatch and the water temperature. Mood reads those, and the take's fly match reads the hatch again.
+
+How that splits into code:
 
 | Part | Kind | Holds |
 |---|---|---|
-| `FishSpecies` | Data | Everything true of every fish of this kind: appetite, preferred flies and food, habitat preferences, hook-set window, fight stats, size range, seasonal activity. |
-| `Fish` | Model | This one fish: lie, length, state (holding, interested, rising, taken, hooked, spooked, gone), mood or hunger, how often it's been put down. |
-| `TakeRules` | Data with logic (like `CastRules`) | The decision "does this fish take this fly right now?" given the `Fish`, a `FlyState`, the `RiverField` and the `Conditions`. Returns a chance and the reasons, so the odds can be shown on screen. |
+| `FishSpecies` | Data | Everything true of every fish of this kind: habitat preference per water type, temperature range, light preference, diet, selectivity, seasonal presence and activity, hook-set window, fight stats, size range. |
+| `Fish` | Model | This one fish: length, resting lie, feeding lie, mood, hunger, wariness, refusals, presentations since its last take, and its state (holding, interested, rising, taken, hooked, spooked, gone). |
+| `Population` | Model | The fish in one stretch: generates them from the `Stretch` data and the river field, keeps them between visits, refills slowly. |
+| `MoodRules` | Data with logic | Turns `Conditions` plus a fish's own state into its mood and feeding depth. |
+| `TakeRules` | Data with logic (like `CastRules`) | The roll: given the `Fish`, a `FlyState` and the `Conditions`, returns the chance, each factor (so they can be shown on screen) and the outcome. Holds the floor, the ceiling and the streak protection. |
 
-`TakeRules` is a swappable chassis, the same pattern as casting rules, because this is the next big feel question. Variants, simplest first:
+`TakeRules` is a swappable chassis, the same pattern as the casting rule sets, so each layer can be played before the next goes on. The order is in FISH_LOGIC.md ("Building it up"): today's odds, then drift, then refusals and streak protection, then one hatch with fly match, then mood by time of day, then generation from lies, then seasons and weather.
 
-1. **Simple odds** (today's behaviour): distance to the lie × presentation × species appetite.
-2. **Drag matters:** plus a penalty for `FlyState.drag`, so mending pays off.
-3. **Match the hatch:** plus how well the fly matches what's hatching, from `Conditions`.
-4. **Full brain:** plus spooking from splashy casts and lining, fish that get wary after refusals, seasonal mood.
-
-Each variant shows its factors on screen ("Drag-free ×1.0, Fly match ×0.6, Splashy ×0.25 = 9%"), which keeps the start-simple rule (one fish, one fly, visible odds) true as depth is added.
-
-* **Lies** come from the river: `RiverField.pick_lie()` scored against the species' habitat preference (open PR #7 starts this). Not from a screen rectangle.
-* **Spawning:** a `Stretch` lists which species can appear there, in which seasons, and how many. The session spawns `Fish` from it.
-* **Emits** (as an enum, not strings): `NATURAL_RISE`, `INTERESTED`, `RISING`, `TOOK`, `REFUSED`, `SPOOKED`, `SPAT`.
-* **Today:** `fish.gd` holds the runtime fish well, but the bite formula is constants inside it (`PRESENTATION_FACTOR`, `CLOSE_RANGE`), presentation arrives as a string, events are `StringName`s, and the hook-set window check lives here too. `lie_area` is a screen `Rect2`.
+* **Lies** come from the river: `RiverField.pick_lie()` (open PR #7 starts this), later with separate resting and feeding scores, which need the river thread's agreement. Not from a screen rectangle.
+* **Randomness** in fish logic lives in three places only: generation, mood's small drift, and the take roll with its spook check. All of them use a seeded `RandomNumberGenerator`.
+* **Emits** (as an enum, not strings): `NATURAL_RISE`, `RISING`, `TOOK`, `REFUSED`, `SPOOKED`, `SPAT`.
+* **Today:** `fish.gd` holds the runtime fish well, but the bite formula is constants inside it (`PRESENTATION_FACTOR`, `CLOSE_RANGE`). It rolls once per cast, not once per presentation. Presentation arrives as a string, events are `StringName`s, and the hook-set window check lives here too. `lie_area` is a screen `Rect2`, and each fish is rerolled when it comes back.
 
 ### 3.6 Hook set
 
@@ -171,8 +174,8 @@ Each variant shows its factors on screen ("Drag-free ×1.0, Fly match ×0.6, Spl
 ### 3.9 Conditions: time, seasons, weather, hatches (later)
 
 * **Service:** `Clock` autoload: game day, time of day, season. The only global clock; models get the time passed in.
-* **Value:** `Conditions` (season, time of day, weather, water level, active hatch), rebuilt by the session when the clock ticks and passed to `TakeRules` and the river.
-* **Data:** `Season` resources with hatch tables (`Hatch`: insect id, time window, intensity), and seasonal activity on `FishSpecies`.
+* **Value:** `Conditions` (season, time of day, weather, water temperature, water level, the active hatch and its stage), rebuilt by the session about once per game hour. It's the one place time, season and weather turn into things fish respond to: the hatch and the water. `MoodRules`, `TakeRules`, `Population` and the river all read it; none of them read the clock directly.
+* **Data:** `Season` resources with hatch tables and water ranges (`Hatch`: insect id, stages, time window, intensity by weather), and seasonal activity on `FishSpecies`.
 * **Visible in the world:** views read `Conditions` to show the season (Stardew-style), and the hatch is drawn as bugs on the water, so the information fish use is information the player can see.
 
 ### 3.10 Fly tying (later)
@@ -228,7 +231,7 @@ Everything today is in screen pixels on one 320×200 screen. The river thread ha
 | 7 | `Cast` ⇄ `Fishing` ⇄ `Practice` call each other via `get_node` | **Drifts** | Two-way dependency between siblings; no single phase owner. |
 | 8 | Fly position written by both `Cast` and `Fishing` | **Drifts** | Should be one `FlyState` owned by the line model. |
 | 9 | Presentation as `String`, fish events as `StringName` | **Drifts** | Make enums. |
-| 10 | Bite rule constants inside `Fish` | **Drifts** | Move to `TakeRules` data so it can be tuned and swapped. |
+| 10 | Bite rule constants inside `Fish`, rolled once per cast | **Drifts** | Move to `TakeRules` data, rolled once per presentation. See FISH_LOGIC.md. |
 | 11 | `FishSpecies.lie_area` is a screen rectangle | **Drifts** | PR #7 moves lies to the river field. |
 | 12 | Fishing code reads `stream.VIEW`, `BANK_TOP`, `BANK_BOTTOM` | **Drifts** | Screen constants leaking into rules. |
 | 13 | `catches` holds resources in dictionaries | **Drifts** | Needs `CatchRecord` with ids before saves. |
@@ -250,9 +253,9 @@ Small steps, each its own REQ and PR, each leaving the game playing the same unl
 | **B** | Add `FishingSession` as the single phase owner. `Cast` stops calling `Fishing`; `Practice` becomes a session mode. Introduce `FlyState` and make the line model its only writer. | None | A |
 | **C** | Enums for presentation and fish events; move `try_set` into `HookSetModel`. | None | B, coordinated with the casting thread (it changes the `landed` signal's argument type) |
 | **D** | `CatchRecord` and `CatchJournal` with ids; a `FlyBox` model. | None visible | A |
-| **E** | `TakeRules` chassis with **Simple odds** as the default (today's numbers moved into data), then a feel experiment adding **Drag matters**. | Only in the experiment | B, C, PR #7 merged |
+| **E** | `TakeRules` chassis with today's odds as the default (numbers moved into data), then the first layers from FISH_LOGIC.md as feel experiments: drift, then refusals and streak protection. | Only in the experiments | B, C, PR #7 merged |
 | **F** | Units decision (metres) and a `Stretch` resource. | None if done right | River thread agreement |
-| **G** | `Clock` autoload and `Conditions`, fixed to one season at first. | None | E |
+| **G** | `Clock` autoload and `Conditions` with one fixed hatch, then `MoodRules` by time of day, then `Population` from lies. | Yes, layer by layer | E, F |
 | **Later** | Nymph (`DepthDriftModel`), streamer (`RetrieveModel`), hatches, fly tying, saves. Each is a REQ that adds a model and data, not edits to existing models. | Yes | The above |
 
 Steps A, B and D are refactors of game code, so they need Traver's go-ahead like any feature. Step E is the first one a player would notice.
@@ -306,10 +309,11 @@ Short entries, newest last. A later session reads these before changing somethin
 | 2026-11-02 | Casting rules as swappable resources (chassis) | Compare feel side by side; Traver picked Count the false casts. |
 | 2026-11-02 | River flow baked offline, sampled at runtime | No compute shaders on GL Compatibility; cheap on Deck and Switch. |
 | 2026-11-02 | Start simple: one fish, one fly, visible odds | Hidden multi-condition bite rules felt broken in playtest. |
-| draft | Four layers, one phase owner, `FlyState` contract, `TakeRules` chassis, ids in saves | This document. Pending Traver's review. |
+| draft | Four layers, one phase owner, `FlyState` contract, `TakeRules` chassis, ids in saves | This document. Traver said it "seems okay" (2026-11-02). |
+| draft | Fish logic in three steps: generation, mood, take. Conditions feed the hatch and water, which feed mood; one take roll per presentation with a floor, a ceiling, refusals and streak protection | Brainstorm with Traver, 2026-11-02. See FISH_LOGIC.md. |
 
 ## 11. Open questions for Traver
 
 1. Does the migration order make sense, and should step A (splitting `fishing_controller.gd`) start as soon as PRs #5 and #7 merge?
 2. Metres in models (section 5): yes, or stay in pixels until there's a second screen?
-3. For the next feel experiment, is **Drag matters** the right second layer of bite odds, or would you rather try **Match the hatch** first?
+3. The fish logic questions at the end of [FISH_LOGIC.md](FISH_LOGIC.md).
