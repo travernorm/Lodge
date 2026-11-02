@@ -1,6 +1,8 @@
-[gd_resource type="Resource" script_class="FlyPattern" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="FlyPattern" load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/fishing/fly_pattern.gd" id="1_fly"]
+[ext_resource type="Script" path="res://scripts/fishing/insect.gd" id="2_insect"]
+[ext_resource type="Resource" path="res://data/insects/attractor.tres" id="3_attractor"]
 
 [resource]
 script = ExtResource("1_fly")
@@ -10,3 +12,4 @@ description = "Peacock and red-banded attractor with white wings. Matches nothin
 body_color = Color(0.85, 0.34, 0.23, 1)
 wing_color = Color(1, 1, 1, 1)
 hackle_color = Color(0.45, 0.3, 0.2, 1)
+imitates = Array[ExtResource("2_insect")]([ExtResource("3_attractor")])

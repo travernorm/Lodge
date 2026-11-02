@@ -38,7 +38,7 @@ func rolls_on_landing() -> bool:
 	return false
 
 
-func landing_odds(_fish: Fish, _at: Vector2, presentation: String) -> Dictionary:
+func landing_odds(_fish: Fish, _at: Vector2, presentation: String, _fly: FlyPattern = null) -> Dictionary:
 	return {"chance": 0.0, "text": "%s landing" % presentation}
 
 
@@ -46,7 +46,16 @@ func window() -> float:
 	return window_m
 
 
-func pass_odds(fish: Fish, landed_at: Vector2, presentation: String, worst_slip: float) -> Dictionary:
+## The tied-on fly doesn't matter under these rules.
+func pass_odds(fish: Fish, landed_at: Vector2, presentation: String, worst_slip: float, _fly: FlyPattern = null) -> Dictionary:
+	var s := shares(fish, landed_at, presentation, worst_slip)
+	var chance := clampf(s.sum, 0.0, 1.0)
+	return {"chance": chance, "text": "%s = %d%%" % [s.text, _pct(chance)]}
+
+
+## The three shares for a pass, added up: {lane, landing, drift, sum, text}.
+## text spells out the sum, e.g. "Lane 20 + Delicate 20 + No drag 20".
+func shares(fish: Fish, landed_at: Vector2, presentation: String, worst_slip: float) -> Dictionary:
 	var base := fish.species.bite_chance
 	var lane := base * lane_share
 	var landing := 0.0
@@ -57,13 +66,11 @@ func pass_odds(fish: Fish, landed_at: Vector2, presentation: String, worst_slip:
 			landing = base * fair_share
 	var clean := 1.0 - clampf((worst_slip - slip_free) / maxf(slip_full - slip_free, 0.001), 0.0, 1.0)
 	var drift := base * drift_share * clean
-	var chance := clampf(lane + landing + drift, 0.0, 1.0)
 	var landing_label := presentation if landing > 0.0 else "Landing"
 	var drift_label := "No drag" if clean >= 1.0 else ("Drag" if clean <= 0.0 else "Some drag")
 	return {
-		"chance": chance,
-		"text": "Lane %d + %s %d + %s %d = %d%%" % [
-			_pct(lane), landing_label, _pct(landing), drift_label, _pct(drift), _pct(chance)],
+		"lane": lane, "landing": landing, "drift": drift, "sum": lane + landing + drift,
+		"text": "Lane %d + %s %d + %s %d" % [_pct(lane), landing_label, _pct(landing), drift_label, _pct(drift)],
 	}
 
 

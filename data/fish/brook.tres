@@ -9,7 +9,12 @@ display_name = "Brook Trout"
 description = "Worm-track back, white-edged fins. Tucks along the slow far edge of the pool and strikes fast."
 color = Color(0.3, 0.32, 0.24, 1)
 lie_area_m = Rect2(25.625, 7.75, 12.5, 1.75)
-preferred_flies = PackedStringArray("royal_wulff")
+diet = {
+&"attractor": 1.0,
+&"caddis": 1.0,
+&"pmd": 1.0
+}
+selectivity = 0.2
 bite_chance = 0.6
 bite_range_m = 5.0
 set_min = 0.08

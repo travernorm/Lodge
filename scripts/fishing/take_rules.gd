@@ -8,7 +8,7 @@ extends Resource
 ## This base class is the original "Landing roll": one roll the moment the fly
 ## lands, from how close it landed to the fish and how softly. The drift after
 ## that doesn't matter. DriftPastRules (scripts/fishing/rules/) rolls as the fly
-## drifts past each fish instead.
+## drifts past each fish instead, and MatchFlyRules also weighs the fly.
 
 ## Shown when you switch rules.
 @export var display_name := "Landing roll"
@@ -22,8 +22,9 @@ func rolls_on_landing() -> bool:
 
 
 ## The odds for a fly landing at `at` (m). Returns {chance, text}: text spells
-## the odds out for the screen.
-func landing_odds(fish: Fish, at: Vector2, presentation: String) -> Dictionary:
+## the odds out for the screen. `fly` is what's tied on (null if nothing); these
+## rules ignore it.
+func landing_odds(fish: Fish, at: Vector2, presentation: String, _fly: FlyPattern = null) -> Dictionary:
 	var chance := fish.bite_chance_for(at, presentation)
 	return {"chance": chance, "text": "%s landing  %d%%" % [presentation, roundi(chance * 100.0)]}
 
@@ -34,7 +35,7 @@ func window() -> float:
 
 
 ## The odds for a fly drifting past `fish`. Unused here.
-func pass_odds(_fish: Fish, _landed_at: Vector2, _presentation: String, _worst_slip: float) -> Dictionary:
+func pass_odds(_fish: Fish, _landed_at: Vector2, _presentation: String, _worst_slip: float, _fly: FlyPattern = null) -> Dictionary:
 	return {"chance": 0.0, "text": ""}
 
 

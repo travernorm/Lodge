@@ -55,21 +55,21 @@ Distances are measured in metres from the rod tip (one screen is 40 m across): *
 
 ## How to fish
 
-For now the stream holds **one Redband Rainbow**, holding in a good lie at the head of the pool (usually the slack pocket behind the boulder), and you have **one fly**, a Parachute Adams. Watch for the rings where it rises on its own to find it.
+For now the stream holds **one Redband Rainbow**, holding in a good lie at the head of the pool (usually the slack pocket behind the boulder), and Dad's fly box holds **three flies**: a Parachute Adams (mayflies), an Elk Hair Caddis and a Royal Wulff (an attractor). Press **Y** (or **F**) while reeled in to tie on the next one. Watch for the rings where it rises on its own to find it.
 
-1. **Drift the fly past the fish.** A trout judges the fly as it drifts within about 1 m of it, once per pass. The odds show at the top of the screen, for example `Lane 20 + Delicate 20 + No drag 20 = 60%`:
+1. **Drift the fly past the fish.** A trout judges the fly as it drifts within about 1 m of it, once per pass. The odds show at the top of the screen, for example `(Lane 20 + Delicate 20 + No drag 20) × PMD 1 = 60%`:
    - **Lane (20%):** the fly came through the fish's window at all.
    - **Landing (20%):** a delicate landing within 3 m of the fish (a fair one gets 10%). A splashy landing isn't punished, and casting right onto a fish is fine: it counts as a pass straight away.
    - **No drag (20%):** the fly rode the current through the pass. Drag, skating or an early mend's jolt anywhere in the pass loses some or all of it, so **mend before the fly reaches the fish**.
+   - **× Fly match:** how much the fly looks like what that trout is eating. The right bug is ×1. A bug it doesn't eat keeps (1 − selectivity) of the odds, so a choosy cutthroat on the wrong fly keeps ×0.4, while a brook trout barely cares. Each fish's diet and selectivity are in `data/fish/`, what each fly imitates is in `data/flies/`, and the bugs are in `data/insects/`.
 2. **Wait for the rise.** If the fish bites, it comes up for the fly a moment later and the fly disappears.
 3. **Set the hook.** Press **Space** (or **Cross / A** on a controller, or flick the right stick up). You have about a second.
 4. **Fight.** **Hold Space** or **push the right stick** to pull it in, and watch the tension bar. Don't let the line go slack for long or it throws the hook. Pushing sideways against a run tires it faster. Reel it in close once it's tired to land it.
 
 Mend the line by looping the right stick when it bows downstream. Mend too early, with no bow to fix, and the fly skates.
 
-**Bite rules.** Press **R** (or **Square / X** on a controller) while reeled in to switch between bite rules, a feel experiment like the casting rule sets. **Drift past** (above) is the default. **Landing roll** is the original: one roll the moment the fly lands, 60% for a delicate landing right by the fish, falling off to nothing 5 m out, with fair landings getting 60% of that and splashy ones 25%; the drift after that doesn't matter. The numbers live in `data/take_rules/`.
+**Bite rules.** Press **R** (or **Square / X** on a controller) while reeled in to switch between bite rules, a feel experiment like the casting rule sets. **Match the fly** (above) is the default. **Drift past** is the same without the fly match. **Landing roll** is the original: one roll the moment the fly lands, 60% for a delicate landing right by the fish, falling off to nothing 5 m out, with fair landings getting 60% of that and splashy ones 25%; the drift after that doesn't matter. The numbers live in `data/take_rules/`.
 
-More flies (`data/flies/`) and two more trout (`data/fish/`) are already set up as data and can be added back when we want more depth.
 
 ## Controls
 

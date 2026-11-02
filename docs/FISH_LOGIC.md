@@ -167,12 +167,13 @@ Each layer is a `TakeRules` variant (the same swappable-chassis pattern as the c
 1. **Landing roll:** distance to the fish × landing, rolled once when the fly lands. Mood, drift and fly match are fixed at 1. (Built; still selectable as the "Landing roll" bite rules.)
 2. **Drift:** the "Drift past" bite rules, built 2026-11-02 at Traver's call and now the default. Each fish rolls once per pass, as the fly drifts within 1 m of it (landing on top of it counts as a pass). The chance is the species' `bite_chance` split into three equal shares added together: in lane, a delicate landing within 3 m (a fair one gets half; a splashy one isn't punished), and a drift with no drag. Drag is measured as the fly's slip against the water under it at the pass's worst moment (`DriftModel.slip`), so drag, skating and an early mend's jolt all count. These are bonuses added together rather than the multiplied factors above. The full formula can replace them once mood and fly match arrive.
 3. **Refusals and streak protection:** add the four outcomes and the pity timer.
-4. **One hatch:** a fixed caddis hatch, plus the fly match factor and selectivity.
-5. **Mood from time of day:** the hatch comes and goes over a day, and mood follows it.
-6. **Generation from lies:** several fish placed from the river field's lie scores, biggest in the best lies.
-7. **Seasons and weather:** the full conditions snapshot.
+4. **Fly match:** built 2026-11-02 (REQ-0003) as the "Match the fly" bite rules, now the default. Drift past × fly match, where fly match = 1 − selectivity × (1 − appetite), and appetite is the fish's highest `diet` weight among the bugs the fly imitates. Diets are fixed per species for now.
+5. **One hatch:** a fixed caddis hatch that raises the diet weight of what's coming off, and selectivity when it's thick.
+6. **Mood from time of day:** the hatch comes and goes over a day, and mood follows it.
+7. **Generation from lies:** several fish placed from the river field's lie scores, biggest in the best lies.
+8. **Seasons and weather:** the full conditions snapshot.
 
-Steps 1 to 3 need nothing new from other systems. Step 4 needs new `FlyPattern` fields (what it imitates). Step 6 needs the river thread's lie work (PR #7, then resting and feeding scores). Step 7 needs the `Clock`.
+Steps 1 to 3 need nothing new from other systems. Step 4 is built. Step 7 needs the river thread's lie work (PR #7, then resting and feeding scores). Step 8 needs the `Clock`.
 
 ## Data this implies
 

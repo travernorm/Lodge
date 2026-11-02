@@ -17,9 +17,11 @@ extends Node2D
 enum Phase { NONE, DRIFT, FIGHT, REEL }
 
 ## The fly box. Y (F on keyboard) cycles through it while the line is reeled in.
-## Starts with just one fly; more patterns are waiting in data/flies/.
+## The first is tied on at the start.
 @export var flies: Array[FlyPattern] = [
 	preload("res://data/flies/parachute_adams.tres"),
+	preload("res://data/flies/elk_hair_caddis.tres"),
+	preload("res://data/flies/royal_wulff.tres"),
 ]
 ## One fish is stocked for each entry. Starts with one trout in the pool; more
 ## species are waiting in data/fish/.
@@ -29,6 +31,7 @@ enum Phase { NONE, DRIFT, FIGHT, REEL }
 
 ## The bite rules to switch between with X / Square (R). The first is the default.
 @export var take_chassis: Array[TakeRules] = [
+	preload("res://data/take_rules/match_fly.tres"),
 	preload("res://data/take_rules/drift_past.tres"),
 	preload("res://data/take_rules/landing_roll.tres"),
 ]
@@ -208,7 +211,9 @@ func _change_fly() -> void:
 		_cast.show_message("Reel in first (B) to change flies.", 0.5)
 		return
 	fly_index = (fly_index + 1) % flies.size()
-	_cast.show_message("Tied on a %s." % current_fly().display_name, 1.0)
+	var fly := current_fly()
+	var kinds := fly.kinds_text()
+	_cast.show_message("Tied on a %s%s." % [fly.display_name, " (%s)" % kinds if kinds != "" else ""], 1.0)
 
 
 # --- Drift -----------------------------------------------------------------
@@ -233,7 +238,7 @@ func _on_landed(_presentation: String, _quality: float) -> void:
 	for f in fish:
 		if f.state == Fish.State.GONE or f.state == Fish.State.HOOKED:
 			continue
-		var odds := take_rules.landing_odds(f, at, presentation)
+		var odds := take_rules.landing_odds(f, at, presentation, current_fly())
 		f.roll(odds.chance, take_rules.rise_delay())
 		if odds.chance > best.chance:
 			best = odds
@@ -251,7 +256,7 @@ func _watch_passes(delta: float) -> void:
 	for f in fish:
 		if f == hooked or not f.watch_pass(drift.fly, drift.slip, take_rules.window(), delta):
 			continue
-		var odds := take_rules.pass_odds(f, _landed_at, _landed_presentation, f.pass_worst_slip)
+		var odds := take_rules.pass_odds(f, _landed_at, _landed_presentation, f.pass_worst_slip, current_fly())
 		f.roll(odds.chance, take_rules.rise_delay())
 		_show_odds(odds.text)
 

@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="Insect" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing/insect.gd" id="1_insect"]
+
+[resource]
+script = ExtResource("1_insect")
+id = &"march_brown"
+display_name = "March brown"
+kind = "mayfly"

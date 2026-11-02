@@ -1,6 +1,6 @@
 # REQ-0003: Fly choice affects the bite
 
-Status: approved (Traver, 2026-11-02)
+Status: implemented (approved by Traver, 2026-11-02)
 
 ## Problem
 
