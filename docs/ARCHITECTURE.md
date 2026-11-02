@@ -173,6 +173,8 @@ How that splits into code:
 
 ### 3.9 Conditions: time, seasons, weather, hatches (later)
 
+The design target (four 30-day seasons, six time slots, 10°F temperature bands, five weathers, the hatch calendar and the species palette) is in [SPECIES_AND_CONDITIONS.md](SPECIES_AND_CONDITIONS.md).
+
 * **Service:** `Clock` autoload: game day, time of day, season. The only global clock; models get the time passed in.
 * **Value:** `Conditions` (season, time of day, weather, water temperature, water level, the active hatch and its stage), rebuilt by the session about once per game hour. It's the one place time, season and weather turn into things fish respond to: the hatch and the water. `MoodRules`, `TakeRules`, `Population` and the river all read it; none of them read the clock directly.
 * **Data:** `Season` resources with hatch tables and water ranges (`Hatch`: insect id, stages, time window, intensity by weather), and seasonal activity on `FishSpecies`.
