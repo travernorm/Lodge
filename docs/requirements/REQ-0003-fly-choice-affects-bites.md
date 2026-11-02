@@ -1,6 +1,6 @@
 # REQ-0003: Fly choice affects the bite
 
-Status: review (engineering and architecture reviews done; waiting on Traver). Updated 2026-11-02 at Traver's ask: shared `Insect` resource, diet weights, how it fits Godot.
+Status: review (waiting on Traver)
 
 ## Problem
 
@@ -12,21 +12,21 @@ As a player, I want the fly I tie on to matter to the trout I'm fishing to, so t
 
 ## Feel goals
 
-* The right fly makes a clear, visible difference: about double the odds of the wrong one on a fussy fish.
+* The right fly makes a clear, visible difference: about double the odds of the wrong one on a highly selective fish.
 * The wrong fly still catches fish sometimes, never zero. A good drift is still the main skill.
-* Fussy fish care a lot, easy fish (brook trout) barely care.
+* Highly selective fish care a lot; fish with low selectivity (brook trout) barely care.
 * The odds line says plainly whether the fly matched, so the player learns the rule by fishing.
 * You can always find out what a trout eats without guessing: its description, and later the hatch, the journal and perception checks.
 
 ## Scope
 
-The simplest version: match **what the fly imitates** against **what the trout is eating**, scaled by **how fussy that species is**. No hatch, clock or sizes yet.
+The simplest version: match **what the fly imitates** against **what the trout is eating**, scaled by **that species' selectivity**. No hatch, clock or sizes yet.
 
 **Data (one new data class, two change):**
 
 * **New `Insect` resource**, one `.tres` per bug in `data/insects/` (id, display name, kind such as mayfly, caddis or attractor). It's the one shared thing a fly, a fish's diet and, later, a hatch all point at, so they can't disagree. Only the bugs in use now get files: `caddis`, `pmd`, `baetis`, `march_brown`, `mahogany`, `callibaetis`, plus `attractor` for a fly that copies nothing. Ids come from the hatch table in SPECIES_AND_CONDITIONS.md.
 * `FlyPattern` gets `imitates: Array[Insect]`. A generalist fly lists several; a specific one lists one.
-* `FishSpecies` gets `diet` (insect id → how much it wants it, 0 to 1; a stand-in until hatches exist) and `selectivity` (0 to 1, how fussy it is). `diet` is the Dictionary format agreed for SPECIES_AND_CONDITIONS.md, and it's a Dictionary of ids rather than resources because Godot 4.3 has no typed dictionaries.
+* `FishSpecies` gets `diet` (insect id → how much it wants it, 0 to 1; a stand-in until hatches exist) and `selectivity` (0 to 1: how much it cares that the fly looks like its food. 0 takes anything drifted well; 1 takes only the right bug). `diet` is the Dictionary format agreed for SPECIES_AND_CONDITIONS.md, and it's a Dictionary of ids rather than resources because Godot 4.3 has no typed dictionaries.
 * `FishSpecies.preferred_flies` is removed. It's unused, and `diet` replaces it with something that scales to hundreds of flies.
 
 **Starting values:**
@@ -156,7 +156,7 @@ On the keyboard and the DualSense:
 ## Architecture review (2026-11-02)
 
 * **Fits the chassis.** Match the fly is one more `TakeRules` file, the same pattern as the casting rule sets, and keeps every factor on screen.
-* **Data, not code.** Fussiness and diets are fields on the fish files; what a fly copies is on the fly files. Adding a fly or a fish stays a data-only change.
+* **Data, not code.** Selectivity and diets are fields on the fish files; what a fly copies is on the fly files. Adding a fly or a fish stays a data-only change.
 * **Relational integrity.** One `Insect` file per bug is the single source the fly, the diet and later the hatch share, so renaming a bug's display name changes it everywhere and an id can't drift. This adds a `data/insects/` folder now rather than waiting for hatches, because both new fields need it.
 * **Docs to update in the build PR:** ARCHITECTURE.md 3.4 (`imitates` is a list of `Insect`s, not one id) and the data layer list (add `Insect`) and problem #10 (bite rules now read the fly through an argument until `FlyState`); FISH_LOGIC.md "Building it up" (fly match and selectivity arrive before the hatch); the system map's Fishing row (bite rules read the tied-on fly).
 * **Refactor backlog:** `fishing_controller.gd` is 636 lines, past the backlog's 500-line trigger. This REQ only changes a few lines there, so it doesn't absorb the split. Recommended instead as its own next PR (ARCHITECTURE.md step A) before refusals land, since those add more drawing.
