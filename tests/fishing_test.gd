@@ -27,6 +27,7 @@ func _initialize() -> void:
 	_test_bite_becomes_a_take()
 	_test_picking_up_cancels_a_bite()
 	_test_dimples_show_where_the_fish_is()
+	_test_fish_hold_in_good_lies()
 	_test_set_timing()
 	_test_full_pressure_snaps_a_strong_fish()
 	_test_no_pressure_throws_hook()
@@ -276,6 +277,25 @@ func _run_fight(f: FightModel, seconds: float, policy: Callable) -> FightModel.R
 		if r != FightModel.Result.FIGHTING:
 			return r
 	return FightModel.Result.FIGHTING
+
+
+func _test_fish_hold_in_good_lies() -> void:
+	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var river: RiverField = main.river
+	var worst := 1.0
+	var outside := 0
+	for i in 40:
+		var f := Fish.new(_redband, _rng, river)
+		worst = minf(worst, river.lie_at(f.lie))
+		if not _redband.lie_area.grow(1.0).has_point(f.lie) or not river.is_water(f.lie):
+			outside += 1
+	_check(worst >= Fish.MIN_LIE_SCORE * 0.8, "lies: the redband only holds in good water (worst lie %.2f)" % worst)
+	_check(outside == 0, "lies: always in its own area and never in the rock (%d strays)" % outside)
+	var nowhere := _redband.duplicate() as FishSpecies
+	nowhere.lie_area = Rect2(10, 140, 20, 6)  # ankle-deep edge water, no lies
+	var f := Fish.new(nowhere, _rng, river)
+	_check(nowhere.lie_area.grow(1.0).has_point(f.lie), "lies: with no good water it still stays in its area")
+	main.free()
 
 
 func _check(ok: bool, label: String) -> void:

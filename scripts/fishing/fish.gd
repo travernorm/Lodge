@@ -2,6 +2,10 @@ class_name Fish
 extends RefCounted
 ## One trout holding in the stream.
 ##
+## It holds where the river field says a trout would: slow, deep-enough water
+## with fast water close by (see RiverField.pick_lie()). Without a river field it
+## picks any spot in its species' lie_area.
+##
 ## Bites are a simple roll per cast: when the fly lands, the fish works out a bite
 ## chance from how close the fly landed and how softly (see bite_chance_for()).
 ## If the roll succeeds, it rises to the fly a moment later. Then you have to set
@@ -23,8 +27,14 @@ const BITE_DELAY := Vector2(0.6, 2.0)  # seconds after landing before it rises
 const DIMPLE_EVERY := Vector2(3.0, 6.0)
 const GONE_TIME := 4.0
 
+## Only lies scoring at least this in the river field are taken.
+const MIN_LIE_SCORE := 0.4
+
 var species: FishSpecies
+## Where it holds the rest of the time.
 var lie := Vector2.ZERO
+## The river it lives in; optional.
+var river: RiverField
 ## Where to draw it. Moves to the fly during a rise.
 var pos := Vector2.ZERO
 var length_in := 0.0
@@ -39,16 +49,22 @@ var _dimple_timer := 0.0
 var _rng: RandomNumberGenerator
 
 
-func _init(p_species: FishSpecies, rng: RandomNumberGenerator) -> void:
+func _init(p_species: FishSpecies, rng: RandomNumberGenerator, p_river: RiverField = null) -> void:
 	species = p_species
 	_rng = rng
+	river = p_river
 	respawn()
 
 
 ## Picks a new lie in its habitat, as a new fish.
 func respawn() -> void:
 	var a := species.lie_area
-	lie = Vector2(_rng.randf_range(a.position.x, a.end.x), _rng.randf_range(a.position.y, a.end.y)).floor()
+	var spot := Vector2.INF
+	if river != null:
+		spot = river.pick_lie(a, _rng, MIN_LIE_SCORE)
+	if spot == Vector2.INF:
+		spot = Vector2(_rng.randf_range(a.position.x, a.end.x), _rng.randf_range(a.position.y, a.end.y))
+	lie = spot.floor()
 	pos = lie
 	length_in = snappedf(_rng.randf_range(species.min_length_in, species.max_length_in), 0.5)
 	state = State.HOLDING

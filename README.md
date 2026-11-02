@@ -33,7 +33,7 @@ The longer the line, the longer each stroke needs, just like a real cast. Stroke
 
 ## How to fish
 
-For now the stream holds **one Redband Rainbow** in the middle of the pool, and you have **one fly**, a Parachute Adams. Watch for the rings where it rises on its own to find it.
+For now the stream holds **one Redband Rainbow**, holding in a good lie at the head of the pool (usually the slack pocket behind the boulder), and you have **one fly**, a Parachute Adams. Watch for the rings where it rises on its own to find it.
 
 1. **Cast near the fish.** When the fly lands you'll see your chance of a bite. A delicate landing right by the fish gives the best odds (60%). Fair landings get about 60% of that and splashy ones 25%, and the chance falls off with distance until about 40 px out, where it's zero.
 2. **Wait for the rise.** If the fish bites, it comes up for the fly a second or two later and the fly disappears.
@@ -65,9 +65,9 @@ The debug views start hidden. The first press opens the controller view and give
 
 ![Read-the-water debug view: current arrows, the thalweg, seams and trout lies around the boulder](docs/screenshots/read-the-water.png)
 
-The stream's current comes from a river field (`scripts/river/river_field.gd`) that follows real hydraulic rules: the same water passes every cross-section, so the shallow riffle runs fast and the deep pool runs slow; the fastest water follows the thalweg (the deepest line) and the banks are slow; and the boulder at the head of the pool makes a slow cushion in front, a slack pocket behind and a seam off each side. The field also scores where a trout would hold: slow, deep-enough water with fast water close by. The drift, the foam streaks and the water colour all read the same field.
+The stream's current comes from a river field (`scripts/river/river_field.gd`) that follows real hydraulic rules: the same water passes every cross-section, so the shallow riffle runs fast and the deep pool runs slow; the fastest water follows the thalweg (the deepest line) and the banks are slow; and the boulder at the head of the pool makes a slow cushion in front, a slack pocket behind and a seam off each side. The field also scores where a trout would hold: slow, deep-enough water with fast water close by. The trout picks its lie from those scores, so it sits where a real one would. The drift, the foam streaks and the water colour all read the same field.
 
-Press **View / F1** twice for the read-the-water view. It draws the current, the thalweg, seams and trout lies, and shows the speed of the lane your fly is drifting in. For now the field is built from those rules when the scene loads; later it will be baked from a water solver in the editor, using the same layers.
+Press **View / F1** twice for the read-the-water view. It draws the current, the thalweg, seams, trout lies and a ring where the trout is holding, and shows the speed of the lane your fly is drifting in. For now the field is built from those rules when the scene loads; later it will be baked from a water solver in the editor, using the same layers.
 
 ## Project layout
 
