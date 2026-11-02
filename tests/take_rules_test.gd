@@ -1,5 +1,5 @@
 extends SceneTree
-## Headless tests for the bite rules (TakeRules): the drift-past rules, the
+## Headless tests for the bite rules (DriftPastRules): the odds of a pass, the
 ## fly's slip against the water, and a fish following the fly through its window.
 ##   godot --headless --path . --script res://tests/take_rules_test.gd
 
@@ -9,7 +9,6 @@ var _failures := 0
 var _rng := RandomNumberGenerator.new()
 var _redband: FishSpecies = load("res://data/fish/redband.tres")
 var _drift_past: DriftPastRules = load("res://data/take_rules/drift_past.tres")
-var _landing_roll: TakeRules = load("res://data/take_rules/landing_roll.tres")
 
 
 func _initialize() -> void:
@@ -18,7 +17,6 @@ func _initialize() -> void:
 	_test_drag_shows_as_slip()
 	_test_early_mend_shows_as_slip()
 	_test_drift_past_odds()
-	_test_landing_roll_odds_unchanged()
 	_test_one_roll_per_pass()
 	_test_landing_on_the_fish_counts_as_a_pass()
 	_test_a_new_pass_rolls_again()
@@ -81,15 +79,7 @@ func _test_drift_past_odds() -> void:
 	var worst: float = _drift_past.pass_odds(f, far, "Splashy", 2.0).chance
 	_check(is_equal_approx(worst, base / 3.0), "odds: just coming through its lane still gets a third (%.2f)" % worst)
 	var text: String = _drift_past.pass_odds(f, near, "Delicate", 0.0).text
-	_check(text == "Lane 20 + Delicate 20 + No drag 20 = 60%", "odds: spelled out on screen (%s)" % text)
-
-
-func _test_landing_roll_odds_unchanged() -> void:
-	var f := Fish.new(_redband, _rng)
-	_check(_landing_roll.rolls_on_landing() and not _drift_past.rolls_on_landing(), "rules: landing roll rolls on landing, drift past doesn't")
-	var at := f.lie + Vector2(-0.625, 0)
-	_check(is_equal_approx(_landing_roll.landing_odds(f, at, "Fair").chance, f.bite_chance_for(at, "Fair")),
-		"rules: landing roll uses the original odds")
+	_check(text == "(Lane 20 + Delicate 20 + No drag 20) × Any fly 1 = 60%", "odds: spelled out on screen (%s)" % text)
 
 
 # --- Passes ----------------------------------------------------------------

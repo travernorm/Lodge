@@ -29,8 +29,13 @@ func _initialize() -> void:
 		"toggle_debug": [_button(JOY_BUTTON_BACK), _key(KEY_F1)],
 		"practice_mode": [_button(JOY_BUTTON_LEFT_STICK), _key(KEY_T)],
 		"cycle_rules": [_button(JOY_BUTTON_RIGHT_STICK), _key(KEY_TAB)],
-		"cycle_bite_rules": [_axis(JOY_AXIS_TRIGGER_LEFT, 1.0), _key(KEY_R)],
 	}
+	# Drop actions that are no longer in the list, so removing one here removes it
+	# from project.godot too.
+	for prop in ProjectSettings.get_property_list():
+		var name: String = prop.name
+		if name.begins_with("input/") and not actions.has(name.trim_prefix("input/")) and not name.begins_with("input/ui_"):
+			ProjectSettings.set_setting(name, null)
 	for action_name in actions:
 		ProjectSettings.set_setting("input/" + action_name, {
 			"deadzone": DEADZONE,

@@ -8,7 +8,7 @@ extends SceneTree
 ##   * the debug views (controller, read the water) cycled during a drift and a
 ##     fight without breaking either
 ##   * practice mode under every rule set: fish never bite, every landing scores
-##   * a catch under every bite rules set (TakeRules), switched with L2 / R
+##   * a catch under the bite rules (DriftPastRules, Drift past is the only set)
 ##   * the mend button (Square / M) mends a drift, like a stick loop
 ##   * walking only while reeled in, and B reeling in a drift
 ##
@@ -86,23 +86,12 @@ func _run() -> void:
 				return
 			print("  ok    %s, %d false cast(s): caught a %s" % [rules_name, false_casts, _trout.species.display_name])
 
-	# 1b. A catch under every bite rules set, switched through the input system,
-	# ending back on the default.
-	var take_count: int = _fishing.take_chassis.size()
-	for i in take_count:
-		var take_rules: TakeRules = _fishing.take_rules
-		if not await _catch_one(0, false):
-			_fail_context("bite rules %s" % take_rules.display_name)
-			return
-		catches += 1
-		print("  ok    bite rules %s: caught a %s" % [take_rules.display_name, _trout.species.display_name])
-		await _tap(&"cycle_bite_rules")
-		if take_count > 1 and _fishing.take_rules == take_rules:
-			_fail("L2 / R didn't switch the bite rules")
-			return
-	if _fishing.take_rules != _fishing.take_chassis[0]:
-		_fail("Cycling every bite rules set didn't come back to the default")
+	# 1b. A catch under the bite rules (Drift past, the only set).
+	if not await _catch_one(0, false):
+		_fail_context("bite rules %s" % _fishing.take_rules.display_name)
 		return
+	catches += 1
+	print("  ok    bite rules %s: caught a %s" % [_fishing.take_rules.display_name, _trout.species.display_name])
 
 	# 2. B reels in a drift, and you can't walk with line out.
 	await _cast_once(0)
@@ -158,7 +147,7 @@ func _run() -> void:
 		return
 	print("  ok    practice mode under %d rule set(s): no bites, every landing scored" % rule_count)
 
-	print("Playthrough passed: %d catches across %d rule set(s) and %d bite rules, debug views, practice and reel-in." % [catches, rule_count, take_count])
+	print("Playthrough passed: %d catches across %d rule set(s) under Drift past, debug views, practice and reel-in." % [catches, rule_count])
 	quit(0)
 
 

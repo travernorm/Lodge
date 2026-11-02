@@ -6,9 +6,9 @@ extends RefCounted
 ## with fast water close by (see RiverField.pick_lie()). Without a river field it
 ## picks any spot in its species' lie_area_m. Positions are in metres (REQ-0001).
 ##
-## When it bites is up to the fishing controller's TakeRules: one roll when the
-## fly lands (on_landing(), from how close and how softly, see bite_chance_for()),
-## or one roll per pass as the fly drifts by (watch_pass() and roll()). If the
+## When it bites is up to the fishing controller's bite rules (DriftPastRules):
+## one roll per pass as the fly drifts by (watch_pass() and roll()). The older
+## landing roll (on_landing(), bite_chance_for()) is only used by tests now. If the
 ## roll succeeds, it rises to the fly a moment later. Then you have to set the
 ## hook in its window.
 ##

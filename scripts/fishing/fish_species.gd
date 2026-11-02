@@ -13,10 +13,11 @@ extends Resource
 @export var lie_area_m := Rect2(0, 7.5, 40, 10)
 
 @export_group("Biting")
-## Chance it bites a delicate cast landing right by it. Fair landings get 60% of
-## this and splashy ones 25%, and it falls off with distance out to bite_range_m.
+## Chance it bites a perfect pass: the fly comes through its lane after a
+## delicate landing nearby, with no drag, and matches its food. The bite rules
+## (DriftPastRules) split it into lane, landing and drift shares.
 @export_range(0.0, 1.0) var bite_chance := 0.6
-## Casts landing farther than this (metres) from the fish never get a bite.
+## The old landing-roll range (metres). Only tests use it now.
 @export var bite_range_m := 5.0
 ## What it's feeding on: insect id (data/insects/) to how much it wants it,
 ## 0 to 1. A stand-in until hatches exist; later the hatch raises the weight
@@ -24,7 +25,7 @@ extends Resource
 @export var diet := {}
 ## How much it cares that the fly looks like its food. 0 takes anything drifted
 ## well; 1 takes only the right bug. A fly it doesn't eat keeps
-## (1 - selectivity) of the odds under the "Match the fly" bite rules.
+## (1 - selectivity) of the odds under the bite rules.
 @export_range(0.0, 1.0) var selectivity := 0.5
 
 @export_group("Hook set")

@@ -9,7 +9,6 @@ extends Node
 ##   Left stick/D-pad move_*       walk the bank
 ##   A               interact      sets the hook while fishing; later perception checks, talk
 ##   Y               change_fly    open the fly box (next fly) while reeled in
-##   L trigger (LT/L2)  cycle_bite_rules  switch bite rules while reeled in
 ##   B               back          cancel or reel in
 ##   Start/Menu      pause
 ##   L3 (click left stick)   practice_mode  casting practice range on/off
@@ -18,7 +17,7 @@ extends Node
 ##
 ## Keyboard fallbacks (for working on a laptop): WASD move, IJKL rod, Q = L bumper,
 ## E = R bumper, M mend, Space interact / set hook, Backspace back, F change fly, Esc pause, F1 debug,
-## T practice mode, Tab switch casting rules, R switch bite rules.
+## T practice mode, Tab switch casting rules.
 
 const CAST_BACK := &"cast_back"
 const CAST_FORWARD := &"cast_forward"
@@ -27,7 +26,6 @@ const INTERACT := &"interact"
 const CHANGE_FLY := &"change_fly"
 const PRACTICE_MODE := &"practice_mode"
 const CYCLE_RULES := &"cycle_rules"
-const CYCLE_BITE_RULES := &"cycle_bite_rules"
 const BACK := &"back"
 const PAUSE := &"pause"
 const TOGGLE_DEBUG := &"toggle_debug"
@@ -36,7 +34,6 @@ const ALL_ACTIONS: Array[StringName] = [
 	&"move_left", &"move_right", &"move_up", &"move_down",
 	&"rod_left", &"rod_right", &"rod_up", &"rod_down",
 	CAST_BACK, CAST_FORWARD, MEND, INTERACT, CHANGE_FLY, BACK, PAUSE, TOGGLE_DEBUG, PRACTICE_MODE, CYCLE_RULES,
-	CYCLE_BITE_RULES,
 ]
 
 
