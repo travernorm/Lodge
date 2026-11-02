@@ -62,7 +62,7 @@ func _run(main: Node) -> void:
 
 	# Play one real cast through the input system: R back cast, overlap into L,
 	# hold L, let go, and check the fly lands on the water.
-	var ideal: float = cast.model.tuning.base_stroke_time + cast.model.tuning.line_start * cast.model.tuning.stroke_time_per_px
+	var ideal: float = cast.model.ideal_stroke_time()
 	Input.action_press(&"cast_back")
 	await _wait(cast, ideal)
 	Input.action_press(&"cast_forward")

@@ -8,7 +8,7 @@ extends Node2D
 
 @export var tuning: CastTuning = preload("res://data/cast_tuning.tres")
 ## The casting rule set ("chassis") to start with. Practice mode can swap it live.
-@export var rules: CastRules = preload("res://data/cast_rules/classic.tres")
+@export var rules: CastRules = preload("res://data/cast_rules/count_false_casts.tres")
 
 const FEEDBACK_SECONDS := 1.8
 const AIM_SPEED := 1.6  # aim units per second at full stick
