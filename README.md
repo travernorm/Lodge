@@ -57,12 +57,19 @@ Distances are measured in metres from the rod tip (one screen is 40 m across): *
 
 For now the stream holds **one Redband Rainbow**, holding in a good lie at the head of the pool (usually the slack pocket behind the boulder), and you have **one fly**, a Parachute Adams. Watch for the rings where it rises on its own to find it.
 
-1. **Cast near the fish.** When the fly lands you'll see your chance of a bite. A delicate landing right by the fish gives the best odds (60%). Fair landings get about 60% of that and splashy ones 25%, and the chance falls off with distance until about 40 px out, where it's zero.
-2. **Wait for the rise.** If the fish bites, it comes up for the fly a second or two later and the fly disappears.
+1. **Drift the fly past the fish.** A trout judges the fly as it drifts within about 1 m of it, once per pass. The odds show at the top of the screen, for example `Lane 20 + Delicate 20 + No drag 20 = 60%`:
+   - **Lane (20%):** the fly came through the fish's window at all.
+   - **Landing (20%):** a delicate landing within 3 m of the fish (a fair one gets 10%). A splashy landing isn't punished, and casting right onto a fish is fine: it counts as a pass straight away.
+   - **No drag (20%):** the fly rode the current through the pass. Drag, skating or an early mend's jolt anywhere in the pass loses some or all of it, so **mend before the fly reaches the fish**.
+2. **Wait for the rise.** If the fish bites, it comes up for the fly a moment later and the fly disappears.
 3. **Set the hook.** Press **Space** (or **Cross / A** on a controller, or flick the right stick up). You have about a second.
 4. **Fight.** **Hold Space** or **push the right stick** to pull it in, and watch the tension bar. Don't let the line go slack for long or it throws the hook. Pushing sideways against a run tires it faster. Reel it in close once it's tired to land it.
 
-You can also mend the line by looping the right stick, but drag doesn't affect bites yet. More flies (`data/flies/`) and two more trout (`data/fish/`) are already set up as data and can be added back when we want more depth.
+Mend the line by looping the right stick when it bows downstream. Mend too early, with no bow to fix, and the fly skates.
+
+**Bite rules.** Press **R** (or **Square / X** on a controller) while reeled in to switch between bite rules, a feel experiment like the casting rule sets. **Drift past** (above) is the default. **Landing roll** is the original: one roll the moment the fly lands, 60% for a delicate landing right by the fish, falling off to nothing 5 m out, with fair landings getting 60% of that and splashy ones 25%; the drift after that doesn't matter. The numbers live in `data/take_rules/`.
+
+More flies (`data/flies/`) and two more trout (`data/fish/`) are already set up as data and can be added back when we want more depth.
 
 ## Controls
 
@@ -82,6 +89,7 @@ You can also mend the line by looping the right stick, but drag doesn't affect b
 | View (Select) | F1 | Cycle debug views: controller, read the water, hidden |
 | Left stick click (L3) | T | Casting practice on/off |
 | Right stick click (R3) | Tab | Switch casting rule set |
+| X (Square on DualSense) | R | Switch bite rules (when reeled in) |
 
 The debug views start hidden. The first press opens the controller view and gives a short rumble to test the controller's haptics. Its top strip shows the last 2 seconds of R and L presses, plus hold times and overlap in milliseconds, so the cast rhythm can be tuned with real numbers.
 

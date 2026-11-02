@@ -164,8 +164,8 @@ If the fish use something the player can't read, the rules feel hidden and broke
 
 Each layer is a `TakeRules` variant (the same swappable-chassis pattern as the casting rule sets), with its factors on screen. Traver plays each one before the next goes on.
 
-1. **Today:** distance to the fish × landing. Mood, drift and fly match are fixed at 1.
-2. **Drift:** add the drag factor, so mending pays off.
+1. **Landing roll:** distance to the fish × landing, rolled once when the fly lands. Mood, drift and fly match are fixed at 1. (Built; still selectable as the "Landing roll" bite rules.)
+2. **Drift:** the "Drift past" bite rules, built 2026-11-02 at Traver's call and now the default. Each fish rolls once per pass, as the fly drifts within 1 m of it (landing on top of it counts as a pass). The chance is the species' `bite_chance` split into three equal shares added together: in lane, a delicate landing within 3 m (a fair one gets half; a splashy one isn't punished), and a drift with no drag. Drag is measured as the fly's slip against the water under it at the pass's worst moment (`DriftModel.slip`), so drag, skating and an early mend's jolt all count. These are bonuses added together rather than the multiplied factors above. The full formula can replace them once mood and fly match arrive.
 3. **Refusals and streak protection:** add the four outcomes and the pity timer.
 4. **One hatch:** a fixed caddis hatch, plus the fly match factor and selectivity.
 5. **Mood from time of day:** the hatch comes and goes over a day, and mood follows it.

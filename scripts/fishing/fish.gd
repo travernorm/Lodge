@@ -6,10 +6,11 @@ extends RefCounted
 ## with fast water close by (see RiverField.pick_lie()). Without a river field it
 ## picks any spot in its species' lie_area_m. Positions are in metres (REQ-0001).
 ##
-## Bites are a simple roll per cast: when the fly lands, the fish works out a bite
-## chance from how close the fly landed and how softly (see bite_chance_for()).
-## If the roll succeeds, it rises to the fly a moment later. Then you have to set
-## the hook in its window.
+## When it bites is up to the fishing controller's TakeRules: one roll when the
+## fly lands (on_landing(), from how close and how softly, see bite_chance_for()),
+## or one roll per pass as the fly drifts by (watch_pass() and roll()). If the
+## roll succeeds, it rises to the fly a moment later. Then you have to set the
+## hook in its window.
 ##
 ## update() returns an event name the scene can react to:
 ##   &"dimple"  a natural rise at its lie, so you can see where it is
@@ -26,6 +27,10 @@ const RISE_TIME := 0.35
 const BITE_DELAY := Vector2(0.6, 2.0)  # seconds after landing before it rises
 const DIMPLE_EVERY := Vector2(3.0, 6.0)
 const GONE_TIME := 4.0
+## Drift-past rules: the fly has passed its closest point once it is this much
+## (m) farther away again; or the fish rolls after this long (s) in the window.
+const PASS_MOVED_AWAY := 0.05
+const PASS_MAX_WAIT := 1.0
 
 ## Only lies scoring at least this in the river field are taken.
 const MIN_LIE_SCORE := 0.4
@@ -48,8 +53,16 @@ var length_in := 0.0
 var state := State.HOLDING
 ## Time since the take, while TAKEN.
 var since_take := 0.0
-## The bite chance rolled for the last cast that landed.
+## The bite chance rolled for the last cast that landed, or the last pass.
 var last_bite_chance := 0.0
+
+# Drift-past rules: the fly's current pass through this fish's window.
+var _pass_open := false
+var _pass_rolled := false
+var _pass_closest := 0.0
+var _pass_time := 0.0
+## The worst slip (m/s) the fly has had so far in this pass.
+var pass_worst_slip := 0.0
 
 var _timer := 0.0
 var _dimple_timer := 0.0
@@ -100,13 +113,56 @@ func bite_chance_for(at: Vector2, presentation: String) -> float:
 func on_landing(at: Vector2, presentation: String) -> float:
 	if state == State.GONE or state == State.HOOKED:
 		return 0.0
-	last_bite_chance = bite_chance_for(at, presentation)
-	if _rng.randf() < last_bite_chance:
+	return roll(bite_chance_for(at, presentation))
+
+
+## Rolls `chance` for a bite. On a bite it rises after `delay` seconds (a
+## random time in the range). Returns the chance.
+func roll(chance: float, delay := BITE_DELAY) -> float:
+	last_bite_chance = chance
+	if _rng.randf() < chance:
 		state = State.WAITING
-		_timer = _rng.randf_range(BITE_DELAY.x, BITE_DELAY.y)
+		_timer = _rng.randf_range(delay.x, delay.y)
 	else:
 		_settle()
-	return last_bite_chance
+	return chance
+
+
+## A new cast landed: forget the last fly's pass.
+func reset_pass() -> void:
+	_pass_open = false
+	_pass_rolled = false
+
+
+## For the drift-past rules: follows the fly (m) through this fish's window
+## (radius m). A pass starts when the fly comes within the window, including
+## landing in it, and ends when it leaves. Returns true once per pass, when it's
+## time to roll: as the fly starts to move away (its closest point), or after
+## a second in the window. pass_worst_slip holds the worst slip up to then.
+func watch_pass(fly: Vector2, slip: float, radius: float, dt: float) -> bool:
+	if state != State.HOLDING:
+		return false
+	var d := fly.distance_to(lie)
+	if d > radius:
+		_pass_open = false
+		return false
+	if not _pass_open:
+		_pass_open = true
+		_pass_rolled = false
+		_pass_closest = d
+		_pass_time = 0.0
+		pass_worst_slip = slip
+		return false
+	if _pass_rolled:
+		return false
+	pass_worst_slip = maxf(pass_worst_slip, slip)
+	_pass_time += dt
+	if d < _pass_closest:
+		_pass_closest = d
+	if d > _pass_closest + PASS_MOVED_AWAY or _pass_time >= PASS_MAX_WAIT:
+		_pass_rolled = true
+		return true
+	return false
 
 
 func update(dt: float, fly: Vector2, fly_on_water: bool) -> StringName:

@@ -10,6 +10,9 @@ extends Node2D
 ##
 ## Shortcut: A / Cross / Space sets the hook too, and holding it while fighting
 ## is full pressure straight up.
+##
+## X / Square (R on keyboard) switches the bite rules while reeled in: see
+## TakeRules. The odds for each roll show at the top of the screen.
 
 enum Phase { NONE, DRIFT, FIGHT, REEL }
 
@@ -24,7 +27,14 @@ enum Phase { NONE, DRIFT, FIGHT, REEL }
 	preload("res://data/fish/redband.tres"),
 ]
 
+## The bite rules to switch between with X / Square (R). The first is the default.
+@export var take_chassis: Array[TakeRules] = [
+	preload("res://data/take_rules/drift_past.tres"),
+	preload("res://data/take_rules/landing_roll.tres"),
+]
+
 const CARD_SECONDS := 3.5
+const ODDS_SECONDS := 3.0  # how long the last roll's odds stay on screen
 const SET_ANIM_TIME := 0.3  # rod snaps up and back, then settles
 const REEL_DELAY := 0.15  # pause after a missed set before the line comes in
 const REEL_SPEED := 18.75  # m/s the fly comes back on a reel-in
@@ -57,6 +67,8 @@ var fight: FightModel
 var fish: Array[Fish] = []
 var hooked: Fish
 var fly_index := 0
+## The bite rules in play (one of take_chassis).
+var take_rules: TakeRules
 ## Every fish landed this session: {species, length_in, fly}.
 var catches: Array[Dictionary] = []
 
@@ -71,6 +83,13 @@ var _rings: Array[Vector3] = []
 var _card_lines := PackedStringArray()
 var _card_at := -100.0
 var _set_at := -100.0
+var _take_index := 0
+## Where the fly landed (m) and how, for the drift-past rules.
+var _landed_at := Vector2.INF
+var _landed_presentation := ""
+## The last roll's odds, spelled out, and when it was rolled.
+var _odds_text := ""
+var _odds_at := -100.0
 
 
 func _ready() -> void:
@@ -80,6 +99,7 @@ func _ready() -> void:
 	_cast = _stream.get_node(^"Cast")
 	_cast.model.landed.connect(_on_landed)
 	_river = _stream.get(&"river")
+	take_rules = take_chassis[0] if not take_chassis.is_empty() else TakeRules.new()
 	# A stretch brings its own trout, spread over the whole river.
 	var stretch: Stretch = _stream.get(&"stretch")
 	var area := Rect2()
@@ -101,6 +121,22 @@ func _lies_except(me: Fish) -> PackedVector2Array:
 
 func current_fly() -> FlyPattern:
 	return flies[fly_index]
+
+
+## Switches to take_chassis[index] (wrapping). Only while reeled in, so a drift
+## never changes rules halfway. Returns whether it switched.
+func select_take_rules(index: int) -> bool:
+	if take_chassis.is_empty():
+		return false
+	if _cast.model.state != CastModel.State.IDLE:
+		_cast.show_message("Reel in first (Circle / Backspace) to switch bite rules.", 0.5)
+		return false
+	_take_index = posmod(index, take_chassis.size())
+	take_rules = take_chassis[_take_index]
+	_cast.show_message("Bite rules: %s" % take_rules.display_name, 1.0)
+	_odds_text = take_rules.description
+	_odds_at = _time
+	return true
 
 
 func can_pick_up() -> bool:
@@ -125,13 +161,14 @@ func debug_lines() -> PackedStringArray:
 	var lines := PackedStringArray()
 	match phase:
 		Phase.DRIFT:
-			lines.append("drift  drag %.2f  bow %.1f m" % [drift.drag, drift.bow()])
+			lines.append("drift  drag %.2f  slip %.1f m/s  bow %.1f m" % [drift.drag, drift.slip, drift.bow()])
 		Phase.FIGHT:
 			lines.append("fight  tension %.2f  stamina %.2f  %s" % [fight.tension, fight.stamina, "RUN" if fight.running else "rest"])
 	var states := PackedStringArray()
 	for f in fish:
 		states.append("%s:%s" % [String(f.species.id).left(3), Fish.State.keys()[f.state].left(4).to_lower()])
 	lines.append(" ".join(states))
+	lines.append("bites  %s" % take_rules.display_name)
 	return lines
 
 
@@ -142,6 +179,8 @@ func _process(delta: float) -> void:
 
 	if Input.is_action_just_pressed(Controls.CHANGE_FLY):
 		_change_fly()
+	if Input.is_action_just_pressed(Controls.CYCLE_BITE_RULES):
+		select_take_rules(_take_index + 1)
 
 	match phase:
 		Phase.DRIFT:
@@ -182,14 +221,44 @@ func _on_landed(_presentation: String, _quality: float) -> void:
 	_fly_taken = false
 	drift.start(_tip_m(), at)
 	drift.downstream = _downstream_at(at)
-	var best := 0.0
-	for f in fish:
-		best = maxf(best, f.on_landing(at, _cast.model.presentation))
 	var presentation: String = _cast.model.presentation
-	if best <= 0.0:
+	_landed_at = at
+	_landed_presentation = presentation
+	for f in fish:
+		f.reset_pass()
+	if not take_rules.rolls_on_landing():
+		_cast.show_message("%s landing." % presentation, _cast.model.last_cast_quality)
+		return
+	var best := {"chance": 0.0, "text": ""}
+	for f in fish:
+		if f.state == Fish.State.GONE or f.state == Fish.State.HOOKED:
+			continue
+		var odds := take_rules.landing_odds(f, at, presentation)
+		f.roll(odds.chance, take_rules.rise_delay())
+		if odds.chance > best.chance:
+			best = odds
+	if best.chance <= 0.0:
 		_cast.show_message("%s landing. Too far from the fish for a bite." % presentation, 0.4)
 	else:
-		_cast.show_message("%s landing. %d%% chance of a bite." % [presentation, roundi(best * 100.0)], best / 0.6)
+		_cast.show_message("%s landing. %d%% chance of a bite." % [presentation, roundi(best.chance * 100.0)], best.chance / 0.6)
+		_show_odds(best.text)
+
+
+## Drift-past rules: each fish the fly drifts past rolls once per pass.
+func _watch_passes(delta: float) -> void:
+	if take_rules.rolls_on_landing() or _fly_taken:
+		return
+	for f in fish:
+		if f == hooked or not f.watch_pass(drift.fly, drift.slip, take_rules.window(), delta):
+			continue
+		var odds := take_rules.pass_odds(f, _landed_at, _landed_presentation, f.pass_worst_slip)
+		f.roll(odds.chance, take_rules.rise_delay())
+		_show_odds(odds.text)
+
+
+func _show_odds(text: String) -> void:
+	_odds_text = text
+	_odds_at = _time
 
 
 func _update_drift(delta: float) -> void:
@@ -206,6 +275,7 @@ func _update_drift(delta: float) -> void:
 	drift.update(delta, _river.flow_at)
 	_cast.fly_pos = WorldScale.vec_to_px(drift.fly)
 	_cast.model.line_out = clampf(drift.tip.distance_to(drift.fly), _cast.tuning.line_start, _cast.tuning.line_max)
+	_watch_passes(delta)
 
 	if _gestures.flicked or Input.is_action_just_pressed(Controls.INTERACT):
 		_try_set()
@@ -406,6 +476,8 @@ func _draw() -> void:
 	_draw_hud()
 	if phase == Phase.FIGHT:
 		_draw_fight_meter()
+	else:
+		_draw_odds()
 	_draw_card()
 	draw_set_transform(Vector2.ZERO)
 
@@ -530,6 +602,22 @@ func _draw_fight_meter() -> void:
 	var stamina := Rect2(bar.position + Vector2(0, 7), Vector2(roundf(bar.size.x * fight.stamina), 2))
 	draw_rect(stamina, COL_STAMINA)
 	draw_string(font, bar.position + Vector2(bar.size.x + 5, 6), "tension", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, COL_TEXT)
+
+
+## The last roll's odds, top centre, so the rules are never hidden.
+func _draw_odds() -> void:
+	var age := _time - _odds_at
+	if age > ODDS_SECONDS or _odds_text == "":
+		return
+	var font := ThemeDB.fallback_font
+	var view: Vector2 = _stream.VIEW
+	var alpha := clampf((ODDS_SECONDS - age) / 0.4, 0.0, 1.0)
+	var width := minf(font.get_string_size(_odds_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x, view.x - 16)
+	var lines := ceili(font.get_string_size(_odds_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x / (view.x - 16))
+	var rect := Rect2(roundf((view.x - width) * 0.5) - 3, 2, width + 6, 10 * lines + 1)
+	draw_rect(rect, Color(COL_PANEL, COL_PANEL.a * alpha))
+	draw_multiline_string(font, rect.position + Vector2(3, 9), _odds_text, HORIZONTAL_ALIGNMENT_LEFT,
+		width, 8, lines, Color(COL_TEXT, alpha))
 
 
 func _draw_card() -> void:

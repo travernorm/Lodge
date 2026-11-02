@@ -44,13 +44,15 @@ func _run() -> void:
 	Input.action_release(&"cast_forward")
 	await _wait(_cast.model.tuning.flight_time + 0.1)
 
-	# Move the trout next to where the fly landed and make it bite for sure.
+	# Move the trout next to where the fly landed and make it bite for sure. Under
+	# the drift-past bite rules it rolls as the fly passes, and the odds show.
 	var trout: Fish = _fishing.fish[0]
 	trout.species = trout.species.duplicate()
 	trout.species.bite_chance = 1.0
-	trout.lie = WorldScale.vec_to_m(_cast.fly_pos) + Vector2(2, 0.375)
+	trout.lie = WorldScale.vec_to_m(_cast.fly_pos) + Vector2(0.25, 0.375)
 	trout.pos = trout.lie
-	trout.on_landing(WorldScale.vec_to_m(_cast.fly_pos), "Delicate")
+	if _fishing.take_rules.rolls_on_landing():
+		trout.on_landing(WorldScale.vec_to_m(_cast.fly_pos), "Delicate")
 	await _wait(0.3)
 	await _save("drift")
 	while trout.state != Fish.State.TAKEN:
