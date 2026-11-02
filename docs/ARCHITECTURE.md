@@ -25,7 +25,7 @@ Every script in Lodge belongs to exactly one layer. A layer may use the layers *
   │    CatchJournal, FlyBox ...                                  │
   ├──────────────────────────────────────────────────────────────┤
   │ 1. DATA         content and tuning, edited in the inspector  │  Resource (.tres)
-  │    FlyPattern, FishSpecies, CastRules, TakeRules, Season ... │
+  │    FlyPattern, Insect, FishSpecies, CastRules, TakeRules ... │
   └──────────────────────────────────────────────────────────────┘
      SERVICES (autoloads, usable from layers 3 and 4 only):
      Controls (today), Clock, SaveGame (later)
@@ -121,7 +121,7 @@ Each system lists what it **owns** (writes), **reads**, **emits**, its **data**,
 ### 3.4 Flies and the fly box
 
 * **Owns:** `FlyBox` model: which patterns you have, how many of each, which is tied on.
-* **Data:** `FlyPattern` (today: id, name, description, colours). Later fields, each needing a REQ because it changes a data class: `style` (dry, emerger, nymph, streamer), `size`, `imitates` (an insect id), `sink_rate`, `profile`.
+* **Data:** `FlyPattern` (today: id, name, description, colours, and `imitates`, a list of `Insect` resources from `data/insects/`, added by REQ-0003). `Insect` is the one shared key a fly, a fish's `diet` and later a hatch point at. Later fields, each needing a REQ because it changes a data class: `style` (dry, emerger, nymph, streamer), `size`, `sink_rate`, `profile`.
 * **Emits:** `fly_changed(pattern)`.
 * **Today:** the fly box is an exported array plus an index inside `fishing_controller.gd`, and the HUD for it is drawn there too. `FlyPattern.draw_at()` mixes drawing into data; acceptable while flies are three rectangles, but it should become a sprite or a `FlyView` once there's real art.
 
@@ -237,7 +237,7 @@ The plan, the scale and the per-system steps are in [REQ-0001](requirements/REQ-
 | 7 | `Cast` ⇄ `Fishing` ⇄ `Practice` call each other via `get_node` | **Drifts** | Two-way dependency between siblings; no single phase owner. |
 | 8 | Fly position written by both `Cast` and `Fishing` | **Drifts** | Should be one `FlyState` owned by the line model. |
 | 9 | Presentation as `String`, fish events as `StringName` | **Drifts** | Make enums. |
-| 10 | Bite rule constants inside `Fish`, rolled once per cast | **Partly fixed** | A first `TakeRules` chassis landed early (2026-11-02, Traver's call): "Landing roll" (the old roll) and "Drift past" (one roll per pass, data in `data/take_rules/`). It reads `DriftModel` and the presentation string directly until `FlyState` (step B) exists. See FISH_LOGIC.md. |
+| 10 | Bite rule constants inside `Fish`, rolled once per cast | **Partly fixed** | A first `TakeRules` chassis landed early (2026-11-02, Traver's call): "Landing roll" (the old roll) and "Drift past" (one roll per pass, data in `data/take_rules/`). It reads `DriftModel` and the presentation string directly until `FlyState` (step B) exists. Since REQ-0003, "Match the fly" (the default) also weighs the tied-on fly, which the controller passes as an argument until `FlyState.pattern` carries it. See FISH_LOGIC.md. |
 | 11 | `FishSpecies.lie_area` is a screen rectangle | **Drifts** | PR #7 moves lies to the river field. |
 | 12 | Fishing code reads `stream.VIEW`, `BANK_TOP`, `BANK_BOTTOM`, and every rule measures in pixels | **Drifts** | Screen constants and units leaking into rules. REQ-0001 moves rules to metres. |
 | 13 | `catches` holds resources in dictionaries | **Drifts** | Needs `CatchRecord` with ids before saves. |

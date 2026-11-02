@@ -9,7 +9,12 @@ display_name = "Redband Rainbow"
 description = "The desert-side rainbow of Eastern Oregon. Holds in the slack water behind the boulder at the head of the pool, darting out to sip mayflies drifting down the seams."
 color = Color(0.3, 0.34, 0.3, 1)
 lie_area_m = Rect2(18.75, 9.25, 6.25, 3)
-preferred_flies = PackedStringArray("parachute_adams")
+diet = {
+&"pmd": 1.0,
+&"baetis": 1.0,
+&"caddis": 0.5
+}
+selectivity = 0.5
 bite_chance = 0.6
 bite_range_m = 5.0
 set_min = 0.1

@@ -4,7 +4,7 @@ extends SceneTree
 ## a new rule set, a new action) that something elsewhere still depends on.
 ##   godot --headless --path . --script res://tests/data_test.gd
 ##
-## Every file in data/flies, data/fish, data/cast_rules and data/take_rules is checked, so new
+## Every file in data/insects, data/flies, data/fish, data/cast_rules and data/take_rules is checked, so new
 ## data is covered without touching this file.
 
 const VIEW := Rect2(0, 0, 320, 200)
@@ -15,11 +15,14 @@ var _main: Node
 
 func _initialize() -> void:
 	_main = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var insects := _load_dir("res://data/insects", "Insect")
 	var flies := _load_dir("res://data/flies", "FlyPattern")
 	var fish := _load_dir("res://data/fish", "FishSpecies")
 	var rules := _load_dir("res://data/cast_rules", "CastRules")
+	_test_insects(insects)
 	_test_flies(flies)
 	_test_fish(fish, flies)
+	_test_diets(fish, flies, insects)
 	_test_cast_rules(rules)
 	_test_scene_wiring(flies, fish, rules)
 	_test_input_parity()
@@ -71,10 +74,7 @@ func _test_flies(flies: Dictionary) -> void:
 		ids[fly.id] = true
 
 
-func _test_fish(fish: Dictionary, flies: Dictionary) -> void:
-	var fly_ids := {}
-	for path in flies:
-		fly_ids[String(flies[path].id)] = true
+func _test_fish(fish: Dictionary, _flies: Dictionary) -> void:
 	var river: RiverField = _main.river
 	var ids := {}
 	for path in fish:
@@ -90,8 +90,46 @@ func _test_fish(fish: Dictionary, flies: Dictionary) -> void:
 		_check(sp.min_length_in <= sp.max_length_in, "fish %s: length range is valid" % stem)
 		_check(Rect2(Vector2.ZERO, WorldScale.vec_to_m(VIEW.size)).encloses(sp.lie_area_m), "fish %s: lie_area_m is on screen" % stem)
 		_check(_water_cells(river, sp.lie_area_m) >= 4, "fish %s: lie_area_m covers water in the stream" % stem)
-		for fly_id in sp.preferred_flies:
-			_check(fly_ids.has(fly_id), "fish %s: preferred fly '%s' exists in data/flies" % [stem, fly_id])
+
+
+func _test_insects(insects: Dictionary) -> void:
+	var ids := {}
+	for path in insects:
+		var bug: Insect = insects[path]
+		var stem: String = path.get_file().get_basename()
+		_check(String(bug.id) == stem, "insect %s: id matches its file name (%s)" % [stem, bug.id])
+		_check(bug.display_name != "" and bug.kind != "", "insect %s: has a display name and a kind" % stem)
+		_check(not ids.has(bug.id), "insect %s: id is unique" % stem)
+		ids[bug.id] = true
+
+
+## Flies, diets and insects agree: every fly imitates real bugs, every diet
+## names real bugs with weights in [0, 1], and every fish has a fly in
+## data/flies that it fully wants, so there's always a right answer.
+func _test_diets(fish: Dictionary, flies: Dictionary, insects: Dictionary) -> void:
+	var insect_ids := {}
+	for path in insects:
+		insect_ids[insects[path].id] = true
+	for path in flies:
+		var fly: FlyPattern = flies[path]
+		var stem: String = path.get_file().get_basename()
+		_check(fly.imitates.size() > 0, "fly %s: imitates at least one insect" % stem)
+		for bug in fly.imitates:
+			_check(bug != null and insects.has(bug.resource_path), "fly %s: imitates a data/insects file (%s)" % [stem, _path(bug)])
+	for path in fish:
+		var sp: FishSpecies = fish[path]
+		var stem: String = path.get_file().get_basename()
+		_check(sp.selectivity >= 0.0 and sp.selectivity <= 1.0, "fish %s: selectivity is in [0, 1]" % stem)
+		_check(sp.diet.size() > 0, "fish %s: eats something" % stem)
+		for key in sp.diet:
+			_check((key is StringName or key is String) and insect_ids.has(StringName(key)), "fish %s: diet entry '%s' is a data/insects id" % [stem, key])
+			var w = sp.diet[key]
+			_check((w is float or w is int) and w >= 0.0 and w <= 1.0, "fish %s: diet weight for %s is in [0, 1]" % [stem, key])
+		var has_answer := false
+		for fpath in flies:
+			if sp.fly_match(flies[fpath]) >= 1.0 - 0.0001:
+				has_answer = true
+		_check(has_answer, "fish %s: some fly in data/flies fully matches its diet" % stem)
 
 
 func _water_cells(river: RiverField, area: Rect2) -> int:

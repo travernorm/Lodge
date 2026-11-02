@@ -121,6 +121,12 @@ func _run() -> void:
 		return
 	print("  ok    B reels in a drift, no walking with line out")
 
+	# 2b. The fly box: Y / F cycles every fly while reeled in and comes back
+	# round, and the fly tied on reaches the bite rules (a catch on the Caddis).
+	if not await _fly_box_pass():
+		return
+	catches += 1
+
 	# 3. Practice mode under every rule set: no bites, every landing is scored.
 	await _tap(&"practice_mode")
 	if not _practice.active or _fishing.enabled:
@@ -149,6 +155,38 @@ func _run() -> void:
 
 	print("Playthrough passed: %d catches across %d rule set(s) and %d bite rules, debug views, practice and reel-in." % [catches, rule_count, take_count])
 	quit(0)
+
+
+## Cycles the whole fly box with Y / F, then catches the trout on the second
+## fly (the Elk Hair Caddis, a partial match for the redband) under the default
+## bite rules, and ties the first fly back on.
+func _fly_box_pass() -> bool:
+	var count: int = _fishing.flies.size()
+	if count < 2:
+		_fail("The fly box has %d fly; expected the whole box" % count)
+		return false
+	var seen := {}
+	for i in count:
+		seen[_fishing.current_fly().id] = true
+		await _tap(&"change_fly")
+	if _fishing.fly_index != 0 or seen.size() != count:
+		_fail("Y didn't cycle every fly and come back round (%d of %d seen)" % [seen.size(), count])
+		return false
+	await _tap(&"change_fly")
+	var fly: FlyPattern = _fishing.current_fly()
+	if not await _catch_one(0, false):
+		_fail_context("fly box, %s" % fly.display_name)
+		return false
+	if _fishing.catches.back().fly != fly:
+		_fail("The catch log didn't record the %s" % fly.display_name)
+		return false
+	for i in count - 1:
+		await _tap(&"change_fly")
+	if _fishing.fly_index != 0:
+		_fail("Couldn't tie the first fly back on")
+		return false
+	print("  ok    fly box: Y cycles %d flies; caught a %s on the %s" % [count, _trout.species.display_name, fly.display_name])
+	return true
 
 
 ## Casts until the trout takes, then sets the hook and lands it. Optionally

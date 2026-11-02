@@ -9,6 +9,19 @@ extends Resource
 @export var body_color := Color("8a8a8a")
 @export var wing_color := Color("ffffff")
 @export var hackle_color := Color("8a6a4a")
+## The bugs this fly passes for (data/insects/). A generalist lists several,
+## a specific pattern one, and an attractor lists `attractor`.
+@export var imitates: Array[Insect] = []
+
+
+## What it imitates, as the families for the tie-on message: "mayfly",
+## "caddis", "attractor". Each family once, in order.
+func kinds_text() -> String:
+	var kinds := PackedStringArray()
+	for insect in imitates:
+		if insect != null and insect.kind != "" and not kinds.has(insect.kind):
+			kinds.append(insect.kind)
+	return ", ".join(kinds)
 
 
 ## Draws the fly as a few pixels. scale 1 is the in-world size; the HUD uses 2.

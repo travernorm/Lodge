@@ -9,7 +9,10 @@ display_name = "Westslope Cutthroat"
 description = "Red slash under the jaw. Holds in the riffle and rises slow and deliberate, so don't rush the set."
 color = Color(0.36, 0.36, 0.22, 1)
 lie_area_m = Rect2(3.75, 8.5, 10, 6)
-preferred_flies = PackedStringArray("elk_hair_caddis")
+diet = {
+&"caddis": 1.0
+}
+selectivity = 0.6
 bite_chance = 0.6
 bite_range_m = 5.0
 set_min = 0.25
