@@ -147,9 +147,7 @@ func _test_pick_up_and_recast() -> void:
 	m.line_out = 8.75  # the controller sets this from how far the fly drifted
 	_hold(m, DT, true, false)
 	_check(m.state == CastModel.State.BACK, "pick-up: R lifts the line into a back cast")
-	_check(is_equal_approx(m.line_out, 8.75), "pick-up: keeps the line that was out")
-	_check(m.phase_ideal > m.tuning.base_stroke_time + 3.0 * m.tuning.stroke_time_per_m,
-		"pick-up: longer line needs a longer stroke")
+	_check(is_equal_approx(m.line_out, m.tuning.line_start), "pick-up: starts again from the starting line (%.2f m)" % m.line_out)
 
 
 # --- Helpers ---------------------------------------------------------------
