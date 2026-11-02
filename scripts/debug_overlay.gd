@@ -3,7 +3,7 @@ extends Control
 ## hidden -> controller view -> read-the-water view -> hidden. Starts hidden.
 ##
 ## Controller view:
-## The top strip is a 2 second timeline of the R and L bumpers, which is how
+## The top strip is a 2 second timeline of the L and R bumpers, which is how
 ## we'll tune the back cast / forward cast rhythm on a real Steam Deck. It also
 ## shows how long each bumper was last held and how long they overlapped.
 ## Opening it gives a short rumble, to check the pad's haptics.
@@ -98,8 +98,8 @@ func _draw() -> void:
 	draw_rect(strip, COL_PANEL)
 	var lane_x := strip.position.x + 14
 	var lane_w := strip.size.x - 18
-	draw_string(font, Vector2(strip.position.x + 3, 14), "R", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_R)
-	draw_string(font, Vector2(strip.position.x + 3, 26), "L", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_L)
+	draw_string(font, Vector2(strip.position.x + 3, 14), "L", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_R)
+	draw_string(font, Vector2(strip.position.x + 3, 26), "R", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_L)
 	draw_rect(Rect2(lane_x, 8, lane_w, 7), COL_OFF)
 	draw_rect(Rect2(lane_x, 19, lane_w, 7), COL_OFF)
 	for i in range(1, _history.size()):
@@ -123,9 +123,9 @@ func _draw() -> void:
 		lines.append_array(fishing.debug_lines())
 	var info := Rect2(4, 33, 150, 30 + 9 * lines.size())
 	draw_rect(info, COL_PANEL)
-	draw_string(font, Vector2(8, 42), "R held %d ms   L held %d ms" % [_last_r_ms, _last_l_ms],
+	draw_string(font, Vector2(8, 42), "L held %d ms   R held %d ms" % [_last_r_ms, _last_l_ms],
 		HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_TEXT)
-	draw_string(font, Vector2(8, 51), "R/L overlap %d ms" % _last_overlap_ms,
+	draw_string(font, Vector2(8, 51), "L/R overlap %d ms" % _last_overlap_ms,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_TEXT)
 	draw_string(font, Vector2(8, 60), "%s  %d fps" % [Controls.pad_name().left(22), Engine.get_frames_per_second()],
 		HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_TEXT)

@@ -9,7 +9,7 @@ A cabin-core fly fishing game. A laid-off father inherits his late dad's cabin, 
 ## Current milestone: dry fly minigame
 
 1. **Tooling and project skeleton** (done). Godot project, Deck control map, placeholder stream, controller debug overlay.
-2. **Casting** (done). Hold R for the back cast, overlap into L for the forward cast, and alternate R/L to shoot line for distance.
+2. **Casting** (done). Hold L for the back cast, overlap into R for the forward cast, and alternate L/R to shoot line for distance.
 3. **Rise, set and fight** (this step). One trout, one fly, a simple bite chance per cast, flick to set, then play line tension.
 4. **Tune on the Deck.** Timing windows, rumble, and how readable the bite cue is.
 
@@ -25,13 +25,13 @@ The latest `main` is published at **https://travernorm.github.io/Lodge/** after 
 
 ## How to cast
 
-1. **Hold R.** The back cast unrolls behind you and the meter by the angler fills. A light rumble "tug" marks the moment the line straightens, and the fill turns green.
-2. **Press L while still holding R, then let go of R.** That slight overlap (about 20 to 200 ms) shoots the forward cast. Letting go of R before pressing L collapses the cast. Holding both too long throws a tailing loop, or a wind knot if you really hang on.
-3. **Hold L.** The line unrolls forward over the water. Then either:
-   - **overlap back into R** for a false cast. Each clean false cast shoots more line (the dotted cross shows where it would land), or
-   - **let go of L** to deliver the fly.
+1. **Hold L.** The back cast unrolls behind you and the meter by the angler fills. A light rumble "tug" marks the moment the line straightens, and the fill turns green.
+2. **Press R while still holding L, then let go of L.** That slight overlap (about 20 to 200 ms) shoots the forward cast. Letting go of L before pressing R collapses the cast. Holding both too long throws a tailing loop, or a wind knot if you really hang on.
+3. **Hold R.** The line unrolls forward over the water. Then either:
+   - **overlap back into L** for a false cast. Each clean false cast shoots more line (the dotted cross shows where it would land), or
+   - **let go of R** to deliver the fly.
 4. While casting, the **left stick swings your aim** upstream or downstream.
-5. The fly lands **Delicate**, **Fair** or **Splashy** depending on your timing, then drifts on the current. **R** picks it up for another cast, and **B** reels in.
+5. The fly lands **Delicate**, **Fair** or **Splashy** depending on your timing, then drifts on the current. **L** picks it up for another cast, and **B** reels in.
 
 The longer the line, the longer each stroke needs, just like a real cast. Strokes that are too early fall short and splash down. Strokes that are too late drop the line onto the grass or the water.
 
@@ -66,20 +66,20 @@ For now the stream holds **one Redband Rainbow**, holding in a good lie at the h
 3. **Set the hook.** Press **Space** (or **Cross / A** on a controller, or flick the right stick up). You have about a second.
 4. **Fight.** **Hold Space** or **push the right stick** to pull it in, and watch the tension bar. Don't let the line go slack for long or it throws the hook. Pushing sideways against a run tires it faster. Reel it in close once it's tired to land it.
 
-Mend the line by looping the right stick when it bows downstream. Mend too early, with no bow to fix, and the fly skates.
+Mend the line by pressing **Square** (X on an Xbox pad, **M** on keyboard) or looping the right stick when it bows downstream. Mend too early, with no bow to fix, and the fly skates.
 
-**Bite rules.** Press **R** (or **Square / X** on a controller) while reeled in to switch between bite rules, a feel experiment like the casting rule sets. **Match the fly** (above) is the default. **Drift past** is the same without the fly match. **Landing roll** is the original: one roll the moment the fly lands, 60% for a delicate landing right by the fish, falling off to nothing 5 m out, with fair landings getting 60% of that and splashy ones 25%; the drift after that doesn't matter. The numbers live in `data/take_rules/`.
+**Bite rules.** Press **R** (or **L2**, the left trigger, on a controller) while reeled in to switch between bite rules, a feel experiment like the casting rule sets. **Match the fly** (above) is the default. **Drift past** is the same without the fly match. **Landing roll** is the original: one roll the moment the fly lands, 60% for a delicate landing right by the fish, falling off to nothing 5 m out, with fair landings getting 60% of that and splashy ones 25%; the drift after that doesn't matter. The numbers live in `data/take_rules/`.
 
 
 ## Controls
 
 | Steam Deck / Xbox pad | Keyboard | Action |
 |---|---|---|
-| R bumper | E | Back cast (hold to time it) |
-| L bumper | Q | Forward cast (overlap with R) |
+| L bumper (L1) | Q | Back cast (hold to time it) |
+| R bumper (R1) | E | Forward cast (overlap with L) |
 | Right stick | I J K L | Rod tip: mend, set the hook, strip |
 | Left stick / D-pad | W A S D | Walk the bank (the camera follows) |
-| Right stick loop | — | Mend the line |
+| X (Square on DualSense) or right stick loop | M | Mend the line |
 | A or right stick flick up | Space | Set the hook |
 | Right stick hold | Space or I J K L | Pressure while fighting |
 | Y | F | Change fly (when reeled in) |
@@ -89,9 +89,9 @@ Mend the line by looping the right stick when it bows downstream. Mend too early
 | View (Select) | F1 | Cycle debug views: controller, read the water, hidden |
 | Left stick click (L3) | T | Casting practice on/off |
 | Right stick click (R3) | Tab | Switch casting rule set |
-| X (Square on DualSense) | R | Switch bite rules (when reeled in) |
+| Left trigger (L2) | R | Switch bite rules (when reeled in) |
 
-The debug views start hidden. The first press opens the controller view and gives a short rumble to test the controller's haptics. Its top strip shows the last 2 seconds of R and L presses, plus hold times and overlap in milliseconds, so the cast rhythm can be tuned with real numbers.
+The debug views start hidden. The first press opens the controller view and gives a short rumble to test the controller's haptics. Its top strip shows the last 2 seconds of L and R bumper presses, plus hold times and overlap in milliseconds, so the cast rhythm can be tuned with real numbers.
 
 ## The river
 

@@ -2,7 +2,7 @@ class_name TakeRules
 extends Resource
 ## A "chassis" for bites: the rules that decide whether a trout takes the fly.
 ## Like the casting rule sets, these are swappable so different rules can be
-## played side by side (X / Square, or R, while reeled in). Their numbers live
+## played side by side (L2 / left trigger, or R, while reeled in). Their numbers live
 ## in data/take_rules/*.tres.
 ##
 ## This base class is the original "Landing roll": one roll the moment the fly

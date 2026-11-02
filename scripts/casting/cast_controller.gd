@@ -287,7 +287,7 @@ func _draw_meter() -> void:
 		var in_zone := absf(model.stroke_progress() - 1.0) * ideal <= model.perfect_window()
 		var col := COL_METER_PERFECT if in_zone else COL_METER_FILL
 		draw_rect(Rect2(rect.position + Vector2(1, METER_SIZE.y - h), Vector2(METER_SIZE.x - 2, h)), col)
-	var label := "R" if model.state in [CastModel.State.BACK, CastModel.State.GAP] else "L"
+	var label := "L" if model.state in [CastModel.State.BACK, CastModel.State.GAP] else "R"
 	draw_string(ThemeDB.fallback_font, origin + Vector2(-1, -2), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, COL_TEXT)
 
 

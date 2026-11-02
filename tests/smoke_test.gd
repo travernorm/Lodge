@@ -6,7 +6,7 @@ const FRAMES := 30
 const REQUIRED_ACTIONS := [
 	"move_left", "move_right", "move_up", "move_down",
 	"rod_left", "rod_right", "rod_up", "rod_down",
-	"cast_back", "cast_forward", "interact", "change_fly", "back", "pause", "toggle_debug", "practice_mode", "cycle_rules",
+	"cast_back", "cast_forward", "mend", "interact", "change_fly", "back", "pause", "toggle_debug", "practice_mode", "cycle_rules",
 ]
 
 

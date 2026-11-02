@@ -19,8 +19,9 @@ func _initialize() -> void:
 		"rod_right": [_axis(JOY_AXIS_RIGHT_X, 1.0), _key(KEY_L)],
 		"rod_up": [_axis(JOY_AXIS_RIGHT_Y, -1.0), _key(KEY_I)],
 		"rod_down": [_axis(JOY_AXIS_RIGHT_Y, 1.0), _key(KEY_K)],
-		"cast_back": [_button(JOY_BUTTON_RIGHT_SHOULDER), _key(KEY_E)],
-		"cast_forward": [_button(JOY_BUTTON_LEFT_SHOULDER), _key(KEY_Q)],
+		"cast_back": [_button(JOY_BUTTON_LEFT_SHOULDER), _key(KEY_Q)],
+		"cast_forward": [_button(JOY_BUTTON_RIGHT_SHOULDER), _key(KEY_E)],
+		"mend": [_button(JOY_BUTTON_X), _key(KEY_M)],
 		"interact": [_button(JOY_BUTTON_A), _key(KEY_SPACE)],
 		"change_fly": [_button(JOY_BUTTON_Y), _key(KEY_F)],
 		"back": [_button(JOY_BUTTON_B), _key(KEY_BACKSPACE)],
@@ -28,7 +29,7 @@ func _initialize() -> void:
 		"toggle_debug": [_button(JOY_BUTTON_BACK), _key(KEY_F1)],
 		"practice_mode": [_button(JOY_BUTTON_LEFT_STICK), _key(KEY_T)],
 		"cycle_rules": [_button(JOY_BUTTON_RIGHT_STICK), _key(KEY_TAB)],
-		"cycle_bite_rules": [_button(JOY_BUTTON_X), _key(KEY_R)],
+		"cycle_bite_rules": [_axis(JOY_AXIS_TRIGGER_LEFT, 1.0), _key(KEY_R)],
 	}
 	for action_name in actions:
 		ProjectSettings.set_setting("input/" + action_name, {
