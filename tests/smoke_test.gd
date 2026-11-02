@@ -62,15 +62,7 @@ func _run(main: Node) -> void:
 
 	# Play one real cast through the input system: R back cast, overlap into L,
 	# hold L, let go, and check the fly lands on the water.
-	var ideal: float = cast.model.tuning.base_stroke_time + cast.model.tuning.line_start * cast.model.tuning.stroke_time_per_px
-	Input.action_press(&"cast_back")
-	await _wait(cast, ideal)
-	Input.action_press(&"cast_forward")
-	await _wait(cast, 0.08)
-	Input.action_release(&"cast_back")
-	await _wait(cast, ideal)
-	Input.action_release(&"cast_forward")
-	await _wait(cast, cast.model.tuning.flight_time + 0.1)
+	await _cast_once(cast)
 	if cast.model.state != CastModel.State.LANDED:
 		_fail("Scripted cast did not land (state %s)" % CastModel.State.keys()[cast.model.state])
 		return
@@ -108,9 +100,41 @@ func _run(main: Node) -> void:
 		_fail("Fight didn't end in a catch (catches %d)" % fishing.catches.size())
 		return
 
-	print("Smoke test passed: %d input actions, scripted cast landed %s (%s), %s rose, was hooked and landed." % [
+	# Cast again while the trout is away and strike at nothing: the rod snaps up
+	# and the line reels itself in.
+	await _wait(cast, 0.3)
+	await _cast_once(cast)
+	if fishing.phase != 1:
+		_fail("Second cast didn't start a drift")
+		return
+	Input.action_press(&"interact")
+	await process_frame
+	Input.action_release(&"interact")
+	await process_frame
+	if fishing.hook_set_pose() == Vector2.ZERO:
+		_fail("Setting the hook didn't play the rod animation")
+		return
+	if not await _wait_for(cast, func(): return cast.model.state == CastModel.State.IDLE and fishing.phase == 0, 2.0):
+		_fail("Striking at nothing didn't reel the line in (cast %s, phase %d)" % [
+			CastModel.State.keys()[cast.model.state], fishing.phase])
+		return
+
+	print("Smoke test passed: %d input actions, scripted cast landed %s (%s), %s rose, was hooked and landed; an empty strike reeled in." % [
 		REQUIRED_ACTIONS.size(), landing.round(), cast.model.presentation, trout.species.display_name])
 	quit(0)
+
+
+## One clean cast through the input system: R back cast, overlap into L, let go.
+func _cast_once(cast: Node) -> void:
+	var ideal: float = cast.model.tuning.base_stroke_time + cast.model.tuning.line_start * cast.model.tuning.stroke_time_per_px
+	Input.action_press(&"cast_back")
+	await _wait(cast, ideal)
+	Input.action_press(&"cast_forward")
+	await _wait(cast, 0.08)
+	Input.action_release(&"cast_back")
+	await _wait(cast, ideal)
+	Input.action_release(&"cast_forward")
+	await _wait(cast, cast.model.tuning.flight_time + 0.1)
 
 
 ## Wait for the given game time to pass, as measured by the cast controller.

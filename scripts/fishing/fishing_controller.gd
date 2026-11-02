@@ -11,7 +11,7 @@ extends Node2D
 ## Shortcut: A / Cross / Space sets the hook too, and holding it while fighting
 ## is full pressure straight up.
 
-enum Phase { NONE, DRIFT, FIGHT }
+enum Phase { NONE, DRIFT, FIGHT, REEL }
 
 ## The fly box. Y (F on keyboard) cycles through it while the line is reeled in.
 ## Starts with just one fly; more patterns are waiting in data/flies/.
@@ -25,6 +25,9 @@ enum Phase { NONE, DRIFT, FIGHT }
 ]
 
 const CARD_SECONDS := 3.5
+const SET_ANIM_TIME := 0.3  # rod snaps up and back, then settles
+const REEL_DELAY := 0.15  # pause after a missed set before the line comes in
+const REEL_SPEED := 150.0  # px/s the fly comes back on a reel-in
 const RING_SECONDS := 0.9
 
 const COL_LINE := Color("d8cfa6")
@@ -60,6 +63,7 @@ var _fly_taken := false
 var _rings: Array[Vector3] = []
 var _card_lines := PackedStringArray()
 var _card_at := -100.0
+var _set_at := -100.0
 
 
 func _ready() -> void:
@@ -119,6 +123,8 @@ func _process(delta: float) -> void:
 	match phase:
 		Phase.DRIFT:
 			_update_drift(delta)
+		Phase.REEL:
+			_update_reel(delta)
 		Phase.FIGHT:
 			if Input.is_action_pressed(Controls.INTERACT) and stick.length() < 0.5:
 				stick = Vector2(0, -1)
@@ -192,21 +198,57 @@ func _end_drift() -> void:
 	drift.drag = 0.0
 
 
+## The rod snaps up whatever happens. Hook a fish and the fight starts;
+## otherwise the fly rips off the water and the line reels in.
 func _try_set() -> void:
+	_set_at = _time
+	Controls.rumble(0.15, 0.0, 0.06)
+	_burst(drift.fly, 6.0)
 	for f in fish:
 		if f.state != Fish.State.RISING and f.state != Fish.State.TAKEN:
 			continue
 		match f.try_set():
 			Fish.SetResult.HOOKED:
 				_start_fight(f)
+				return
 			Fish.SetResult.TOO_EARLY:
-				_fly_taken = false
 				_cast.show_message("Too soon! You pulled it away from the fish.", 0.2)
-				_burst(f.pos, 8.0)
 			Fish.SetResult.TOO_LATE:
-				_fly_taken = false
 				_cast.show_message("Too late. It spat the fly.", 0.3)
+		_start_reel()
 		return
+	_cast.show_message("Nothing there. Reeling in.", 0.6)
+	_start_reel()
+
+
+func _start_reel() -> void:
+	phase = Phase.REEL
+	_fly_taken = false
+	drift.drag = 0.0
+
+
+func _update_reel(delta: float) -> void:
+	if _cast.model.state != CastModel.State.LANDED:
+		phase = Phase.NONE  # picked straight up into another cast
+		return
+	if _time - _set_at < REEL_DELAY:
+		return
+	var tip: Vector2 = _stream.rod_tip()
+	drift.fly = drift.fly.move_toward(tip, REEL_SPEED * delta)
+	_cast.fly_pos = drift.fly
+	if drift.fly.distance_to(tip) < 3.0:
+		_cast.reel_in_line("")
+		phase = Phase.NONE
+
+
+## While the hook-set animation plays: the rod's direction (it snaps sideways and
+## downstream in a sweep set, then settles part way). ZERO when it isn't playing.
+func hook_set_pose() -> Vector2:
+	var t := (_time - _set_at) / SET_ANIM_TIME
+	if t < 0.0 or t > 1.0:
+		return Vector2.ZERO
+	var k := t / 0.3 if t < 0.3 else lerpf(1.0, 0.45, (t - 0.3) / 0.7)
+	return Vector2(0.0, -1.0).slerp(Vector2(0.95, -0.3).normalized(), clampf(k, 0.0, 1.0))
 
 
 func _on_fish_event(f: Fish, event: StringName) -> void:
@@ -303,6 +345,9 @@ func _draw() -> void:
 			_draw_drift(tip)
 		Phase.FIGHT:
 			_draw_fight(tip)
+		Phase.REEL:
+			draw_line(tip.floor() + Vector2(0.5, 0.5), drift.fly.floor() + Vector2(0.5, 0.5), COL_LINE, 1.0)
+			current_fly().draw_at(self, drift.fly)
 		Phase.NONE:
 			if _cast.model.state == CastModel.State.LANDED:
 				_draw_line(tip, (tip + _cast.fly_pos) * 0.5, _cast.fly_pos, COL_LINE)
