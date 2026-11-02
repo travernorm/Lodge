@@ -58,6 +58,18 @@ So the right bug is ×1, a bug it half wants sits between, and a bug it doesn't 
 | Cutthroat | ×1 | ×0.4 | ×0.4 |
 | Brook | ×1 | ×1 | ×1 |
 
+**The full take equation** (one roll per pass, when the fly comes within 1 m; B is the species' `bite_chance`):
+
+```
+take   = min(1, (Lane + Landing + Drift) × Fly match)
+Lane    = B / 3
+Landing = B / 3 if Delicate, B / 6 if Fair, 0 if Splashy; only for a landing within 3 m of the fish
+Drift   = B / 3 × clean,  clean = 1 − clamp((worst slip − 0.3) / 0.5, 0, 1)
+Fly match = 1 − selectivity × (1 − appetite),  appetite = highest diet weight among the bugs the fly imitates (0 if none)
+```
+
+Example: a redband, an Elk Hair Caddis landed Fair within 3 m, worst slip 0.55 m/s: (20 + 10 + 10) × 0.75 = 30%. Mood, refusals, spooking, a floor and ceiling, and streak protection are not in it yet (FISH_LOGIC.md).
+
 **The fly box:** holds all three flies, Parachute Adams first (Dad's favourite), so Y / F cycles through them while reeled in. The fly box HUD and its "Y: fly box" hint already exist and appear once there's more than one fly.
 
 **The bite rules:** a new **Match the fly** bite rules file (`data/take_rules/match_fly.tres`), built on Drift past. The three Drift past shares are added as now, then multiplied by the fly match, because the fly is a gate ("does this look like food?"), not one more thing to stack. It goes first in the bite rules list so it's the default, and Drift past and Landing roll stay one press of R / Square away for comparison.
