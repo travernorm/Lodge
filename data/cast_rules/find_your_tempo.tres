@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="TempoCastRules" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/casting/rules/tempo_rules.gd" id="1_rules"]
+
+[resource]
+script = ExtResource("1_rules")
+display_name = "Find your tempo"
+description = "Your first back cast sets the beat. Match it on every stroke: each in-rhythm false cast shoots more line."

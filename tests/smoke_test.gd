@@ -6,7 +6,7 @@ const FRAMES := 30
 const REQUIRED_ACTIONS := [
 	"move_left", "move_right", "move_up", "move_down",
 	"rod_left", "rod_right", "rod_up", "rod_down",
-	"cast_back", "cast_forward", "interact", "change_fly", "back", "pause", "toggle_debug",
+	"cast_back", "cast_forward", "interact", "change_fly", "back", "pause", "toggle_debug", "practice_mode", "cycle_rules",
 ]
 
 
@@ -119,8 +119,28 @@ func _run(main: Node) -> void:
 			CastModel.State.keys()[cast.model.state], fishing.phase])
 		return
 
+	# Practice mode: T toggles it, fish stop biting, Tab cycles the rule sets.
+	var practice := main.get_node_or_null(^"Practice")
+	if practice == null or not practice.has_method(&"select_rules"):
+		_fail("Practice script did not load")
+		return
+	await _tap(cast, &"practice_mode")
+	if not practice.active or fishing.enabled:
+		_fail("Practice toggle didn't turn practice on and fishing off")
+		return
+	var first_rules: CastRules = cast.model.rules
+	await _tap(cast, &"cycle_rules")
+	if cast.model.rules == first_rules or cast.model.state != CastModel.State.IDLE:
+		_fail("Tab didn't switch the casting rules")
+		return
+	await _tap(cast, &"practice_mode")
+	if practice.active or not fishing.enabled:
+		_fail("Practice toggle didn't turn back off")
+		return
+
 	print("Smoke test passed: %d input actions, scripted cast landed %s (%s), %s rose, was hooked and landed; an empty strike reeled in." % [
 		REQUIRED_ACTIONS.size(), landing.round(), cast.model.presentation, trout.species.display_name])
+	print("  practice mode toggles, rules cycle to %s" % cast.model.rules.display_name)
 	quit(0)
 
 
@@ -142,6 +162,14 @@ func _wait(cast: Node, seconds: float) -> void:
 	var until: float = cast._time + seconds
 	while cast._time < until:
 		await process_frame
+
+
+## Presses and releases an action across a couple of frames.
+func _tap(cast: Node, action: StringName) -> void:
+	Input.action_press(action)
+	await _wait(cast, 0.05)
+	Input.action_release(action)
+	await _wait(cast, 0.05)
 
 
 ## Waits until condition returns true, or the timeout (game seconds) passes.

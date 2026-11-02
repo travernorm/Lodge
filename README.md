@@ -31,6 +31,24 @@ A cabin-core fly fishing game. A laid-off father inherits his late dad's cabin, 
 
 The longer the line, the longer each stroke needs, just like a real cast. Strokes that are too early fall short and splash down. Strokes that are too late drop the line onto the grass or the water.
 
+## Casting practice and rule sets
+
+![Practice mode: Short / Middle / Long target, the distance ruler, results and the stroke log](docs/screenshots/practice-mode.png)
+
+Press **T** (or click the **left stick, L3**) for practice mode. Fish stop biting, and a target ring asks for a **Short**, **Middle** or **Long** cast in turn. The faint ruler by the rod marks where each distance band starts. Each landing is scored as a hit or a miss, the fly reels itself in, and the next target comes up. Press **T / L3** again to go back to fishing.
+
+The **stroke log** (top right) shows every back (B) and forward (F) stroke of the cast as a bar. The bar's length is how long you held the bumper, the white tick is what the rules wanted, and the colour is the score (green perfect, yellow okay, red poor). The stroke you're holding right now grows in grey, so you can see your rhythm against the target as you cast.
+
+Press **Tab** (or click the **right stick, R3**) to switch between casting rule sets. They all use the same bumpers and overlap, but turn your rhythm into distance differently:
+
+| Rule set | Rhythm | How you get distance |
+|---|---|---|
+| **Classic** | Strokes get longer as line goes out | Each clean false cast shoots 4 to 16 px of line. About 0 false casts is Short, 2 is Middle, 4 is Long |
+| **Count the false casts** | One steady beat (0.42 s) for every stroke | 0 false casts is Short, 1 is Middle, 2 or more is Long. A sloppy false cast doesn't climb a step |
+| **Find your tempo** | Your first back cast sets the beat, fast or slow | Each false cast adds line in proportion to how well it kept your beat |
+
+A bad delivery stroke still falls short of the line you have out, in every rule set. The numbers for each rule set live in `data/cast_rules/`, so they can be tuned in the Godot inspector. Fishing uses whichever rule set is selected, so you can also fish with each one.
+
 ## How to fish
 
 For now the stream holds **one Redband Rainbow** in the middle of the pool, and you have **one fly**, a Parachute Adams. Watch for the rings where it rises on its own to find it.
@@ -57,19 +75,34 @@ You can also mend the line by looping the right stick, but drag doesn't affect b
 | A | Space | Set the hook (later: interact / perception check) |
 | B | Backspace | Back / reel in |
 | Menu (Start) | Esc | Pause |
-| View (Select) | F1 | Toggle controller debug overlay |
+| View (Select) | F1 | Cycle debug views: controller, read the water, hidden |
+| Left stick click (L3) | T | Casting practice on/off |
+| Right stick click (R3) | Tab | Switch casting rule set |
 
-The debug overlay starts hidden. Opening it gives a short rumble to test the controller's haptics. The top strip shows the last 2 seconds of R and L presses, plus hold times and overlap in milliseconds, so the cast rhythm can be tuned with real numbers.
+The debug views start hidden. The first press opens the controller view and gives a short rumble to test the controller's haptics. Its top strip shows the last 2 seconds of R and L presses, plus hold times and overlap in milliseconds, so the cast rhythm can be tuned with real numbers.
+
+## The river
+
+![Read-the-water debug view: current arrows, the thalweg, seams and trout lies around the boulder](docs/screenshots/read-the-water.png)
+
+The stream's current comes from a river field (`scripts/river/river_field.gd`) that follows real hydraulic rules: the same water passes every cross-section, so the shallow riffle runs fast and the deep pool runs slow; the fastest water follows the thalweg (the deepest line) and the banks are slow; and the boulder at the head of the pool makes a slow cushion in front, a slack pocket behind and a seam off each side. The field also scores where a trout would hold: slow, deep-enough water with fast water close by. The drift, the foam streaks and the water colour all read the same field.
+
+Press **View / F1** twice for the read-the-water view. It draws the current, the thalweg, seams and trout lies, and shows the speed of the lane your fly is drifting in. For now the field is built from those rules when the scene loads; later it will be baked from a water solver in the editor, using the same layers.
 
 ## Project layout
 
 ```
 scenes/main.tscn            Test stream scene (entry point)
 scripts/controls.gd         `Controls` autoload: action names and stick helpers
-scripts/stream_scene.gd     Placeholder river, current model (flow_at), angler and rod
+scripts/stream_scene.gd     Placeholder river (bed, boulder, flow_at), angler and rod
+scripts/river/river_field.gd  River field: current, depth, seams and trout lies on a grid
 scripts/casting/            Cast rhythm logic (cast_model.gd), scene glue and drawing
                             (cast_controller.gd), tunables (cast_tuning.gd)
+                            Swappable rule sets (cast_rules.gd, rules/), practice mode
+                            (cast_practice.gd)
 data/cast_tuning.tres       Casting feel numbers; edit in the Godot inspector
+data/cast_rules/*.tres      Casting rule sets and their numbers (Classic, Count the
+                            false casts, Find your tempo)
 scripts/fishing/            Drift and mending (drift_model.gd), fish behaviour (fish.gd),
                             fight (fight_model.gd), stick gestures, and the scene glue
                             (fishing_controller.gd)
@@ -80,7 +113,9 @@ tools/setup_input_map.gd    Source of truth for the input map (regenerates proje
 tools/capture_screenshot.gd Plays a scripted catch and saves screenshots
 tests/smoke_test.gd         Headless check: a scripted cast, drift, hook set and fight end in a catch
 tests/cast_test.gd          Headless tests for the cast rhythm
+tests/cast_rules_test.gd    Headless tests for each casting rule set (Short/Middle/Long)
 tests/fishing_test.gd       Headless tests for gestures, drift, rises, hook sets and fights
+tests/river_test.gd         Headless tests for the river's hydraulics (thalweg, conservation, boulder)
 export_presets.cfg          Linux x86_64 export for Steam Deck
 docs/TOOLING.md             Tools, Steam Deck testing, conventions
 ```

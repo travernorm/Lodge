@@ -38,6 +38,20 @@ All the casting feel numbers live in `data/cast_tuning.tres`. Open it in Godot a
 
 With the debug overlay open, you can read the real hold and overlap times from the Deck and set the windows from them. If you change the rules rather than just the numbers, run the cast tests afterwards.
 
+## Trying different casting rules
+
+The cast is split in two. `scripts/casting/cast_model.gd` runs the bumper state machine (back cast, overlap, forward cast, false casts, delivery). A **rule set** (`CastRules`, in `scripts/casting/cast_rules.gd`) decides what the rhythm means: how long each stroke should be, how a stroke is scored, how a false cast changes the line, and how far the delivery goes. Each rule set is a `.tres` file in `data/cast_rules/`:
+
+- `classic.tres` plays like the original cast and reads its numbers from `data/cast_tuning.tres`.
+- `count_false_casts.tres` (`TieredCastRules`): `tempo`, the window fractions, `step_lengths` (line for Short, Middle, Long) and `climb_quality` (how clean a false cast must be to climb a step).
+- `find_your_tempo.tres` (`TempoCastRules`): the allowed tempo range, `line_gain` per false cast, and `follow` (how much the beat drifts toward your good strokes).
+
+To tune one, open its file in the inspector, change the numbers, and run the game with **T** for practice mode and **Tab** to pick the rule set.
+
+To try a new idea, add a script in `scripts/casting/rules/` that `extends CastRules` and overrides any of `start_line`, `stroke_ideal`, `perfect_window`, `ok_window`, `score_stroke`, `after_false_cast` and `delivery_reach`. Give it a `class_name`, create a `.tres` from it in `data/cast_rules/` with a `display_name` and `description`, and add it to the `chassis` list on the **Practice** node in `scenes/main.tscn`. The Short/Middle/Long boundaries are `SHORT_MAX` and `MIDDLE_MAX` in `cast_rules.gd`. Add a case for it to `tests/cast_rules_test.gd` (each rule set must land Short with no false casts and Long with five clean ones).
+
+The **Cast** node's `rules` property picks the rule set the game starts with.
+
 ## Adding flies and fish
 
 Flies and fish are data files, so adding one doesn't need code.
@@ -64,15 +78,17 @@ Open the debug overlay with View (Create on a PS5 pad). Use it to check that the
 
 - `tests/smoke_test.gd` verifies every input action exists, loads the main scene, then plays a whole catch through the input system: a cast, the trout rising, the hook set and the fight.
 - `tests/cast_test.gd` tests the cast rhythm on its own: clean casts, false casts adding line, collapses, ticking the grass, tailing loops, early strokes, aim and pick-ups.
+- `tests/cast_rules_test.gd` plays casts under each rule set: no false casts lands Short and five clean ones land Long for every set, the tiered steps, sloppy false casts not climbing, and the tempo rules accepting any steady beat but not a broken one.
 - `tests/fishing_test.gd` tests the stick gestures (mend loop, hook-set flick), drift and mending, the bite odds (including that 2,000 simulated casts bite at the advertised rate), rises, hook-set timing, and fight outcomes.
 
   ```
   godot --headless --path . --script res://tests/smoke_test.gd
   godot --headless --path . --script res://tests/cast_test.gd
+  godot --headless --path . --script res://tests/cast_rules_test.gd
   godot --headless --path . --script res://tests/fishing_test.gd
   ```
 
-- GitHub Actions runs all three on every pull request (`.github/workflows/godot-check.yml`).
+- GitHub Actions runs all of them on every pull request (`.github/workflows/godot-check.yml`).
 - `tools/capture_screenshot.gd` plays a scripted cast and saves screenshots. It needs a display; on a headless Linux machine, wrap it in `xvfb-run`.
 
 ## Platform notes

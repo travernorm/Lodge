@@ -29,5 +29,11 @@ jobs:
       - name: Cast tests
         run: ./godot --headless --path . --script res://tests/cast_test.gd
 
+      - name: Cast rules tests
+        run: ./godot --headless --path . --script res://tests/cast_rules_test.gd
+
       - name: Fishing tests
         run: ./godot --headless --path . --script res://tests/fishing_test.gd
+
+      - name: River tests
+        run: ./godot --headless --path . --script res://tests/river_test.gd
