@@ -45,7 +45,8 @@ const FOAM_SPEED := 36.0 / 55.0
 const STREAK_COUNT := 90
 const STREAK_LIFE := Vector2(3.0, 8.0)
 
-const ANGLER_SPEED := 40.0
+## Walking speed (px/s, 8 px = 1 m). 60 = 7.5 m/s, raised 1.5x from 40 so the bank feels less sluggish.
+const ANGLER_SPEED := 60.0
 const ROD_LENGTH := 26.0
 ## How quickly the angler turns to face the water (per second).
 const TURN_SPEED := 4.0
