@@ -5,4 +5,4 @@
 [resource]
 script = ExtResource("1_rules")
 display_name = "Count the false casts"
-description = "One steady beat. No false casts = Short, one = Middle, two or more = Long. A sloppy false cast doesn't climb a step."
+description = "No false casts = Short, one = Middle, two or more = Long. Each step up slows the beat a little. A sloppy false cast doesn't climb."

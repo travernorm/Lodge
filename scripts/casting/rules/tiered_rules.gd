@@ -1,6 +1,7 @@
 class_name TieredCastRules
 extends CastRules
-## "Count the false casts": one steady tempo, and distance comes in clear steps.
+## "Count the false casts": a steady beat, and distance comes in clear steps.
+## Each step up stretches the beat slightly, since more line takes longer to unroll.
 ##
 ##   no false casts   -> Short
 ##   one false cast   -> Middle
@@ -9,8 +10,11 @@ extends CastRules
 ## A false cast only climbs a step if it was clean enough. Timing quality still
 ## matters on delivery: a sloppy final cast falls short of its step.
 
-## Seconds to hold every stroke, whatever the line length.
+## Seconds to hold each stroke at the Short step.
 @export var tempo := 0.42
+## Seconds the beat stretches for each step up, so a longer line has a
+## slightly slower rhythm (0.42 Short, 0.47 Middle, 0.52 Long by default).
+@export var tempo_per_step := 0.05
 ## Fraction of the tempo counted as perfect / okay either side of it.
 @export var perfect_fraction := 0.15
 @export var ok_fraction := 0.38
@@ -29,16 +33,16 @@ func start_line(_model: CastModel) -> float:
 	return step_lengths[0]
 
 
-func stroke_ideal(_model: CastModel) -> float:
-	return tempo
+func stroke_ideal(model: CastModel) -> float:
+	return tempo + _step_for(model.line_out) * tempo_per_step
 
 
-func perfect_window(_model: CastModel) -> float:
-	return tempo * perfect_fraction
+func perfect_window(model: CastModel) -> float:
+	return stroke_ideal(model) * perfect_fraction
 
 
-func ok_window(_model: CastModel) -> float:
-	return tempo * ok_fraction
+func ok_window(model: CastModel) -> float:
+	return stroke_ideal(model) * ok_fraction
 
 
 func after_false_cast(model: CastModel, q: float) -> String:

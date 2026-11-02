@@ -43,7 +43,7 @@ With the debug overlay open, you can read the real hold and overlap times from t
 The cast is split in two. `scripts/casting/cast_model.gd` runs the bumper state machine (back cast, overlap, forward cast, false casts, delivery). A **rule set** (`CastRules`, in `scripts/casting/cast_rules.gd`) decides what the rhythm means: how long each stroke should be, how a stroke is scored, how a false cast changes the line, and how far the delivery goes. Each rule set is a `.tres` file in `data/cast_rules/`:
 
 - `classic.tres` plays like the original cast and reads its numbers from `data/cast_tuning.tres`.
-- `count_false_casts.tres` (`TieredCastRules`): `tempo`, the window fractions, `step_lengths` (line for Short, Middle, Long) and `climb_quality` (how clean a false cast must be to climb a step).
+- `count_false_casts.tres` (`TieredCastRules`, the default): `tempo` (the beat at Short), `tempo_per_step` (how much the beat stretches per step up), the window fractions, `step_lengths` (line for Short, Middle, Long) and `climb_quality` (how clean a false cast must be to climb a step).
 - `find_your_tempo.tres` (`TempoCastRules`): the allowed tempo range, `line_gain` per false cast, and `follow` (how much the beat drifts toward your good strokes).
 
 To tune one, open its file in the inspector, change the numbers, and run the game with **T** for practice mode and **Tab** to pick the rule set.

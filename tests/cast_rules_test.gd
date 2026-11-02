@@ -22,7 +22,7 @@ func _initialize() -> void:
 	_test_every_chassis_short_and_long()
 	_test_tiered_steps()
 	_test_tiered_sloppy_does_not_climb()
-	_test_tiered_fixed_tempo()
+	_test_tiered_beat_grows_per_step()
 	_test_tempo_any_steady_tempo()
 	_test_tempo_broken_rhythm()
 	_test_tempo_rushed_first_stroke()
@@ -73,15 +73,28 @@ func _test_tiered_sloppy_does_not_climb() -> void:
 	_check(CastRules.distance_label(m.last_reach) == "Short", "tiered: sloppy false cast stays Short (%.0f px)" % m.last_reach)
 
 
-func _test_tiered_fixed_tempo() -> void:
+func _test_tiered_beat_grows_per_step() -> void:
 	var m := _model(CHASSIS[1])
 	var r := m.rules as TieredCastRules
-	_play(m, 2)
-	var same := true
+	_play(m, 3)
+	var ideals: Array = []
 	for s in m.strokes:
-		if s.kind != "overlap" and not is_equal_approx(s.ideal, r.tempo):
-			same = false
-	_check(same, "tiered: every stroke has the same ideal length (%.2f s)" % r.tempo)
+		if s.kind != "overlap":
+			ideals.append(snappedf(s.ideal, 0.001))
+	var short := r.tempo
+	var middle := r.tempo + r.tempo_per_step
+	var long := r.tempo + 2.0 * r.tempo_per_step
+	var expected := [short, short, middle, middle, long, long, long, long]
+	var ok := ideals.size() == expected.size()
+	for i in mini(ideals.size(), expected.size()):
+		ok = ok and is_equal_approx(ideals[i], expected[i])
+	_check(ok, "tiered: beat stretches with each step up, got %s" % [ideals])
+	_check(m.presentation == "Delicate", "tiered: following the stretched beat is still delicate, got %s" % m.presentation)
+
+	# A sloppy false cast doesn't climb, so the beat doesn't stretch either.
+	m = _model(CHASSIS[1])
+	_play(m, 1, [0.15, 0.15, IDEAL, IDEAL])
+	_check(is_equal_approx(m.strokes[-1].ideal, r.tempo), "tiered: no step up, no slower beat (%.2f s)" % m.strokes[-1].ideal)
 
 
 func _test_tempo_any_steady_tempo() -> void:
