@@ -10,15 +10,20 @@ extends Node
 ##   Y               change_fly    open the fly box (next fly) while reeled in
 ##   B               back          cancel or reel in
 ##   Start/Menu      pause
+##   L3 (click left stick)   practice_mode  casting practice range on/off
+##   R3 (click right stick)  cycle_rules    switch casting rule set
 ##   Select/View     toggle_debug  cycle debug views (controller, read the water)
 ##
 ## Keyboard fallbacks (for working on a laptop): WASD move, IJKL rod, E = R bumper,
-## Q = L bumper, Space interact / set hook, Backspace back, F change fly, Esc pause, F1 debug.
+## Q = L bumper, Space interact / set hook, Backspace back, F change fly, Esc pause, F1 debug,
+## T practice mode, Tab switch casting rules.
 
 const CAST_BACK := &"cast_back"
 const CAST_FORWARD := &"cast_forward"
 const INTERACT := &"interact"
 const CHANGE_FLY := &"change_fly"
+const PRACTICE_MODE := &"practice_mode"
+const CYCLE_RULES := &"cycle_rules"
 const BACK := &"back"
 const PAUSE := &"pause"
 const TOGGLE_DEBUG := &"toggle_debug"
@@ -26,7 +31,7 @@ const TOGGLE_DEBUG := &"toggle_debug"
 const ALL_ACTIONS: Array[StringName] = [
 	&"move_left", &"move_right", &"move_up", &"move_down",
 	&"rod_left", &"rod_right", &"rod_up", &"rod_down",
-	CAST_BACK, CAST_FORWARD, INTERACT, CHANGE_FLY, BACK, PAUSE, TOGGLE_DEBUG,
+	CAST_BACK, CAST_FORWARD, INTERACT, CHANGE_FLY, BACK, PAUSE, TOGGLE_DEBUG, PRACTICE_MODE, CYCLE_RULES,
 ]
 
 

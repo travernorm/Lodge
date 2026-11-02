@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="TieredCastRules" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/casting/rules/tiered_rules.gd" id="1_rules"]
+
+[resource]
+script = ExtResource("1_rules")
+display_name = "Count the false casts"
+description = "One steady beat. No false casts = Short, one = Middle, two or more = Long. A sloppy false cast doesn't climb a step."
