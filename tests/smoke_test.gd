@@ -6,7 +6,7 @@ const FRAMES := 30
 const REQUIRED_ACTIONS := [
 	"move_left", "move_right", "move_up", "move_down",
 	"rod_left", "rod_right", "rod_up", "rod_down",
-	"cast_back", "cast_forward", "interact", "back", "pause", "toggle_debug",
+	"cast_back", "cast_forward", "interact", "change_fly", "back", "pause", "toggle_debug",
 ]
 
 
@@ -63,9 +63,55 @@ func _run(main: Node) -> void:
 	if not main.is_water(cast.fly_pos):
 		_fail("Scripted cast landed out of the water at %s" % cast.fly_pos)
 		return
+	var landing: Vector2 = cast.fly_pos
 
-	print("Smoke test passed: %d input actions, scene runs, scripted cast landed %s (%s)." % [
-		REQUIRED_ACTIONS.size(), cast.fly_pos.round(), cast.model.presentation])
+
+	# The fly is drifting. Plant a brook trout just downstream of it, tie on the
+	# fly it likes, and play the whole catch through the input system.
+	var fishing := main.get_node_or_null(^"Fishing")
+	if fishing == null or not fishing.has_method(&"current_fly"):
+		_fail("Fishing controller script did not load")
+		return
+	if fishing.phase != 1:  # Phase.DRIFT
+		_fail("Fly landed but no drift started")
+		return
+	var brook: Fish = null
+	for f in fishing.fish:
+		if f.species.id == &"brook":
+			brook = f
+	brook.species = brook.species.duplicate()
+	brook.species.take_chance = 1.0
+	brook.lie = cast.fly_pos + Vector2(14, 0)
+	brook.pos = brook.lie
+	brook.state = Fish.State.HOLDING
+	for i in fishing.flies.size():
+		if fishing.flies[i].id == &"royal_wulff":
+			fishing.fly_index = i
+	if not await _wait_for(cast, func(): return brook.state == Fish.State.TAKEN, 3.0):
+		_fail("Brook trout never took the fly (state %s)" % Fish.State.keys()[brook.state])
+		return
+	await _wait(cast, brook.species.set_min + 0.05)
+	_stick(Vector2(0, -1))  # flick up to set
+	await _wait(cast, 0.05)
+	if fishing.phase != 2:  # Phase.FIGHT
+		_fail("Hook set didn't start a fight")
+		return
+
+	Engine.time_scale = 4.0
+	var landed := await _wait_for(cast, func():
+		if fishing.phase != 2:
+			return true
+		var fm: FightModel = fishing.fight
+		_stick(Vector2(-fm.run_dir * 0.4, -0.1) if fm.running else Vector2(0, -0.85))
+		return false, 90.0)
+	Engine.time_scale = 1.0
+	_stick(Vector2.ZERO)
+	if not landed or fishing.catches.size() != 1:
+		_fail("Fight didn't end in a catch (catches %d)" % fishing.catches.size())
+		return
+
+	print("Smoke test passed: %d input actions, scripted cast landed %s (%s), %s rose, was hooked and landed." % [
+		REQUIRED_ACTIONS.size(), landing.round(), cast.model.presentation, brook.species.display_name])
 	quit(0)
 
 
@@ -74,6 +120,31 @@ func _wait(cast: Node, seconds: float) -> void:
 	var until: float = cast._time + seconds
 	while cast._time < until:
 		await process_frame
+
+
+## Waits until condition returns true, or the timeout (game seconds) passes.
+func _wait_for(cast: Node, condition: Callable, timeout: float) -> bool:
+	var until: float = cast._time + timeout
+	while cast._time < until:
+		if condition.call():
+			return true
+		await process_frame
+	return false
+
+
+## Holds the right stick at v, as analog action strengths.
+func _stick(v: Vector2) -> void:
+	_axis(&"rod_left", &"rod_right", v.x)
+	_axis(&"rod_up", &"rod_down", v.y)
+
+
+func _axis(negative: StringName, positive: StringName, value: float) -> void:
+	Input.action_release(negative)
+	Input.action_release(positive)
+	if value < 0.0:
+		Input.action_press(negative, -value)
+	elif value > 0.0:
+		Input.action_press(positive, value)
 
 
 func _fail(message: String) -> void:

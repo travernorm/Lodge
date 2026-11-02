@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="FlyPattern" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing/fly_pattern.gd" id="1_fly"]
+
+[resource]
+script = ExtResource("1_fly")
+id = &"parachute_adams"
+display_name = "Parachute Adams"
+description = "Grey all-rounder that passes for most mayflies. Dad's box has more of these than anything else."
+body_color = Color(0.54, 0.54, 0.54, 1)
+wing_color = Color(1, 1, 1, 1)
+hackle_color = Color(0.54, 0.42, 0.29, 1)

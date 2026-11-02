@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="FishSpecies" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1_species"]
+
+[resource]
+script = ExtResource("1_species")
+id = &"brook"
+display_name = "Brook Trout"
+description = "Worm-track back, white-edged fins. Tucks along the slow far edge of the pool and strikes fast."
+color = Color(0.3, 0.32, 0.24, 1)
+lie_area = Rect2(205, 62, 100, 14)
+preferred_flies = PackedStringArray("royal_wulff")
+take_chance = 0.9
+off_pattern_take = 0.25
+drag_tolerance = 0.3
+set_min = 0.08
+set_max = 0.45
+pull = 0.55
+toughness = 0.8
+min_length_in = 6.0
+max_length_in = 12.0

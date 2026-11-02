@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="FishSpecies" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1_species"]
+
+[resource]
+script = ExtResource("1_species")
+id = &"redband"
+display_name = "Redband Rainbow"
+description = "The desert-side rainbow of Eastern Oregon. Sits on the seam where the riffle spills into the pool, and runs hard."
+color = Color(0.3, 0.34, 0.3, 1)
+lie_area = Rect2(122, 72, 80, 50)
+preferred_flies = PackedStringArray("parachute_adams")
+take_chance = 0.8
+off_pattern_take = 0.12
+drag_tolerance = 0.2
+set_min = 0.15
+set_max = 0.6
+pull = 0.95
+toughness = 1.2
+min_length_in = 10.0
+max_length_in = 20.0

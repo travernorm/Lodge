@@ -22,6 +22,7 @@ func _initialize() -> void:
 		"cast_back": [_button(JOY_BUTTON_RIGHT_SHOULDER), _key(KEY_E)],
 		"cast_forward": [_button(JOY_BUTTON_LEFT_SHOULDER), _key(KEY_Q)],
 		"interact": [_button(JOY_BUTTON_A), _key(KEY_SPACE)],
+		"change_fly": [_button(JOY_BUTTON_Y), _key(KEY_F)],
 		"back": [_button(JOY_BUTTON_B), _key(KEY_BACKSPACE)],
 		"pause": [_button(JOY_BUTTON_START), _key(KEY_ESCAPE)],
 		"toggle_debug": [_button(JOY_BUTTON_BACK), _key(KEY_F1)],

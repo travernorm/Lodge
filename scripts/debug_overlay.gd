@@ -1,6 +1,6 @@
 extends Control
-## Controller debug overlay. Toggle with Select/View (F1 on keyboard).
-## On by default in debug builds.
+## Controller debug overlay. Toggle with Select/View (Create on a PS5 pad, F1 on keyboard).
+## Starts hidden.
 ##
 ## The top strip is a 2 second timeline of the R and L bumpers, which is how
 ## we'll tune the back cast / forward cast rhythm on a real Steam Deck. It also
@@ -28,7 +28,7 @@ var _last_overlap_ms := 0
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	visible = OS.is_debug_build()
+	visible = false
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -98,6 +98,9 @@ func _draw() -> void:
 	var cast := get_tree().get_first_node_in_group(&"cast")
 	if cast != null:
 		lines = cast.debug_lines()
+	var fishing := get_tree().get_first_node_in_group(&"fishing")
+	if fishing != null:
+		lines.append_array(fishing.debug_lines())
 	var info := Rect2(4, 33, 150, 30 + 9 * lines.size())
 	draw_rect(info, COL_PANEL)
 	draw_string(font, Vector2(8, 42), "R held %d ms   L held %d ms" % [_last_r_ms, _last_l_ms],
