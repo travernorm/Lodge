@@ -37,8 +37,8 @@ For now the stream holds **one Redband Rainbow** in the middle of the pool, and 
 
 1. **Cast near the fish.** When the fly lands you'll see your chance of a bite. A delicate landing right by the fish gives the best odds (60%). Fair landings get about 60% of that and splashy ones 25%, and the chance falls off with distance until about 40 px out, where it's zero.
 2. **Wait for the rise.** If the fish bites, it comes up for the fly a second or two later and the fly disappears.
-3. **Set the hook.** **Flick the right stick up** (tap **I** on keyboard). You have about a second.
-4. **Fight.** **Push the right stick** (hold **I**) to pull it in, and watch the tension bar. Don't let the line go slack for long or it throws the hook. Pushing sideways against a run tires it faster. Reel it in close once it's tired to land it.
+3. **Set the hook.** Press **Space** (or **Cross / A** on a controller, or flick the right stick up). You have about a second.
+4. **Fight.** **Hold Space** or **push the right stick** to pull it in, and watch the tension bar. Don't let the line go slack for long or it throws the hook. Pushing sideways against a run tires it faster. Reel it in close once it's tired to land it.
 
 You can also mend the line by looping the right stick, but drag doesn't affect bites yet. More flies (`data/flies/`) and two more trout (`data/fish/`) are already set up as data and can be added back when we want more depth.
 
@@ -51,15 +51,15 @@ You can also mend the line by looping the right stick, but drag doesn't affect b
 | Right stick | I J K L | Rod tip: mend, set the hook, strip |
 | Left stick / D-pad | W A S D | Walk the bank |
 | Right stick loop | — | Mend the line |
-| Right stick flick up | I (tap) | Set the hook |
-| Right stick hold | I J K L | Pressure while fighting |
+| A or right stick flick up | Space | Set the hook |
+| Right stick hold | Space or I J K L | Pressure while fighting |
 | Y | F | Change fly (when reeled in) |
-| A | Space | Interact / perception check |
+| A | Space | Set the hook (later: interact / perception check) |
 | B | Backspace | Back / reel in |
 | Menu (Start) | Esc | Pause |
 | View (Select) | F1 | Toggle controller debug overlay |
 
-The debug overlay starts hidden. With it open, press A to test rumble. The top strip shows the last 2 seconds of R and L presses, plus hold times and overlap in milliseconds, so the cast rhythm can be tuned with real numbers.
+The debug overlay starts hidden. Opening it gives a short rumble to test the controller's haptics. The top strip shows the last 2 seconds of R and L presses, plus hold times and overlap in milliseconds, so the cast rhythm can be tuned with real numbers.
 
 ## Project layout
 

@@ -6,14 +6,14 @@ extends Node
 ##   L bumper (LB)   cast_forward  overlap with R to shoot the forward cast
 ##   Right stick     rod_*         mend loops, set the hook, strip and twitch the fly
 ##   Left stick/D-pad move_*       walk the bank
-##   A               interact      perception checks, talk, confirm
+##   A               interact      sets the hook while fishing; later perception checks, talk
 ##   Y               change_fly    open the fly box (next fly) while reeled in
 ##   B               back          cancel or reel in
 ##   Start/Menu      pause
 ##   Select/View     toggle_debug  controller debug overlay
 ##
 ## Keyboard fallbacks (for working on a laptop): WASD move, IJKL rod, E = R bumper,
-## Q = L bumper, Space interact, Backspace back, F change fly, Esc pause, F1 debug.
+## Q = L bumper, Space interact / set hook, Backspace back, F change fly, Esc pause, F1 debug.
 
 const CAST_BACK := &"cast_back"
 const CAST_FORWARD := &"cast_forward"
