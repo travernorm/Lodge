@@ -69,7 +69,7 @@ So the casting numbers already land close to real life at this scale. The river 
 Each PR plays exactly the same as before it, and passes every test.
 
 1. **`WorldScale` and the views.** Add the class and a test for it. Nothing uses it yet except a new `tests/units_test.gd` that checks `to_px(to_m(x)) == x`. It changes no behaviour, but it is still game code, so it waits for approval with the rest.
-2. **River (with the river thread).** `RiverField` and the stream scene work in metres. The stream scene draws through `WorldScale`. `flow_at()` takes and returns metres; a thin pixel wrapper stays on the stream scene for one PR so casting and fishing keep working. Best done before the river thread's bake prototype, so the bake is in metres from day one.
+2. **River (owned by the river thread, which has agreed; lands after PR #7 merges, since #7 touches `river_field.gd`, `fish.gd` and `fishing_controller.gd`).** The lie thresholds (`HOLD_SPEED`, `FOOD_SPEED`) are re-expressed relative to one water-speed constant, so the later speed experiment changes a single number. `RiverField` and the stream scene work in metres. The stream scene draws through `WorldScale`. `flow_at()` takes and returns metres; a thin pixel wrapper stays on the stream scene for one PR so casting and fishing keep working. Best done before the river thread's bake prototype, so the bake is in metres from day one.
 3. **Casting (owned by the casting thread, which has agreed).** Land it right after PR #5 merges; no other casting code PRs are in flight. Everything that converts:
    * `CastTuning`: `line_start`, `line_max`, `line_gain_min`, `line_gain_max`, and `stroke_time_per_px`, renamed to `stroke_time_per_m`.
    * `CastRules.SHORT_MAX` and `MIDDLE_MAX` (48 and 82 px).
@@ -102,6 +102,6 @@ The standard manual playtest from DEVELOPMENT_PROCESS.md after each of steps 2 t
 
 ## Open questions
 
-1. **For Traver and the river thread:** is 8 px per metre (a 40 m by 25 m screen, an 11 m wide creek) right?
+1. **For Traver** (the casting and river threads both agree): is 8 px per metre (a 40 m by 25 m screen, an 11 m wide creek) right?
 2. ~~For the casting thread: any objection to the rename?~~ Answered 2026-11-02: no objection, 8 px/m sounds right, and the casting thread will own step 3 right after PR #5 merges.
-3. **For the river thread:** should the bake prototype wait for step 2, so it starts in metres?
+3. ~~For the river thread: should the bake wait?~~ Answered 2026-11-02: yes, the bake prototype waits for step 2. 8 px/m answers the river thread's scale question.
