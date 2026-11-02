@@ -9,15 +9,16 @@ extends RefCounted
 ## refuse a dragging fly. A mend (right-stick loop) flips the belly back upstream.
 ## Mend too early, with no bow to fix, and you yank the fly.
 
-const SLACK := 8.0  # extra line beyond a straight line to the fly...
-const SLACK_PER_PX := 0.15  # ...plus this much per px of cast
-const TAUT_RANGE := 4.0  # the last px of slack, over which the line comes tight
-const BOW_FREE := 10.0  # downstream bow (px) before drag starts
-const BOW_RANGE := 16.0  # bow beyond BOW_FREE that reaches full drag
-const DRAG_SPEED := 22.0  # px/s the line can drag the fly at full drag
+## Distances in metres, speeds in m/s (REQ-0001).
+const SLACK := 1.0  # extra line (m) beyond a straight line to the fly...
+const SLACK_PER_M := 0.15  # ...plus this much per metre of cast
+const TAUT_RANGE := 0.5  # the last metres of slack, over which the line comes tight
+const BOW_FREE := 1.25  # downstream bow (m) before drag starts
+const BOW_RANGE := 2.0  # bow beyond BOW_FREE that reaches full drag
+const DRAG_SPEED := 2.75  # m/s the line can drag the fly at full drag
 const DRAG_RESPONSE := 4.0  # how fast drag follows its target, per second
-const MEND_SHIFT := 22.0
-const OVER_MEND := 14.0  # bow after a mend more upstream than this jolts the fly
+const MEND_SHIFT := 2.75  # m the belly flips upstream on a mend
+const OVER_MEND := 1.75  # bow (m) after a mend more upstream than this jolts the fly
 const JOLT_TIME := 0.25
 
 var tip := Vector2.ZERO
@@ -37,7 +38,7 @@ func start(p_tip: Vector2, p_fly: Vector2) -> void:
 	fly = p_fly
 	belly = (tip + fly) * 0.5
 	var reach := tip.distance_to(fly)
-	line_length = reach + SLACK + reach * SLACK_PER_PX
+	line_length = reach + SLACK + reach * SLACK_PER_M
 	drag = 0.0
 	_jolt = 0.0
 	over_mended = false
@@ -48,7 +49,7 @@ func bow() -> float:
 	return belly.x - (tip.x + fly.x) * 0.5
 
 
-## flow: Callable taking a position and returning the current there (px/s).
+## flow: Callable taking a position (m) and returning the current there (m/s).
 func update(dt: float, flow: Callable) -> void:
 	belly += flow.call(belly) * dt
 

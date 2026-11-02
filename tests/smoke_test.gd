@@ -57,7 +57,7 @@ func _run(main: Node) -> void:
 	var trout: Fish = fishing.fish[0]
 	trout.species = trout.species.duplicate()
 	trout.species.bite_chance = 1.0
-	trout.lie = Vector2(166, 99)
+	trout.lie = WorldScale.vec_to_m(Vector2(166, 99))
 	trout.pos = trout.lie
 
 	# Play one real cast through the input system: R back cast, overlap into L,

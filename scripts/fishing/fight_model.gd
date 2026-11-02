@@ -14,11 +14,11 @@ const TENSION_RATE := 6.0  # how fast tension follows its target, per second
 const SNAP_HOLD := 0.15  # seconds at full tension before the tippet breaks
 const SLACK_LEVEL := 0.08
 const SLACK_TIME := 1.6
-const REEL_SPEED := 22.0  # px/s gained at full pressure
-const RUN_SPEED := 30.0  # px/s a fresh fish takes on a run
-const LAND_DISTANCE := 14.0
+const REEL_SPEED := 2.75  # m/s gained at full pressure
+const RUN_SPEED := 3.75  # m/s a fresh fish takes on a run
+const LAND_DISTANCE := 1.75  # m
 const LAND_STAMINA := 0.25
-const MAX_DISTANCE := 150.0  # run past this and it breaks off
+const MAX_DISTANCE := 18.75  # m: run past this and it breaks off
 const RUN_TIME := Vector2(0.6, 1.4)
 const REST_TIME := Vector2(1.0, 2.2)
 

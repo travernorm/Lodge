@@ -4,7 +4,7 @@ extends RefCounted
 ##
 ## It holds where the river field says a trout would: slow, deep-enough water
 ## with fast water close by (see RiverField.pick_lie()). Without a river field it
-## picks any spot in its species' lie_area.
+## picks any spot in its species' lie_area_m. Positions are in metres (REQ-0001).
 ##
 ## Bites are a simple roll per cast: when the fly lands, the fish works out a bite
 ## chance from how close the fly landed and how softly (see bite_chance_for()).
@@ -21,7 +21,7 @@ enum State { HOLDING, WAITING, RISING, TAKEN, HOOKED, GONE }
 enum SetResult { HOOKED, TOO_EARLY, TOO_LATE, NO_FISH }
 
 const PRESENTATION_FACTOR := {"Delicate": 1.0, "Fair": 0.6, "Splashy": 0.25}
-const CLOSE_RANGE := 8.0  # px: inside this the distance doesn't lower the chance
+const CLOSE_RANGE := 1.0  # m: inside this the distance doesn't lower the chance
 const RISE_TIME := 0.35
 const BITE_DELAY := Vector2(0.6, 2.0)  # seconds after landing before it rises
 const DIMPLE_EVERY := Vector2(3.0, 6.0)
@@ -58,18 +58,13 @@ func _init(p_species: FishSpecies, rng: RandomNumberGenerator, p_river: RiverFie
 
 ## Picks a new lie in its habitat, as a new fish.
 func respawn() -> void:
-	var a := species.lie_area
+	var a := species.lie_area_m
 	var spot := Vector2.INF
 	if river != null:
-		# The river works in metres; lie_area and lie are still pixels until the
-		# fishing step of REQ-0001.
-		var area_m := Rect2(WorldScale.vec_to_m(a.position), WorldScale.vec_to_m(a.size))
-		var spot_m := river.pick_lie(area_m, _rng, MIN_LIE_SCORE)
-		if spot_m != Vector2.INF:
-			spot = WorldScale.vec_to_px(spot_m)
+		spot = river.pick_lie(a, _rng, MIN_LIE_SCORE)
 	if spot == Vector2.INF:
 		spot = Vector2(_rng.randf_range(a.position.x, a.end.x), _rng.randf_range(a.position.y, a.end.y))
-	lie = spot.floor()
+	lie = spot
 	pos = lie
 	length_in = snappedf(_rng.randf_range(species.min_length_in, species.max_length_in), 0.5)
 	state = State.HOLDING
@@ -84,9 +79,9 @@ func is_present() -> bool:
 ## 0..1 chance this fish bites a fly landing at `at` with the given presentation.
 func bite_chance_for(at: Vector2, presentation: String) -> float:
 	var d := at.distance_to(lie)
-	if d > species.bite_range:
+	if d > species.bite_range_m:
 		return 0.0
-	var closeness := 1.0 - clampf((d - CLOSE_RANGE) / (species.bite_range - CLOSE_RANGE), 0.0, 1.0)
+	var closeness := 1.0 - clampf((d - CLOSE_RANGE) / (species.bite_range_m - CLOSE_RANGE), 0.0, 1.0)
 	return species.bite_chance * closeness * PRESENTATION_FACTOR.get(presentation, 0.5)
 
 

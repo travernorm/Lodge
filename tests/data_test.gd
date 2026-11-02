@@ -83,11 +83,11 @@ func _test_fish(fish: Dictionary, flies: Dictionary) -> void:
 		_check(not ids.has(sp.id), "fish %s: id is unique" % stem)
 		ids[sp.id] = true
 		_check(sp.bite_chance > 0.0 and sp.bite_chance <= 1.0, "fish %s: bite_chance is in (0, 1]" % stem)
-		_check(sp.bite_range > Fish.CLOSE_RANGE, "fish %s: bite_range is past CLOSE_RANGE" % stem)
+		_check(sp.bite_range_m > Fish.CLOSE_RANGE, "fish %s: bite_range_m is past CLOSE_RANGE" % stem)
 		_check(sp.set_min < sp.set_max, "fish %s: hook-set window is valid" % stem)
 		_check(sp.min_length_in <= sp.max_length_in, "fish %s: length range is valid" % stem)
-		_check(VIEW.encloses(sp.lie_area), "fish %s: lie_area is on screen" % stem)
-		_check(_water_cells(river, sp.lie_area) >= 4, "fish %s: lie_area covers water in the stream" % stem)
+		_check(Rect2(Vector2.ZERO, WorldScale.vec_to_m(VIEW.size)).encloses(sp.lie_area_m), "fish %s: lie_area_m is on screen" % stem)
+		_check(_water_cells(river, sp.lie_area_m) >= 4, "fish %s: lie_area_m covers water in the stream" % stem)
 		for fly_id in sp.preferred_flies:
 			_check(fly_ids.has(fly_id), "fish %s: preferred fly '%s' exists in data/flies" % [stem, fly_id])
 
@@ -98,10 +98,10 @@ func _water_cells(river: RiverField, area: Rect2) -> int:
 	while y <= area.end.y:
 		var x := area.position.x
 		while x <= area.end.x:
-			if river.is_water(WorldScale.vec_to_m(Vector2(x, y))):  # lie_area is still px
+			if river.is_water(Vector2(x, y)):
 				n += 1
-			x += 4.0
-		y += 4.0
+			x += 0.5
+		y += 0.5
 	return n
 
 

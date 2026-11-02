@@ -27,7 +27,8 @@ enum Phase { NONE, DRIFT, FIGHT, REEL }
 const CARD_SECONDS := 3.5
 const SET_ANIM_TIME := 0.3  # rod snaps up and back, then settles
 const REEL_DELAY := 0.15  # pause after a missed set before the line comes in
-const REEL_SPEED := 150.0  # px/s the fly comes back on a reel-in
+const REEL_SPEED := 18.75  # m/s the fly comes back on a reel-in
+const REEL_DONE := 0.375  # m from the rod tip where the reel-in finishes
 const RING_SECONDS := 0.9
 
 const COL_LINE := Color("d8cfa6")
@@ -50,6 +51,9 @@ var phase := Phase.NONE
 var enabled := true
 var drift := DriftModel.new()
 var fight: FightModel
+## The drift, the fish and the fight work in metres (REQ-0001). The cast and
+## the stream scene still place things in screen pixels, so this converts at
+## those edges and when drawing.
 var fish: Array[Fish] = []
 var hooked: Fish
 var fly_index := 0
@@ -59,6 +63,7 @@ var catches: Array[Dictionary] = []
 var _gestures := StickGestures.new()
 var _rng := RandomNumberGenerator.new()
 var _stream: Node2D
+var _river: RiverField
 var _cast: Node
 var _time := 0.0
 var _fly_taken := false
@@ -74,9 +79,9 @@ func _ready() -> void:
 	_stream = get_parent() as Node2D
 	_cast = _stream.get_node(^"Cast")
 	_cast.model.landed.connect(_on_landed)
-	var river: RiverField = _stream.get(&"river")
+	_river = _stream.get(&"river")
 	for species in stocking:
-		fish.append(Fish.new(species, _rng, river))
+		fish.append(Fish.new(species, _rng, _river))
 
 
 func current_fly() -> FlyPattern:
@@ -87,11 +92,11 @@ func can_pick_up() -> bool:
 	return phase != Phase.FIGHT
 
 
-## Where the line ends: the fish while fighting, otherwise the fly.
+## Where the line ends, in screen pixels: the fish while fighting, otherwise the fly.
 func line_target() -> Vector2:
 	if phase == Phase.FIGHT and hooked != null:
-		return hooked.pos
-	return drift.fly if phase == Phase.DRIFT else _cast.fly_pos
+		return WorldScale.vec_to_px(hooked.pos)
+	return WorldScale.vec_to_px(drift.fly) if phase == Phase.DRIFT else _cast.fly_pos
 
 
 func species_caught() -> int:
@@ -105,7 +110,7 @@ func debug_lines() -> PackedStringArray:
 	var lines := PackedStringArray()
 	match phase:
 		Phase.DRIFT:
-			lines.append("drift  drag %.2f  bow %d" % [drift.drag, roundi(drift.bow())])
+			lines.append("drift  drag %.2f  bow %.1f m" % [drift.drag, drift.bow()])
 		Phase.FIGHT:
 			lines.append("fight  tension %.2f  stamina %.2f  %s" % [fight.tension, fight.stamina, "RUN" if fight.running else "rest"])
 	var states := PackedStringArray()
@@ -155,12 +160,12 @@ func _change_fly() -> void:
 # --- Drift -----------------------------------------------------------------
 
 func _on_landed(_presentation: String, _quality: float) -> void:
-	var at: Vector2 = _cast.fly_pos
-	if not enabled or not _stream.is_water(at):
+	var at := WorldScale.vec_to_m(_cast.fly_pos)
+	if not enabled or not _river.is_water(at):
 		return
 	phase = Phase.DRIFT
 	_fly_taken = false
-	drift.start(_stream.rod_tip(), at)
+	drift.start(_tip_m(), at)
 	var best := 0.0
 	for f in fish:
 		best = maxf(best, f.on_landing(at, _cast.model.presentation))
@@ -175,22 +180,22 @@ func _update_drift(delta: float) -> void:
 	if _cast.model.state != CastModel.State.LANDED:
 		_end_drift()  # picked up for another cast, or reeled in
 		return
-	drift.tip = _stream.rod_tip()
+	drift.tip = _tip_m()
 	if _gestures.looped and not _fly_taken:
 		drift.mend()
 		if drift.over_mended:
 			_cast.show_message("Mended too soon. The fly skated.", 0.3)
 		else:
 			_cast.show_message("Mend", 1.0)
-	drift.update(delta, _stream.flow_at)
-	_cast.fly_pos = drift.fly
-	_cast.model.line_out = clampf(WorldScale.to_m(drift.tip.distance_to(drift.fly)), _cast.tuning.line_start, _cast.tuning.line_max)
+	drift.update(delta, _river.flow_at)
+	_cast.fly_pos = WorldScale.vec_to_px(drift.fly)
+	_cast.model.line_out = clampf(drift.tip.distance_to(drift.fly), _cast.tuning.line_start, _cast.tuning.line_max)
 
 	if _gestures.flicked or Input.is_action_just_pressed(Controls.INTERACT):
 		_try_set()
 		if phase != Phase.DRIFT:
 			return
-	if drift.fly.x > _stream.VIEW.x - 4.0:
+	if drift.fly.x > WorldScale.to_m(_stream.VIEW.x - 4.0):
 		_cast.reel_in_line("Drift's done. Reeled in.")
 		_end_drift()
 
@@ -206,7 +211,7 @@ func _end_drift() -> void:
 func _try_set() -> void:
 	_set_at = _time
 	Controls.rumble(0.15, 0.0, 0.06)
-	_burst(drift.fly, 6.0)
+	_burst(WorldScale.vec_to_px(drift.fly), 6.0)
 	for f in fish:
 		if f.state != Fish.State.RISING and f.state != Fish.State.TAKEN:
 			continue
@@ -236,10 +241,10 @@ func _update_reel(delta: float) -> void:
 		return
 	if _time - _set_at < REEL_DELAY:
 		return
-	var tip: Vector2 = _stream.rod_tip()
+	var tip := _tip_m()
 	drift.fly = drift.fly.move_toward(tip, REEL_SPEED * delta)
-	_cast.fly_pos = drift.fly
-	if drift.fly.distance_to(tip) < 3.0:
+	_cast.fly_pos = WorldScale.vec_to_px(drift.fly)
+	if drift.fly.distance_to(tip) < REEL_DONE:
 		_cast.reel_in_line("")
 		phase = Phase.NONE
 
@@ -258,13 +263,13 @@ func _on_fish_event(f: Fish, event: StringName) -> void:
 	match event:
 		&"take":
 			_fly_taken = true
-			_rings.append(Vector3(f.pos.x, f.pos.y, _time))
+			_ring_at(f.pos, _time)
 			Controls.rumble(0.25, 0.0, 0.08)
 		&"spat":
 			_fly_taken = false
 			_cast.show_message("Too late. It spat the fly.", 0.3)
 		&"dimple":
-			_rings.append(Vector3(f.lie.x, f.lie.y, _time - 0.3))
+			_ring_at(f.lie, _time - 0.3)
 		&"rising":
 			_cast.show_message("Here it comes...", 1.0)
 
@@ -274,7 +279,7 @@ func _on_fish_event(f: Fish, event: StringName) -> void:
 func _start_fight(f: Fish) -> void:
 	phase = Phase.FIGHT
 	hooked = f
-	var tip: Vector2 = _stream.rod_tip()
+	var tip := _tip_m()
 	fight = FightModel.new(f.species, tip.distance_to(drift.fly), (drift.fly - tip).angle(), _rng)
 	_cast.show_message("Fish on! Hold Space or push the stick to pull.", 1.0)
 	Controls.rumble(0.3, 0.8, 0.25)
@@ -284,14 +289,14 @@ func _update_fight(delta: float, stick: Vector2) -> void:
 	var was_running := fight.running
 	var result := fight.update(delta, stick)
 	hooked.pos = _fish_position()
-	_cast.fly_pos = hooked.pos
+	_cast.fly_pos = WorldScale.vec_to_px(hooked.pos)
 	if fight.running and not was_running:
 		_cast.show_message("It's running! Ease off.", 0.5)
 		Controls.rumble(0.2, 0.6, 0.3)
 	elif fight.tension > 0.8:
 		Controls.rumble(0.0, 0.3 * fight.tension, 0.05)
 	if fight.running and _rng.randf() < delta * 6.0:
-		_burst(hooked.pos, 4.0)
+		_burst(WorldScale.vec_to_px(hooked.pos), 4.0)
 
 	match result:
 		FightModel.Result.LANDED:
@@ -303,11 +308,23 @@ func _update_fight(delta: float, stick: Vector2) -> void:
 			_end_fight("Slack line. It threw the hook.", 0.2)
 
 
+## Where the hooked fish is (m), kept on screen and in the water.
 func _fish_position() -> Vector2:
-	var p: Vector2 = _stream.rod_tip() + Vector2.from_angle(fight.angle) * fight.distance
+	var p: Vector2 = _stream.rod_tip() + Vector2.from_angle(fight.angle) * WorldScale.to_px(fight.distance)
 	p.x = clampf(p.x, 4.0, _stream.VIEW.x - 4.0)
 	p.y = clampf(p.y, _stream.BANK_TOP + 3.0, _stream.BANK_BOTTOM - 3.0)
-	return p
+	return WorldScale.vec_to_m(p)
+
+
+## The rod tip in metres.
+func _tip_m() -> Vector2:
+	return WorldScale.vec_to_m(_stream.rod_tip())
+
+
+## A rise ring at a world position (m).
+func _ring_at(at: Vector2, start: float) -> void:
+	var p := WorldScale.vec_to_px(at)
+	_rings.append(Vector3(p.x, p.y, start))
 
 
 func _land_fish() -> void:
@@ -349,8 +366,9 @@ func _draw() -> void:
 		Phase.FIGHT:
 			_draw_fight(tip)
 		Phase.REEL:
-			draw_line(tip.floor() + Vector2(0.5, 0.5), drift.fly.floor() + Vector2(0.5, 0.5), COL_LINE, 1.0)
-			current_fly().draw_at(self, drift.fly)
+			var fly_px := WorldScale.vec_to_px(drift.fly)
+			draw_line(tip.floor() + Vector2(0.5, 0.5), fly_px.floor() + Vector2(0.5, 0.5), COL_LINE, 1.0)
+			current_fly().draw_at(self, fly_px)
 		Phase.NONE:
 			if _cast.model.state == CastModel.State.LANDED:
 				_draw_line(tip, (tip + _cast.fly_pos) * 0.5, _cast.fly_pos, COL_LINE)
@@ -365,7 +383,7 @@ func _draw() -> void:
 func _draw_fish(f: Fish) -> void:
 	if not f.is_present():
 		return
-	var p := f.pos.floor()
+	var p := WorldScale.vec_to_px(f.pos).floor()
 	var col := COL_FISH_SHADOW
 	if f.state == Fish.State.RISING or f.state == Fish.State.TAKEN:
 		col = f.species.color
@@ -376,16 +394,17 @@ func _draw_fish(f: Fish) -> void:
 
 
 func _draw_drift(tip: Vector2) -> void:
-	_draw_line(tip, drift.belly, drift.fly, COL_LINE)
+	var fly_px := WorldScale.vec_to_px(drift.fly)
+	_draw_line(tip, WorldScale.vec_to_px(drift.belly), fly_px, COL_LINE)
 	if _fly_taken:
 		return
 	if drift.drag > 0.3:
-		var back := drift.fly.floor()
+		var back := fly_px.floor()
 		var a := minf(1.0, drift.drag) * COL_WAKE.a
 		var col := Color(COL_WAKE, a)
 		draw_line(back + Vector2(-1, -1), back + Vector2(-4, -3), col, 1.0)
 		draw_line(back + Vector2(-1, 2), back + Vector2(-4, 4), col, 1.0)
-	current_fly().draw_at(self, drift.fly)
+	current_fly().draw_at(self, fly_px)
 
 
 func _draw_fight(tip: Vector2) -> void:
@@ -394,10 +413,11 @@ func _draw_fight(tip: Vector2) -> void:
 		col = COL_LINE_DANGER
 	elif fight.tension > 0.6:
 		col = COL_LINE_TIGHT
-	var mid := (tip + hooked.pos) * 0.5
+	var fish_px := WorldScale.vec_to_px(hooked.pos)
+	var mid := (tip + fish_px) * 0.5
 	var sag := (1.0 - fight.tension) * 10.0
-	_draw_line(tip, mid + Vector2(0, sag), hooked.pos, col)
-	var p := hooked.pos.floor()
+	_draw_line(tip, mid + Vector2(0, sag), fish_px, col)
+	var p := fish_px.floor()
 	draw_rect(Rect2(p + Vector2(-3, -1), Vector2(6, 3)), hooked.species.color)
 	draw_rect(Rect2(p + Vector2(-5 if fight.run_dir > 0 else 3, -1), Vector2(2, 3)), hooked.species.color)
 
