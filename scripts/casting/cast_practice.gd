@@ -15,7 +15,10 @@ extends Node2D
 
 const TARGETS := ["Short", "Middle", "Long"]
 ## Target ring distances (px from the rod tip), one per entry in TARGETS.
-const TARGET_REACH := [32.0, 65.0, 100.0]
+## Target distances (m from the rod tip) for Short, Middle and Long.
+const TARGET_REACH := [4.0, 8.125, 12.5]
+## How far up (m) the distance ruler runs: the longest line you can carry.
+const LONG_RULER_M := 14.75
 const AUTO_REEL_DELAY := 1.2
 const LOG_ROWS := 8
 const RESULT_ROWS := 4
@@ -106,13 +109,13 @@ func _on_landed(presentation: String, _quality: float) -> void:
 	tally[target][1] += 1
 	if hit:
 		tally[target][0] += 1
-	var line := "%s: %d px %s %s, %d false, %s" % [
-		target, roundi(model.last_reach), got, "HIT" if hit else "miss", model.false_casts, presentation]
+	var line := "%s: %.1f m %s %s, %d false, %s" % [
+		target, model.last_reach, got, "HIT" if hit else "miss", model.false_casts, presentation]
 	_add_result(line)
 	if hit:
-		_cast.show_message("Hit! %s, %d px." % [got, roundi(model.last_reach)], 1.0)
+		_cast.show_message("Hit! %s, %.1f m." % [got, model.last_reach], 1.0)
 	else:
-		_cast.show_message("%s, %d px. Wanted %s." % [got, roundi(model.last_reach), target], 0.4)
+		_cast.show_message("%s, %.1f m. Wanted %s." % [got, model.last_reach, target], 0.4)
 	target_index = (target_index + 1) % TARGETS.size()
 	_landed_at = _time
 
@@ -145,7 +148,7 @@ func _draw() -> void:
 
 func _target_point() -> Vector2:
 	var tip: Vector2 = _stream.hand_position() + Vector2(0, -_stream.ROD_LENGTH)
-	return tip + Vector2(0, -TARGET_REACH[target_index])
+	return tip + Vector2(0, -WorldScale.to_px(TARGET_REACH[target_index]))
 
 
 ## Faint marks up the cast line where Short ends and Middle ends.
@@ -154,12 +157,14 @@ func _draw_ruler() -> void:
 	var x := tip.x + 26.0
 	var font := ThemeDB.fallback_font
 	var col := Color(1, 1, 1, 0.35)
-	draw_line(Vector2(x, tip.y), Vector2(x, tip.y - 118.0), col, 1.0)
+	var top := WorldScale.to_px(LONG_RULER_M)
+	draw_line(Vector2(x, tip.y), Vector2(x, tip.y - top), col, 1.0)
 	for mark in [0.0, CastRules.SHORT_MAX, CastRules.MIDDLE_MAX]:
-		draw_line(Vector2(x - 2, tip.y - mark), Vector2(x + 2, tip.y - mark), col, 1.0)
-	var bands := [["S", 0.0, CastRules.SHORT_MAX], ["M", CastRules.SHORT_MAX, CastRules.MIDDLE_MAX], ["L", CastRules.MIDDLE_MAX, 118.0]]
+		var my := tip.y - WorldScale.to_px(mark)
+		draw_line(Vector2(x - 2, my), Vector2(x + 2, my), col, 1.0)
+	var bands := [["S", 0.0, CastRules.SHORT_MAX], ["M", CastRules.SHORT_MAX, CastRules.MIDDLE_MAX], ["L", CastRules.MIDDLE_MAX, LONG_RULER_M]]
 	for b in bands:
-		var y: float = tip.y - (b[1] + b[2]) * 0.5
+		var y: float = tip.y - WorldScale.to_px((b[1] + b[2]) * 0.5)
 		draw_string(font, Vector2(x + 4, y + 3), b[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 8, col)
 
 
@@ -201,7 +206,7 @@ func _draw_stroke_log() -> void:
 	var origin := Vector2(_stream.VIEW.x - 104, 36)
 	var height := 12 + rows.size() * 7
 	draw_rect(Rect2(origin - Vector2(2, 2), Vector2(102, height)), COL_PANEL)
-	draw_string(font, origin + Vector2(0, 7), "strokes  falses %d  line %d" % [model.false_casts, roundi(model.line_out)],
+	draw_string(font, origin + Vector2(0, 7), "strokes  falses %d  line %.1f m" % [model.false_casts, model.line_out],
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 8, COL_DIM)
 	for i in rows.size():
 		var s := rows[i]

@@ -110,7 +110,7 @@ func rod_pose() -> Vector2:
 func debug_lines() -> PackedStringArray:
 	var state_name: String = CastModel.State.keys()[model.state]
 	return PackedStringArray([
-		"cast %s  line %d px" % [state_name.to_lower(), roundi(model.line_out)],
+		"cast %s  line %.1f m" % [state_name.to_lower(), model.line_out],
 		"ideal %d ms  last %.2f  falses %d" % [roundi(model.ideal_stroke_time() * 1000.0), model.last_score, model.false_casts],
 	])
 
@@ -130,9 +130,9 @@ func _drift(delta: float) -> void:
 	if _snagged:
 		return
 	fly_pos += _stream.flow_at(fly_pos) * delta
-	var out := fly_pos.distance_to(_stream.rod_tip())
+	var out := WorldScale.to_m(fly_pos.distance_to(_stream.rod_tip()))
 	model.line_out = clampf(out, tuning.line_start, tuning.line_max)
-	if fly_pos.x > _stream.VIEW.x - 4.0 or out > tuning.line_max + 24.0:
+	if fly_pos.x > _stream.VIEW.x - 4.0 or out > tuning.line_max + 3.0:
 		reel_in_line("Drift's done. Reeled in.")
 
 
@@ -152,7 +152,7 @@ func show_message(text: String, quality: float) -> void:
 
 func _on_delivered(offset: Vector2, _quality: float) -> void:
 	_flight_from = _line_end(_stream.rod_tip(), 1.0)
-	_flight_to = _stream.rod_tip() + offset
+	_flight_to = _stream.rod_tip() + WorldScale.vec_to_px(offset)
 	_snagged = false
 
 
@@ -192,13 +192,13 @@ func _draw() -> void:
 
 ## Where the end of the forward line is at a given unroll fraction.
 func _line_end(tip: Vector2, unroll: float) -> Vector2:
-	return tip + model.aim_direction() * model.line_out * clampf(unroll, 0.05, 1.0)
+	return tip + model.aim_direction() * WorldScale.to_px(model.line_out) * clampf(unroll, 0.05, 1.0)
 
 
 func _draw_back_cast(tip: Vector2) -> void:
 	var p := model.stroke_progress() if model.state == CastModel.State.BACK else 1.0
 	var dir := -model.aim_direction()
-	var reach := model.line_out * BACK_CAST_SCALE * clampf(p, 0.1, 1.0)
+	var reach := WorldScale.to_px(model.line_out) * BACK_CAST_SCALE * clampf(p, 0.1, 1.0)
 	var end := tip + dir * reach
 	# Late: the line sinks toward the grass.
 	var lateness := maxf(0.0, (p - 1.0) * model.phase_ideal / tuning.drop_time)
@@ -261,7 +261,7 @@ func _draw_fly(p: Vector2) -> void:
 
 
 func _draw_target(tip: Vector2) -> void:
-	var p := (tip + model.aim_direction() * model.line_out).floor()
+	var p := (tip + model.aim_direction() * WorldScale.to_px(model.line_out)).floor()
 	for o in [Vector2(-3, 0), Vector2(2, 0), Vector2(0, -3), Vector2(0, 2)]:
 		draw_rect(Rect2(p + o, Vector2(1, 1)), COL_TARGET)
 

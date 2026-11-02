@@ -18,9 +18,9 @@ extends Resource
 @export var display_name := "Classic"
 @export_multiline var description := ""
 
-## Distances (px from the rod tip) that split Short / Middle / Long.
-const SHORT_MAX := 48.0
-const MIDDLE_MAX := 82.0
+## Distances (m from the rod tip) that split Short / Middle / Long.
+const SHORT_MAX := 6.0
+const MIDDLE_MAX := 10.25
 
 
 func start_line(model: CastModel) -> float:
@@ -29,7 +29,7 @@ func start_line(model: CastModel) -> float:
 
 func stroke_ideal(model: CastModel) -> float:
 	var t := model.tuning
-	return t.base_stroke_time + model.line_out * t.stroke_time_per_px
+	return t.base_stroke_time + model.line_out * t.stroke_time_per_m
 
 
 ## +/- seconds counted as perfect and okay for the stroke being held now.
@@ -63,7 +63,7 @@ func after_false_cast(model: CastModel, q: float) -> String:
 	return "Tight loop" if q >= 0.95 else ""
 
 
-## px the fly travels from the rod tip on delivery, given the cast's quality.
+## Metres the fly travels from the rod tip on delivery, given the cast's quality.
 func delivery_reach(model: CastModel, q: float) -> float:
 	return model.line_out * lerpf(model.tuning.short_cast_factor, 1.0, q)
 

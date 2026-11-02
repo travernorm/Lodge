@@ -40,7 +40,7 @@ func _test_clean_cast_lands_delicately() -> void:
 	_wait_landing(m)
 	_check(m.state == CastModel.State.LANDED, "clean cast: fly lands")
 	_check(m.presentation == "Delicate", "clean cast: delicate, got %s (q=%.2f)" % [m.presentation, m.last_cast_quality])
-	_check(absf(m.landing_offset.length() - m.tuning.line_start) < 1.0,
+	_check(absf(m.landing_offset.length() - m.tuning.line_start) < 0.125,
 		"clean cast: reaches full line (%.1f vs %.1f)" % [m.landing_offset.length(), m.tuning.line_start])
 
 
@@ -60,7 +60,7 @@ func _test_false_casts_add_line() -> void:
 	_check(m.false_casts == 3, "false casts: counted 3, got %d" % m.false_casts)
 	_check(is_equal_approx(m.line_out, expected), "false casts: line %.1f, expected %.1f" % [m.line_out, expected])
 	_check(m.presentation == "Delicate", "false casts: still delicate, got %s" % m.presentation)
-	_check(m.landing_offset.length() > m.tuning.line_start + 40.0, "false casts: cast lands farther out")
+	_check(m.landing_offset.length() > m.tuning.line_start + 5.0, "false casts: cast lands farther out")
 
 
 func _test_letting_go_of_r_collapses() -> void:
@@ -73,7 +73,7 @@ func _test_letting_go_of_r_collapses() -> void:
 
 func _test_holding_r_too_long_ticks_grass() -> void:
 	var m := _model()
-	var ideal := m.tuning.base_stroke_time + m.tuning.line_start * m.tuning.stroke_time_per_px
+	var ideal := m.tuning.base_stroke_time + m.tuning.line_start * m.tuning.stroke_time_per_m
 	_hold(m, ideal + m.tuning.drop_time + 0.15, true, false)
 	_check(m.state == CastModel.State.IDLE, "grass: cast collapses")
 	_check(_last_message().contains("grass"), "grass: message mentions grass, got '%s'" % _last_message())
@@ -93,7 +93,7 @@ func _test_long_overlap_throws_tailing_loop() -> void:
 
 func _test_early_strokes_fall_short() -> void:
 	var m := _model()
-	var ideal := m.tuning.base_stroke_time + m.tuning.line_start * m.tuning.stroke_time_per_px
+	var ideal := m.tuning.base_stroke_time + m.tuning.line_start * m.tuning.stroke_time_per_m
 	_hold(m, ideal * 0.4, true, false)
 	_hold(m, OVERLAP, true, true)
 	_hold(m, ideal * 0.4, false, true)
@@ -122,11 +122,11 @@ func _test_pick_up_and_recast() -> void:
 	_forward(m)
 	_release(m)
 	_wait_landing(m)
-	m.line_out = 70.0  # the controller sets this from how far the fly drifted
+	m.line_out = 8.75  # the controller sets this from how far the fly drifted
 	_hold(m, DT, true, false)
 	_check(m.state == CastModel.State.BACK, "pick-up: R lifts the line into a back cast")
-	_check(is_equal_approx(m.line_out, 70.0), "pick-up: keeps the line that was out")
-	_check(m.phase_ideal > m.tuning.base_stroke_time + 24.0 * m.tuning.stroke_time_per_px,
+	_check(is_equal_approx(m.line_out, 8.75), "pick-up: keeps the line that was out")
+	_check(m.phase_ideal > m.tuning.base_stroke_time + 3.0 * m.tuning.stroke_time_per_m,
 		"pick-up: longer line needs a longer stroke")
 
 

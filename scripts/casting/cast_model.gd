@@ -25,7 +25,7 @@ enum State { IDLE, BACK, BACK_TO_FORWARD, GAP, FORWARD, FORWARD_TO_BACK, FLIGHT,
 
 ## A coaching message after a stroke, overlap or fault. quality is 0..1.
 signal feedback(text: String, quality: float)
-## The fly left the rod. offset is relative to the rod tip at release.
+## The fly left the rod. offset (m) is relative to the rod tip at release.
 signal delivered(offset: Vector2, quality: float)
 ## The fly touched down.
 signal landed(presentation: String, quality: float)
@@ -39,10 +39,10 @@ var rules: CastRules
 ## Every stroke and overlap of the current cast, oldest first, for practice mode:
 ## {kind: "back" | "forward" | "overlap", seconds, ideal, quality}
 var strokes: Array[Dictionary] = []
-## Reach (px) of the last delivery.
+## Reach (m) of the last delivery.
 var last_reach := 0.0
 var state := State.IDLE
-## Line out in px. 0 when reeled in.
+## Line out in metres. 0 when reeled in.
 var line_out := 0.0
 ## -1 (cast angled left) .. 1 (angled right). 0 is straight across the river.
 var aim := 0.0
@@ -53,6 +53,7 @@ var false_casts := 0
 ## Results of the most recent delivery.
 var last_cast_quality := 0.0
 var presentation := ""
+## Where the fly lands, in metres from the rod tip.
 var landing_offset := Vector2.ZERO
 ## Quality of the most recent scored stroke or overlap.
 var last_score := 0.0
