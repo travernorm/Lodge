@@ -1,0 +1,294 @@
+class_name CastModel
+extends RefCounted
+## The bumper casting rhythm as pure logic, with no drawing or input reading.
+## Call update() every frame with the time and whether R and L are held, then read
+## the state and listen to the signals. Kept apart from the scene so the rhythm
+## can be tested headless (see tests/cast_test.gd).
+##
+## The rhythm:
+##   1. Hold R: back cast. The line unrolls behind you. Wait for it to straighten
+##      (the ideal time grows with the line that's out).
+##   2. Press L while still holding R, then let go of R: a slight overlap shoots
+##      the forward cast.
+##   3. While L is held the line unrolls forward. Either:
+##      - overlap back into R for a false cast, which adds line, or
+##      - let go of L to deliver the fly.
+##
+## Mistakes: letting go of R before pressing L collapses the cast; holding a
+## stroke too long drops the line; overlapping the bumpers too long throws a
+## tailing loop or tangles the leader.
+
+enum State { IDLE, BACK, BACK_TO_FORWARD, GAP, FORWARD, FORWARD_TO_BACK, FLIGHT, LANDED }
+
+## A coaching message after a stroke, overlap or fault. quality is 0..1.
+signal feedback(text: String, quality: float)
+## The fly left the rod. offset is relative to the rod tip at release.
+signal delivered(offset: Vector2, quality: float)
+## The fly touched down.
+signal landed(presentation: String, quality: float)
+## The cast fell apart and the line is back on the reel.
+signal collapsed(reason: String)
+
+var tuning: CastTuning
+var state := State.IDLE
+## Line out in px. 0 when reeled in.
+var line_out := 0.0
+## -1 (cast angled left) .. 1 (angled right). 0 is straight across the river.
+var aim := 0.0
+## When the current stroke (back or forward) started, and its ideal length.
+var phase_start := 0.0
+var phase_ideal := 0.0
+var false_casts := 0
+## Results of the most recent delivery.
+var last_cast_quality := 0.0
+var presentation := ""
+var landing_offset := Vector2.ZERO
+## Quality of the most recent scored stroke or overlap.
+var last_score := 0.0
+
+var _now := 0.0
+## Scores for the whole cast and for the current false-cast cycle.
+## x = quality, y = weight. A clean overlap counts half as much as a stroke.
+var _scores: Array[Vector2] = []
+var _cycle: Array[Vector2] = []
+var _overlap_start := 0.0
+var _gap_start := 0.0
+var _flight_start := 0.0
+var _rng := RandomNumberGenerator.new()
+## After a collapse, R has to be let go before a new cast can start.
+var _needs_release := false
+
+
+func _init(p_tuning: CastTuning = null, rng_seed := 0) -> void:
+	tuning = p_tuning if p_tuning != null else CastTuning.new()
+	if rng_seed != 0:
+		_rng.seed = rng_seed
+	else:
+		_rng.randomize()
+
+
+## True while a cast is in progress (not idle and not lying on the water).
+func is_busy() -> bool:
+	return state != State.IDLE and state != State.LANDED
+
+
+func ideal_stroke_time() -> float:
+	return tuning.base_stroke_time + line_out * tuning.stroke_time_per_px
+
+
+## 0 at the start of a stroke, 1 at its ideal moment, above 1 when late.
+func stroke_progress() -> float:
+	if phase_ideal <= 0.0:
+		return 0.0
+	return (_now - phase_start) / phase_ideal
+
+
+func flight_progress() -> float:
+	return clampf((_now - _flight_start) / tuning.flight_time, 0.0, 1.0)
+
+
+## Unit vector the cast travels along. Up the screen is straight across the river.
+func aim_direction() -> Vector2:
+	var angle := deg_to_rad(aim * tuning.max_aim_degrees)
+	return Vector2(sin(angle), -cos(angle))
+
+
+func reel_in() -> void:
+	state = State.IDLE
+	line_out = 0.0
+	_scores.clear()
+	_cycle.clear()
+
+
+func update(now: float, r: bool, l: bool) -> void:
+	_now = now
+	if _needs_release:
+		if r or l:
+			return
+		_needs_release = false
+	match state:
+		State.IDLE, State.LANDED:
+			if r and not l:
+				if state == State.IDLE:
+					line_out = tuning.line_start
+				_scores.clear()
+				false_casts = 0
+				_start_back()
+
+		State.BACK:
+			if r and l:
+				_score_stroke("back")
+				_overlap_start = now
+				state = State.BACK_TO_FORWARD
+			elif l:
+				# R released and L pressed on the same frame: no overlap at all.
+				_score_stroke("back")
+				_score_overlap(0.0)
+				_start_forward()
+			elif not r:
+				_score_stroke("back")
+				_gap_start = now
+				state = State.GAP
+			elif now - phase_start - phase_ideal > tuning.drop_time:
+				_collapse("Held R too long. The line ticked the grass behind you.")
+
+		State.GAP:
+			if l:
+				_push(0.35, "Gap between bumpers. Press L before letting go of R.")
+				_start_forward()
+			elif r:
+				_start_back()
+			elif now - _gap_start > tuning.gap_grace:
+				_collapse("Let go of R without pressing L. Overlap them slightly.")
+
+		State.BACK_TO_FORWARD:
+			if l and not r:
+				_score_overlap(now - _overlap_start)
+				_start_forward()
+			elif r and not l:
+				state = State.BACK
+			elif not r and not l:
+				_collapse("Let go of both bumpers. The cast fell apart.")
+			elif now - _overlap_start > tuning.tailing_overlap * 2.0:
+				_collapse("Wind knot! Both bumpers held far too long.")
+
+		State.FORWARD:
+			if r and l:
+				_score_stroke("forward")
+				_overlap_start = now
+				state = State.FORWARD_TO_BACK
+			elif r:
+				_score_stroke("forward")
+				_score_overlap(0.0)
+				_finish_false_cast()
+				_start_back()
+			elif not l:
+				_score_stroke("forward")
+				_deliver()
+			elif now - phase_start - phase_ideal > tuning.drop_time:
+				_push(0.15, "Held L too long. The line slapped down.")
+				_deliver()
+
+		State.FORWARD_TO_BACK:
+			if r and not l:
+				_score_overlap(now - _overlap_start)
+				_finish_false_cast()
+				_start_back()
+			elif l and not r:
+				state = State.FORWARD
+			elif not r and not l:
+				_deliver()
+			elif now - _overlap_start > tuning.tailing_overlap * 2.0:
+				_collapse("Wind knot! Both bumpers held far too long.")
+
+		State.FLIGHT:
+			if now - _flight_start >= tuning.flight_time:
+				state = State.LANDED
+				landed.emit(presentation, last_cast_quality)
+
+
+## Maps how far off the ideal moment a stroke ended (seconds) to 0..1.
+func timing_quality(error: float) -> float:
+	var a := absf(error)
+	if a <= tuning.perfect_window:
+		return 1.0
+	if a <= tuning.ok_window:
+		return lerpf(1.0, 0.6, (a - tuning.perfect_window) / (tuning.ok_window - tuning.perfect_window))
+	return clampf(lerpf(0.6, 0.15, (a - tuning.ok_window) / (tuning.ok_window * 0.5)), 0.15, 0.6)
+
+
+func overlap_quality(overlap: float) -> float:
+	if overlap < tuning.overlap_good_min:
+		return 0.7
+	if overlap <= tuning.overlap_good_max:
+		return 1.0
+	var t := (overlap - tuning.overlap_good_max) / (tuning.tailing_overlap - tuning.overlap_good_max)
+	return clampf(lerpf(1.0, 0.4, t), 0.2, 1.0)
+
+
+func _start_back() -> void:
+	state = State.BACK
+	_cycle.clear()
+	phase_start = _now
+	phase_ideal = ideal_stroke_time()
+
+
+func _start_forward() -> void:
+	state = State.FORWARD
+	phase_start = _now
+	phase_ideal = ideal_stroke_time()
+
+
+func _score_stroke(stroke_name: String) -> void:
+	var error := (_now - phase_start) - phase_ideal
+	var q := timing_quality(error)
+	var msg := ""
+	if q < 1.0:
+		msg = ("Early on the %s cast" if error < 0.0 else "Late on the %s cast") % stroke_name
+	_push(q, msg)
+
+
+func _score_overlap(overlap: float) -> void:
+	var q := overlap_quality(overlap)
+	var msg := ""
+	if overlap < tuning.overlap_good_min:
+		msg = "Overlap the bumpers slightly"
+	elif overlap >= tuning.tailing_overlap:
+		msg = "Tailing loop. Let go of the first bumper sooner."
+	elif q < 1.0:
+		msg = "Overlap ran a little long"
+	_push(q, msg, 0.5 if q >= 0.7 else 1.0)
+
+
+func _push(q: float, msg: String, weight := 1.0) -> void:
+	_scores.append(Vector2(q, weight))
+	_cycle.append(Vector2(q, weight))
+	last_score = q
+	if msg != "":
+		feedback.emit(msg, q)
+
+
+func _finish_false_cast() -> void:
+	var q := _average(_cycle)
+	false_casts += 1
+	if q < tuning.line_gain_threshold:
+		feedback.emit("Sloppy false cast. No line gained.", q)
+		return
+	var gain := lerpf(tuning.line_gain_min, tuning.line_gain_max,
+		inverse_lerp(tuning.line_gain_threshold, 1.0, q))
+	line_out = minf(line_out + gain, tuning.line_max)
+	if q >= 0.95:
+		feedback.emit("Tight loop", q)
+
+
+func _deliver() -> void:
+	var q := _average(_scores)
+	var reach := line_out * lerpf(tuning.short_cast_factor, 1.0, q)
+	var scatter := _rng.randf_range(-1.0, 1.0) * tuning.max_scatter_degrees * (1.0 - q)
+	landing_offset = aim_direction().rotated(deg_to_rad(scatter)) * reach
+	last_cast_quality = q
+	if q >= tuning.delicate_quality:
+		presentation = "Delicate"
+	elif q >= tuning.fair_quality:
+		presentation = "Fair"
+	else:
+		presentation = "Splashy"
+	state = State.FLIGHT
+	_flight_start = _now
+	delivered.emit(landing_offset, q)
+
+
+func _collapse(reason: String) -> void:
+	reel_in()
+	_needs_release = true
+	feedback.emit(reason, 0.0)
+	collapsed.emit(reason)
+
+
+static func _average(values: Array[Vector2]) -> float:
+	var total := 0.0
+	var weight := 0.0
+	for v in values:
+		total += v.x * v.y
+		weight += v.y
+	return total / weight if weight > 0.0 else 0.0
