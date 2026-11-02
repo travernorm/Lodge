@@ -14,10 +14,11 @@ extends CastRules
 ## Fraction of your tempo counted as perfect / okay either side of it.
 @export var perfect_fraction := 0.12
 @export var ok_fraction := 0.3
-@export var line_start := 26.0
-@export var line_max := 118.0
-## Line a perfectly consistent false cast adds.
-@export var line_gain := 18.0
+## Line (m) out at the start, and the most you can carry.
+@export var line_start := 3.25
+@export var line_max := 14.75
+## Line (m) a perfectly consistent false cast adds.
+@export var line_gain := 2.25
 ## How much of each good stroke's length blends into the beat (0 = fixed beat).
 @export var follow := 0.25
 @export var worst_reach := 0.6

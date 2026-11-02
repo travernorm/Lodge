@@ -32,7 +32,7 @@ That rewrites the `[input]` section of `project.godot`. Game code refers to acti
 
 All the casting feel numbers live in `data/cast_tuning.tres`. Open it in Godot and edit them in the inspector, then press F5 to try the result. The ones you'll most likely touch:
 
-- **Stroke timing:** `base_stroke_time` and `stroke_time_per_px` set how long each stroke should be held. `perfect_window` and `ok_window` set how forgiving that is, and `drop_time` sets how late you can be before the line falls.
+- **Stroke timing:** `base_stroke_time` and `stroke_time_per_m` set how long each stroke should be held. `perfect_window` and `ok_window` set how forgiving that is, and `drop_time` sets how late you can be before the line falls.
 - **Bumper overlap:** `overlap_good_min`/`overlap_good_max` is the overlap that feels right, `tailing_overlap` is where it becomes a fault, and `gap_grace` is how long you can let go of both bumpers.
 - **Line:** `line_start`, `line_max`, and how much line a clean false cast adds.
 

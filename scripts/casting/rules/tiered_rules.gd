@@ -18,8 +18,8 @@ extends CastRules
 ## Fraction of the tempo counted as perfect / okay either side of it.
 @export var perfect_fraction := 0.15
 @export var ok_fraction := 0.38
-## Line out (px) at each step: Short, Middle, Long.
-@export var step_lengths := PackedFloat32Array([36.0, 66.0, 100.0])
+## Line out (m) at each step: Short, Middle, Long.
+@export var step_lengths := PackedFloat32Array([4.5, 8.25, 12.5])
 ## A false cast must average at least this quality to climb a step.
 @export var climb_quality := 0.55
 ## Fraction of the step's length a poor delivery still reaches.
@@ -64,6 +64,6 @@ func delivery_reach(model: CastModel, q: float) -> float:
 func _step_for(line: float) -> int:
 	var best := 0
 	for i in step_lengths.size():
-		if line >= step_lengths[i] - 0.5:
+		if line >= step_lengths[i] - 0.0625:
 			best = i
 	return best

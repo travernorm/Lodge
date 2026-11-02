@@ -4,23 +4,26 @@ extends Resource
 ## Godot inspector to tweak the feel without touching code.
 ##
 ## A stroke's ideal length grows with the line that's out, like a real cast:
-##   ideal = base_stroke_time + line_out * stroke_time_per_px
+##   ideal = base_stroke_time + line_out * stroke_time_per_m
+##
+## Distances are in metres (REQ-0001).
 
 @export_group("Line")
-## Line out (px) when a fresh cast starts: roughly rod tip plus leader.
-@export var line_start := 24.0
-## Most line you can carry in the air.
-@export var line_max := 118.0
-## Line added by a false cast that only just held together.
-@export var line_gain_min := 4.0
-## Line added by a clean false cast.
-@export var line_gain_max := 16.0
+## Line out (m) when a fresh cast starts: roughly rod tip plus leader.
+@export var line_start := 3.0
+## Most line (m) you can carry in the air.
+@export var line_max := 14.75
+## Line (m) added by a false cast that only just held together.
+@export var line_gain_min := 0.5
+## Line (m) added by a clean false cast.
+@export var line_gain_max := 2.0
 ## False casts averaging below this quality add no line.
 @export var line_gain_threshold := 0.4
 
 @export_group("Stroke timing")
 @export var base_stroke_time := 0.25
-@export var stroke_time_per_px := 0.0035
+## Extra seconds per metre of line out.
+@export var stroke_time_per_m := 0.028
 ## +/- seconds around the ideal that count as perfect.
 @export var perfect_window := 0.06
 ## +/- seconds around the ideal that still count as okay.
