@@ -79,7 +79,8 @@ Each PR plays exactly the same as before it, and passes every test.
    * `CastPractice.TARGET_REACH` (32, 65, 100 px) and its ruler drawing.
    * Pixel thresholds in `tests/cast_test.gd` and `tests/cast_rules_test.gd` (for example "falls short by more than 10 px").
    * The README's rule-set table, which quotes pixel values.
-4. **Fishing.** `DriftModel`, `FightModel`, `Fish`, `FishSpecies` and the fish files. Remove the pixel wrapper from step 2. This step can merge with ARCHITECTURE.md step A (splitting views out of `fishing_controller.gd`) if both are approved, since both touch the same lines.
+4. **Fishing.** `DriftModel`, `FightModel`, `Fish`, `FishSpecies` and the fish files. Fishing reads the river in metres directly, so the lie-area conversion in `Fish.respawn()` and the test-side conversions go. `lie_area` and `bite_range` become `lie_area_m` and `bite_range_m`.
+   * *As built:* `stream_scene.flow_at()` and `is_water()` stay as **pixel helpers** rather than being removed. The cast controller still places the fly in screen pixels, and so do the streaks, so these are the right edge for those callers. `fishing_controller.gd` converts at its own edges, the cast's fly position and the drawing. Moving the controllers' positions into world metres belongs with the camera and scrolling work (REQ-0002) and ARCHITECTURE.md step B.
 
 Before each PR: screenshots before and after (`tools/capture_screenshot.gd`) to show nothing moved, and the full `tools/run_tests.sh`.
 

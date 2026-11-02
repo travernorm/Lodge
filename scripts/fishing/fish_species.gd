@@ -8,15 +8,16 @@ extends Resource
 @export var color := Color("4a5a3a")
 
 @export_group("Where it lives")
-## Area of the test stream (screen px) where this fish picks its lie.
-@export var lie_area := Rect2(0, 60, 320, 80)
+## Area of the test stream (metres from the screen's top-left) where this fish
+## picks its lie.
+@export var lie_area_m := Rect2(0, 7.5, 40, 10)
 
 @export_group("Biting")
 ## Chance it bites a delicate cast landing right by it. Fair landings get 60% of
-## this and splashy ones 25%, and it falls off with distance out to bite_range.
+## this and splashy ones 25%, and it falls off with distance out to bite_range_m.
 @export_range(0.0, 1.0) var bite_chance := 0.6
-## Casts landing farther than this (px) from the fish never get a bite.
-@export var bite_range := 40.0
+## Casts landing farther than this (metres) from the fish never get a bite.
+@export var bite_range_m := 5.0
 ## Fly ids this fish likes. Not used for bites yet; kept for when the fly box returns.
 @export var preferred_flies := PackedStringArray()
 

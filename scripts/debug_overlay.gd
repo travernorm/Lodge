@@ -197,13 +197,13 @@ func _draw_water() -> void:
 	var fishing := get_tree().get_first_node_in_group(&"fishing")
 	if fishing != null:
 		for f in fishing.fish:
-			draw_arc(f.lie, 3.5, 0.0, TAU, 12, COL_FAST, 1.0)
+			draw_arc(WorldScale.vec_to_px(f.lie), 3.5, 0.0, TAU, 12, COL_FAST, 1.0)
 
 	# Key, and what the water is doing under the fly.
 	var font := ThemeDB.fallback_font
 	var fly_line := ""
 	if fishing != null and fishing.phase == 1:  # drifting
-		var fly := WorldScale.vec_to_m(fishing.drift.fly)
+		var fly: Vector2 = fishing.drift.fly
 		fly_line = "fly lane %.1f m/s  seam %.1f  lie %.1f" % [
 			river.flow_at(fly).length(), river.seam_at(fly), river.lie_at(fly)]
 	var panel := Rect2(4, 4, 208, 22 if fly_line.is_empty() else 31)

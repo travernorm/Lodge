@@ -48,7 +48,7 @@ func _test_data_loads() -> void:
 		var fly := load(path) as FlyPattern
 		_check(fly != null and fly.display_name != "", "data: %s loads" % path.get_file())
 	for sp in [_cutthroat, _redband, _brook]:
-		_check(sp != null and sp.bite_chance > 0.0 and sp.bite_range > Fish.CLOSE_RANGE, "data: %s has bite odds" % sp.id)
+		_check(sp != null and sp.bite_chance > 0.0 and sp.bite_range_m > Fish.CLOSE_RANGE, "data: %s has bite odds" % sp.id)
 		_check(sp.set_min < sp.set_max, "data: %s set window is valid" % sp.id)
 
 
@@ -101,31 +101,31 @@ func _test_slow_push_is_not_a_flick() -> void:
 
 func _test_uniform_current_starts_drag_free() -> void:
 	var d := DriftModel.new()
-	d.start(Vector2(160, 130), Vector2(160, 90))
-	_run_drift(d, 1.0, func(_p: Vector2): return Vector2(20, 0))
+	d.start(Vector2(20, 16.25), Vector2(20, 11.25))
+	_run_drift(d, 1.0, func(_p: Vector2): return Vector2(2.5, 0))
 	_check(d.drag < 0.15, "drift: first second in even current is drag-free (drag %.2f)" % d.drag)
 
 
 func _test_faster_belly_drags() -> void:
 	var d := DriftModel.new()
-	d.start(Vector2(160, 130), Vector2(160, 70))
+	d.start(Vector2(20, 16.25), Vector2(20, 8.75))
 	# Fast water mid-river, slow water at the fly: the classic drag setup.
-	_run_drift(d, 2.0, func(p: Vector2): return Vector2(50 if p.y > 85 else 12, 0))
+	_run_drift(d, 2.0, func(p: Vector2): return Vector2(6.25 if p.y > 10.625 else 1.5, 0))
 	_check(d.drag > 0.5, "drift: fast mid-river current drags a fly in slow water (drag %.2f)" % d.drag)
 
 
 func _test_mend_buys_a_drag_free_drift() -> void:
-	var flow := func(p: Vector2): return Vector2(50 if p.y > 85 else 12, 0)
+	var flow := func(p: Vector2): return Vector2(6.25 if p.y > 10.625 else 1.5, 0)
 	var unmended := DriftModel.new()
-	unmended.start(Vector2(160, 130), Vector2(160, 70))
+	unmended.start(Vector2(20, 16.25), Vector2(20, 8.75))
 	var mended := DriftModel.new()
-	mended.start(Vector2(160, 130), Vector2(160, 70))
+	mended.start(Vector2(20, 16.25), Vector2(20, 8.75))
 	var worst_unmended := 0.0
 	var worst_mended := 0.0
 	for i in 120:
 		unmended.update(DT, flow)
 		mended.update(DT, flow)
-		if mended.bow() > 8.0:
+		if mended.bow() > 1.0:
 			mended.mend()
 		worst_unmended = maxf(worst_unmended, unmended.drag)
 		worst_mended = maxf(worst_mended, mended.drag)
@@ -135,10 +135,10 @@ func _test_mend_buys_a_drag_free_drift() -> void:
 
 func _test_early_mend_jolts_fly() -> void:
 	var d := DriftModel.new()
-	d.start(Vector2(160, 130), Vector2(160, 70))
+	d.start(Vector2(20, 16.25), Vector2(20, 8.75))
 	d.mend()
 	_check(d.over_mended, "drift: mending with no bow moves the fly")
-	_run_drift(d, 0.15, func(_p: Vector2): return Vector2(10, 0))
+	_run_drift(d, 0.15, func(_p: Vector2): return Vector2(1.25, 0))
 	_check(d.drag > 0.3, "drift: over-mend shows as drag (%.2f)" % d.drag)
 
 
@@ -146,14 +146,14 @@ func _test_early_mend_jolts_fly() -> void:
 
 func _test_bite_chance_by_distance_and_presentation() -> void:
 	var f := Fish.new(_redband, _rng)
-	var close := f.lie + Vector2(-5, 0)
+	var close := f.lie + Vector2(-0.625, 0)
 	var delicate := f.bite_chance_for(close, "Delicate")
 	_check(is_equal_approx(delicate, _redband.bite_chance), "odds: delicate cast right by the fish gets the full chance (%.2f)" % delicate)
 	_check(f.bite_chance_for(close, "Fair") < delicate, "odds: a fair landing is less likely")
 	_check(f.bite_chance_for(close, "Splashy") < f.bite_chance_for(close, "Fair"), "odds: a splashy landing is least likely")
-	var mid := f.bite_chance_for(f.lie + Vector2(0, -_redband.bite_range * 0.6), "Delicate")
+	var mid := f.bite_chance_for(f.lie + Vector2(0, -_redband.bite_range_m * 0.6), "Delicate")
 	_check(mid > 0.0 and mid < delicate, "odds: farther away is less likely (%.2f)" % mid)
-	_check(f.bite_chance_for(f.lie + Vector2(_redband.bite_range + 1.0, 0), "Delicate") == 0.0, "odds: out of range never bites")
+	_check(f.bite_chance_for(f.lie + Vector2(_redband.bite_range_m + 0.125, 0), "Delicate") == 0.0, "odds: out of range never bites")
 
 
 func _test_bite_rate_matches_the_odds() -> void:
@@ -161,7 +161,7 @@ func _test_bite_rate_matches_the_odds() -> void:
 	var bites := 0
 	var casts := 2000
 	for i in casts:
-		f.on_landing(f.lie + Vector2(-5, 0), "Delicate")
+		f.on_landing(f.lie + Vector2(-0.625, 0), "Delicate")
 		if f.state == Fish.State.WAITING:
 			bites += 1
 	var rate := float(bites) / casts
@@ -170,7 +170,7 @@ func _test_bite_rate_matches_the_odds() -> void:
 
 func _test_bite_becomes_a_take() -> void:
 	var f := Fish.new(_eager(_redband), _rng)
-	var fly := f.lie + Vector2(-5, 0)
+	var fly := f.lie + Vector2(-0.625, 0)
 	f.on_landing(fly, "Delicate")
 	var events: Array[StringName] = []
 	for i in 180:
@@ -221,20 +221,20 @@ func _test_set_timing() -> void:
 func _test_full_pressure_snaps_a_strong_fish() -> void:
 	var strong: FishSpecies = _redband.duplicate()
 	strong.pull = 1.0
-	var f := FightModel.new(strong, 50.0, -PI / 2.0, _rng)
+	var f := FightModel.new(strong, 6.25, -PI / 2.0, _rng)
 	var result := _run_fight(f, 10.0, func(_f: FightModel): return Vector2(0, -1))
 	_check(result == FightModel.Result.SNAPPED, "fight: full pressure on a strong running fish snaps it (%s)" % FightModel.Result.keys()[result])
 
 
 func _test_no_pressure_throws_hook() -> void:
-	var f := FightModel.new(_brook, 40.0, -PI / 2.0, _rng)
+	var f := FightModel.new(_brook, 5.0, -PI / 2.0, _rng)
 	var result := _run_fight(f, 10.0, func(_f: FightModel): return Vector2.ZERO)
 	_check(result == FightModel.Result.THREW_HOOK, "fight: no pressure and it throws the hook (%s)" % FightModel.Result.keys()[result])
 
 
 func _test_steady_pressure_lands_fish() -> void:
 	for sp in [_cutthroat, _redband, _brook]:
-		var f := FightModel.new(sp, 50.0, -PI / 2.0, _rng)
+		var f := FightModel.new(sp, 6.25, -PI / 2.0, _rng)
 		# Ease off and pull sideways on runs, lean in between them.
 		var policy := func(fm: FightModel):
 			return Vector2(-fm.run_dir * 0.4, -0.1) if fm.running else Vector2(0, -0.85)
@@ -245,7 +245,7 @@ func _test_steady_pressure_lands_fish() -> void:
 func _test_holding_on_lands_the_starter_trout() -> void:
 	# The starter redband is gentle: holding full pressure the whole fight (as on
 	# a keyboard) lands it instead of snapping.
-	var f := FightModel.new(_redband, 50.0, -PI / 2.0, _rng)
+	var f := FightModel.new(_redband, 6.25, -PI / 2.0, _rng)
 	var result := _run_fight(f, 60.0, func(_f: FightModel): return Vector2(0, -1))
 	_check(result == FightModel.Result.LANDED, "fight: holding on the whole time lands the starter redband (%s)" % FightModel.Result.keys()[result])
 
@@ -286,16 +286,15 @@ func _test_fish_hold_in_good_lies() -> void:
 	var outside := 0
 	for i in 40:
 		var f := Fish.new(_redband, _rng, river)
-		var lie_m := WorldScale.vec_to_m(f.lie)  # fish lies are still px until REQ-0001 step 4
-		worst = minf(worst, river.lie_at(lie_m))
-		if not _redband.lie_area.grow(1.0).has_point(f.lie) or not river.is_water(lie_m):
+		worst = minf(worst, river.lie_at(f.lie))
+		if not _redband.lie_area_m.grow(0.125).has_point(f.lie) or not river.is_water(f.lie):
 			outside += 1
 	_check(worst >= Fish.MIN_LIE_SCORE * 0.8, "lies: the redband only holds in good water (worst lie %.2f)" % worst)
 	_check(outside == 0, "lies: always in its own area and never in the rock (%d strays)" % outside)
 	var nowhere := _redband.duplicate() as FishSpecies
-	nowhere.lie_area = Rect2(10, 140, 20, 6)  # ankle-deep edge water, no lies
+	nowhere.lie_area_m = Rect2(1.25, 17.5, 2.5, 0.75)  # ankle-deep edge water, no lies
 	var f := Fish.new(nowhere, _rng, river)
-	_check(nowhere.lie_area.grow(1.0).has_point(f.lie), "lies: with no good water it still stays in its area")
+	_check(nowhere.lie_area_m.grow(0.125).has_point(f.lie), "lies: with no good water it still stays in its area")
 	main.free()
 
 

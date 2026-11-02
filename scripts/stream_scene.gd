@@ -10,9 +10,10 @@ extends Node2D
 ## all read that one field.
 ##
 ## Units (REQ-0001): the river's layout and the field work in metres; this scene
-## draws in pixels through WorldScale. flow_at() and is_water() still take and
-## return pixels for casting and fishing, until the fishing step of REQ-0001
-## converts them; the river itself is river.flow_at() in metres.
+## draws in pixels through WorldScale. Fishing reads river.flow_at() and
+## river.is_water() in metres. flow_at() and is_water() below are screen-space
+## helpers (pixels in and out) for the things still placed in pixels: the cast's
+## fly position and the drifting streaks.
 ##
 ## The angler stands on the near (bottom) bank facing upstream across the water.
 
@@ -101,14 +102,13 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 
-## Current velocity (px/s) at a point on screen (px). The fly's drift uses this,
-## and mending exists to fight the difference between the fly's lane and the line's.
-## Temporary pixel wrapper over river.flow_at() (metres); see REQ-0001 step 4.
+## Current velocity (px/s) at a point on screen (px).
+## Pixel helper over river.flow_at() (metres), for screen-space callers.
 func flow_at(p: Vector2) -> Vector2:
 	return WorldScale.vec_to_px(river.flow_at(WorldScale.vec_to_m(p)))
 
 
-## Temporary pixel wrapper over river.is_water() (metres); see REQ-0001 step 4.
+## Pixel helper over river.is_water() (metres), for screen-space callers.
 func is_water(p: Vector2) -> bool:
 	return river.is_water(WorldScale.vec_to_m(p))
 

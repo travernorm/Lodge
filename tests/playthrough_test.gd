@@ -56,7 +56,7 @@ func _run() -> void:
 	# Put the trout wherever the fly is about to land, whatever the rule set.
 	_cast.model.delivered.connect(func(_offset: Vector2, _q: float):
 		if _trout.state == Fish.State.HOLDING:
-			_trout.lie = _cast._flight_to
+			_trout.lie = WorldScale.vec_to_m(_cast._flight_to)
 			_trout.pos = _trout.lie)
 
 	# 1. A catch under every rule set, with 0 and 1 false casts, walking between.
