@@ -20,6 +20,7 @@ func _initialize() -> void:
 	_test_early_strokes_fall_short()
 	_test_aim_swings_cast()
 	_test_pick_up_and_recast()
+	_test_facing_turns_the_cast()
 	if _failures == 0:
 		print("Cast tests passed.")
 		quit(0)
@@ -113,6 +114,27 @@ func _test_aim_swings_cast() -> void:
 	_release(m)
 	_check(m.landing_offset.x > m.tuning.line_start * 0.5, "aim: cast swings right (x=%.1f)" % m.landing_offset.x)
 	_check(m.landing_offset.y < 0.0, "aim: still lands across the river")
+
+
+## On a winding stretch the angler can face any way: a cast aimed straight
+## across goes where they face, and aiming right is right as they see it.
+func _test_facing_turns_the_cast() -> void:
+	var m := _model()
+	m.facing_angle = PI  # facing down the screen
+	_back(m)
+	_overlap(m)
+	_forward(m)
+	_release(m)
+	_check(m.landing_offset.y > m.tuning.line_start * 0.5 and absf(m.landing_offset.x) < m.landing_offset.y * 0.3,
+		"facing down the screen, a straight cast lands down the screen (%s)" % m.landing_offset)
+	m = _model()
+	m.facing_angle = PI
+	m.aim = 1.0
+	_back(m)
+	_overlap(m)
+	_forward(m)
+	_release(m)
+	_check(m.landing_offset.x < 0.0, "facing down the screen, aiming right swings to the angler's right (x=%.1f)" % m.landing_offset.x)
 
 
 func _test_pick_up_and_recast() -> void:

@@ -31,12 +31,17 @@ func _initialize() -> void:
 func _run(main: Node) -> void:
 	for i in FRAMES:
 		await process_frame
-	var flow_riffle: Vector2 = main.flow_at(Vector2(40, 103))
-	var flow_pool: Vector2 = main.flow_at(Vector2(280, 103))
-	if not (flow_riffle.x > flow_pool.x and flow_pool.x > 0.0):
-		_fail("Riffle should run faster than the pool (riffle %s, pool %s)" % [flow_riffle, flow_pool])
+	# The demo stretch (REQ-0002): the head riffle runs faster than the first pool.
+	var river: RiverField = main.river
+	if main.get(&"stretch") == null or river.stretch == null:
+		_fail("main.tscn should load the demo stretch")
 		return
-	if main.flow_at(Vector2(160, 20)) != Vector2.ZERO:
+	var flow_riffle := river.flow_at(Vector2(12.9, 18.4)).length()
+	var flow_pool := river.flow_at(Vector2(57.8, 43.1)).length()
+	if not (flow_riffle > flow_pool and flow_pool > 0.0):
+		_fail("Riffle should run faster than the pool (riffle %.2f, pool %.2f m/s)" % [flow_riffle, flow_pool])
+		return
+	if river.flow_at(Vector2(60, 5)) != Vector2.ZERO:
 		_fail("Bank should have no current")
 		return
 
@@ -51,14 +56,16 @@ func _run(main: Node) -> void:
 	if fishing == null or not fishing.has_method(&"current_fly"):
 		_fail("Fishing controller script did not load")
 		return
-	if fishing.fish.size() != 1:
-		_fail("Expected one trout in the stream, found %d" % fishing.fish.size())
+	if fishing.fish.size() != 5:
+		_fail("Expected five trout in the stretch, found %d" % fishing.fish.size())
 		return
 	var trout: Fish = fishing.fish[0]
 	trout.species = trout.species.duplicate()
 	trout.species.bite_chance = 1.0
-	trout.lie = WorldScale.vec_to_m(Vector2(166, 99))
-	trout.pos = trout.lie
+	# Move it under wherever the cast is headed, as the fly leaves the rod.
+	cast.model.delivered.connect(func(offset: Vector2, _q: float):
+		trout.lie = WorldScale.vec_to_m(main.rod_tip()) + offset
+		trout.pos = trout.lie)
 
 	# Play one real cast through the input system: R back cast, overlap into L,
 	# hold L, let go, and check the fly lands on the water.

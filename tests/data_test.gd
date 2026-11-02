@@ -23,6 +23,7 @@ func _initialize() -> void:
 	_test_cast_rules(rules)
 	_test_scene_wiring(flies, fish, rules)
 	_test_input_parity()
+	_test_stretches(fish)
 	_main.free()
 	if _failures == 0:
 		print("Data tests passed.")
@@ -178,6 +179,32 @@ func _test_input_parity() -> void:
 	for c in controls:
 		if controls[c] is StringName:
 			_check(InputMap.has_action(controls[c]), "input: Controls.%s (%s) is in the input map" % [c, controls[c]])
+
+
+## Every stretch: a river that crosses the map, the angler on dry land, rocks,
+## logs and eddies in the water, and trout that are real species.
+func _test_stretches(fish: Dictionary) -> void:
+	var stretches := _load_dir("res://data/stretches", "Stretch")
+	_check(not stretches.is_empty(), "there is at least one stretch")
+	for path in stretches:
+		var st: Stretch = stretches[path]
+		var stem: String = path.get_file().get_basename()
+		_check(st.centreline.size() >= 4, "stretch %s: centreline has at least 4 points" % stem)
+		_check(st.half_width > 1.0, "stretch %s: river is wider than 2 m" % stem)
+		_check(st.depth_keys.size() >= 2 and st.depth_keys[0].x <= 0.0 and st.depth_keys[-1].x >= 1.0,
+			"stretch %s: depth keys run from 0 to 1" % stem)
+		var f := RiverField.new()
+		f.build_stretch(st)
+		_check(not f.is_water(st.angler_start), "stretch %s: the angler starts on dry land" % stem)
+		for r in st.rocks:
+			_check(f.depth_at(Vector2(r.x, r.y) + Vector2(r.z + 0.5, 0)) > 0.0, "stretch %s: rock at (%s, %s) is in the river" % [stem, r.x, r.y])
+		for e in st.eddies:
+			_check(f.is_water(Vector2(e.x, e.y)), "stretch %s: eddy at (%s, %s) is in the river" % [stem, e.x, e.y])
+		for l in st.logs:
+			_check(f.is_water(Vector2(l.x, l.y)) or f.is_water(Vector2(l.z, l.w)), "stretch %s: log reaches the water" % stem)
+		_check(not st.trout.is_empty(), "stretch %s: has trout" % stem)
+		for sp in st.trout:
+			_check(sp != null and fish.has(sp.resource_path), "stretch %s: trout %s is in data/fish" % [stem, sp.id if sp != null else "?"])
 
 
 func _path(res: Resource) -> String:

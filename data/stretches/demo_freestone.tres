@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="Stretch" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/river/stretch.gd" id="1_7rl41"]
+[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="2_taxhy"]
+[ext_resource type="Resource" path="res://data/fish/redband.tres" id="3_ere81"]
+[ext_resource type="Resource" path="res://data/fish/cutthroat.tres" id="4_3jtx1"]
+[ext_resource type="Resource" path="res://data/fish/brook.tres" id="5_uv1mv"]
+
+[resource]
+script = ExtResource("1_7rl41")
+size_m = Vector2(120, 75)
+centreline = PackedVector2Array(-7.5, 18, 21, 19.5, 43.5, 30, 60, 45, 75, 55.5, 88.5, 63.75, 100.5, 64.5, 108.75, 57, 108, 43.5, 100.5, 30, 99, 13.5, 103.5, -9)
+half_width = 8.0
+depth_keys = PackedVector2Array(0, 0.3, 0.1, 0.4, 0.15, 0.43, 0.2, 0.33, 0.25, 0.4, 0.3, 0.67, 0.35, 0.94, 0.4, 0.81, 0.45, 0.48, 0.5, 0.33, 0.55, 0.32, 0.6, 0.53, 0.65, 1, 0.7, 0.83, 0.75, 0.4, 0.8, 0.3, 1, 0.3)
+bend_shift = 1.0
+rocks = Array[Vector3]([Vector3(24, 17.25, 0.9), Vector3(30, 23.5, 0.8), Vector3(36, 21.5, 1), Vector3(19.5, 22.25, 0.65)])
+logs = Array[Vector4]([Vector4(61, 56, 68, 53.5), Vector4(118.5, 53, 114, 47.5)])
+eddies = Array[Vector4]([Vector4(52.75, 30.75, 3, 0.45)])
+gravel = Array[Vector3]([])
+angler_start = Vector2(10, 7.5)
+trout = Array[ExtResource("2_taxhy")]([ExtResource("3_ere81"), ExtResource("3_ere81"), ExtResource("4_3jtx1"), ExtResource("3_ere81"), ExtResource("5_uv1mv")])

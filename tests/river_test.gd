@@ -11,6 +11,7 @@ const THALWEG := 13.75
 const RIFFLE_X := 5.0
 const POOL_X := 35.0
 const ROCK := Vector3(20, 12.5, 0.625)
+const STRETCH := "res://data/stretches/demo_freestone.tres"
 
 var _failures := 0
 
@@ -24,6 +25,15 @@ func _initialize() -> void:
 	_test_trout_hold_behind_the_boulder()
 	_test_test_stream_uses_the_field()
 	_test_one_water_speed()
+	# The demo stretch (REQ-0002): a winding 16 m river.
+	var st: Stretch = load(STRETCH)
+	var f := RiverField.new()
+	f.build_stretch(st)
+	_test_stretch_shape(f, st)
+	_test_bend_puts_deep_water_outside(f)
+	_test_stretch_boulders(f, st)
+	_test_eddy_circulates(f, st)
+	_test_trout_spread_over_the_stretch(f, st)
 	if _failures == 0:
 		print("River tests passed.")
 		quit(0)
@@ -160,6 +170,132 @@ func _test_one_water_speed() -> void:
 			seams += 1
 	_check(lies > 0 and seams > 0, "the test reach has lies and seams (%d, %d cells)" % [lies, seams])
 	_check(RiverField.HOLD_SPEED.y < RiverField.FOOD_SPEED.y, "trout hold in slower water than the food lane")
+
+
+# --- The demo stretch --------------------------------------------------------
+
+func _test_stretch_shape(f: RiverField, st: Stretch) -> void:
+	var k := f.centre.size() / 2
+	var c := f.centre[k]
+	var right := f.centre_dir[k].orthogonal() * -1.0  # right of the flow on screen
+	var w := st.half_width
+	_check(f.is_water(c + right * (w - 0.5)) and f.is_water(c - right * (w - 0.5)), "the river is 16 m bank to bank")
+	_check(not f.is_water(c + right * (w + 0.5)) and not f.is_water(c - right * (w + 0.5)), "the banks are dry")
+	var v := f.flow_at(c)
+	_check(v.normalized().dot(f.centre_dir[k]) > 0.9, "the current runs along the river's course")
+	_check(not f.is_water(st.angler_start), "the angler starts on dry land")
+
+
+## Finds the sharpest bend and checks both sides of it a few metres off the
+## centreline: the outside (cut bank) is deeper and faster, the inside shallow.
+func _test_bend_puts_deep_water_outside(f: RiverField) -> void:
+	var sharpest := 0
+	var turn := 0.0
+	for k in range(4, f.centre.size() - 4):
+		var a := absf(f.centre_dir[k - 4].angle_to(f.centre_dir[k + 4]))
+		if a > turn and _on_map(f, f.centre[k]):
+			turn = a
+			sharpest = k
+	var dir_a := f.centre_dir[sharpest - 4]
+	var dir_b := f.centre_dir[sharpest + 4]
+	var right := Vector2(-f.centre_dir[sharpest].y, f.centre_dir[sharpest].x)
+	var outside := -right if dir_a.angle_to(dir_b) > 0.0 else right  # turning right puts the outside on the left
+	var c := f.centre[sharpest]
+	var out_p := c + outside * 5.0
+	var in_p := c - outside * 5.0
+	_check(f.depth_at(out_p) > f.depth_at(in_p) * 1.5,
+		"in the hard bend the outside runs deeper (%.2f vs %.2f)" % [f.depth_at(out_p), f.depth_at(in_p)])
+	_check(f.flow_at(out_p).length() > f.flow_at(in_p).length() * 1.5,
+		"in the hard bend the outside runs faster (%.2f vs %.2f m/s)" % [f.flow_at(out_p).length(), f.flow_at(in_p).length()])
+
+
+func _on_map(f: RiverField, p: Vector2) -> bool:
+	return p.x > 0.0 and p.y > 0.0 and p.x < f.width and p.y < f.bottom
+
+
+## Every boulder: a slower pocket behind it and a seam off each side.
+func _test_stretch_boulders(f: RiverField, st: Stretch) -> void:
+	for r in st.rocks:
+		var c := Vector2(r.x, r.y)
+		var k := f.nearest_centre(c)
+		var down := f.centre_dir[k]
+		var side := down.orthogonal()
+		var pocket := f.flow_at(c + down * r.z * 2.0).length()
+		var open := f.flow_at(c - down * r.z * 4.0).length()
+		_check(pocket < open * 0.5, "boulder at %s has a slow pocket behind it (%.2f vs %.2f m/s)" % [c, pocket, open])
+		var seam_a := 0.0
+		var seam_b := 0.0
+		for t in [1.0, 2.0, 3.0]:
+			seam_a = maxf(seam_a, f.seam_at(c + down * r.z * t + side * r.z * 1.3))
+			seam_b = maxf(seam_b, f.seam_at(c + down * r.z * t - side * r.z * 1.3))
+		_check(seam_a > 0.4 and seam_b > 0.4, "boulder at %s has a seam off each side (%.2f, %.2f)" % [c, seam_a, seam_b])
+
+
+## The eddy: water runs back upstream along the bank, a fly dropped in it comes
+## back round without leaving downstream, the swirl has no sources or sinks, and
+## the eddy line is a strong seam with a lie on it.
+func _test_eddy_circulates(f: RiverField, st: Stretch) -> void:
+	_check(not st.eddies.is_empty(), "the stretch has an eddy")
+	if st.eddies.is_empty():
+		return
+	var e := st.eddies[0]
+	var c := Vector2(e.x, e.y)
+	var k := f.nearest_centre(c)
+	var down := f.centre_dir[k]
+	var to_bank := (c - f.centre[k]).normalized()
+	var by_bank := c + to_bank * e.z * 0.5
+	_check(f.flow_at(by_bank).dot(down) < -0.5, "water by the bank in the eddy runs back upstream (%.2f m/s)" % f.flow_at(by_bank).dot(down))
+
+	var start := c + to_bank * e.z * 0.8
+	var p := start
+	var farthest := 0.0
+	var left := false
+	var closed := false
+	for i in 2000:  # 20 s
+		p += f.flow_at(p) * 0.01
+		farthest = maxf(farthest, p.distance_to(c))
+		left = left or p.distance_to(start) > 1.5
+		if left and p.distance_to(start) < 0.4:
+			closed = true
+			break
+	_check(closed, "a fly dropped in the eddy comes back round near where it started")
+	_check(farthest < e.z * 1.5, "and never drifts out of the eddy (farthest %.1f m)" % farthest)
+
+	var worst := 0.0
+	var h := 0.05
+	for a in 16:
+		var q := c + Vector2.from_angle(a * TAU / 16.0) * e.z * (0.5 + 0.1 * (a % 8))
+		var div := (f.eddy_swirl(q + Vector2(h, 0)).x - f.eddy_swirl(q - Vector2(h, 0)).x
+			+ f.eddy_swirl(q + Vector2(0, h)).y - f.eddy_swirl(q - Vector2(0, h)).y) / (2.0 * h)
+		worst = maxf(worst, absf(div))
+	_check(worst < 0.01, "the eddy's swirl has no sources or sinks (max divergence %.4f /s)" % worst)
+
+	var line_seam := 0.0
+	for t in [-0.4, -0.2, 0.0, 0.2]:
+		line_seam = maxf(line_seam, f.seam_at(c + to_bank * e.z * t))
+	_check(line_seam > 0.45, "the eddy line is a strong seam (%.2f)" % line_seam)
+	var lie := f.best_lie(Rect2(c - Vector2.ONE * e.z, Vector2.ONE * e.z * 2.0))
+	_check(lie.z > 0.6, "trout can hold on the eddy line (%.2f)" % lie.z)
+
+
+## Five trout on five lies, all in water, at least Fish.LIE_GAP apart.
+func _test_trout_spread_over_the_stretch(f: RiverField, st: Stretch) -> void:
+	var rng := RandomNumberGenerator.new()
+	var area := Rect2(Vector2.ZERO, st.size_m)
+	for run in 5:
+		rng.seed = run
+		var lies := PackedVector2Array()
+		for n in st.trout.size():
+			var l := f.pick_lie(area, rng, Fish.MIN_LIE_SCORE, lies, Fish.LIE_GAP)
+			if l == Vector2.INF:
+				break
+			lies.append(l)
+		var ok := lies.size() == st.trout.size()
+		for a in lies.size():
+			ok = ok and f.is_water(lies[a])
+			for b in range(a + 1, lies.size()):
+				ok = ok and lies[a].distance_to(lies[b]) >= Fish.LIE_GAP
+		_check(ok, "run %d: %d trout get their own lies, in water and %.0f m apart" % [run, st.trout.size(), Fish.LIE_GAP])
 
 
 func _check(ok: bool, label: String) -> void:

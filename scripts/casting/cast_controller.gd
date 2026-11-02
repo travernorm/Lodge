@@ -64,9 +64,13 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_time += delta
 	if model.is_busy():
-		model.aim = clampf(model.aim + Controls.move_vector().x * AIM_SPEED * delta, -1.0, 1.0)
+		# Stick left aims left as the angler sees it, whichever way they face.
+		var stick := Controls.move_vector().rotated(-model.facing_angle)
+		model.aim = clampf(model.aim + stick.x * AIM_SPEED * delta, -1.0, 1.0)
 	elif model.state == CastModel.State.IDLE:
 		model.aim = move_toward(model.aim, 0.0, delta * 2.0)
+		if _stream.has_method(&"facing_angle"):
+			model.facing_angle = _stream.facing_angle()
 
 	var fighting: bool = _fishing != null and not _fishing.can_pick_up()
 	if model.state == CastModel.State.LANDED and not fighting:
@@ -90,11 +94,12 @@ func allows_walking() -> bool:
 ## stream scene aim it with the right stick.
 func rod_pose() -> Vector2:
 	var dir := model.aim_direction()
+	var turn := model.facing_angle
 	match model.state:
 		CastModel.State.BACK, CastModel.State.GAP:
-			return (-dir + Vector2(0.6, 0.0)).normalized()
+			return (-dir + Vector2(0.6, 0.0).rotated(turn)).normalized()
 		CastModel.State.BACK_TO_FORWARD, CastModel.State.FORWARD_TO_BACK:
-			return Vector2(0.6, -0.2).normalized()
+			return Vector2(0.6, -0.2).normalized().rotated(turn)
 		CastModel.State.FORWARD, CastModel.State.FLIGHT:
 			return dir
 		CastModel.State.LANDED:
@@ -103,7 +108,7 @@ func rod_pose() -> Vector2:
 				if snap != Vector2.ZERO:
 					return snap
 			var target: Vector2 = _fishing.line_target() if _fishing != null else fly_pos
-			return ((target - _stream.hand_position()).normalized() + Vector2(0.0, -1.0)).normalized()
+			return ((target - _stream.hand_position()).normalized() + Vector2(0.0, -1.0).rotated(turn)).normalized()
 	return Vector2.ZERO
 
 
@@ -132,7 +137,7 @@ func _drift(delta: float) -> void:
 	fly_pos += _stream.flow_at(fly_pos) * delta
 	var out := WorldScale.to_m(fly_pos.distance_to(_stream.rod_tip()))
 	model.line_out = clampf(out, tuning.line_start, tuning.line_max)
-	if fly_pos.x > _stream.VIEW.x - 4.0 or out > tuning.line_max + 3.0:
+	if not _stream.in_play(fly_pos) or out > tuning.line_max + 3.0:
 		reel_in_line("Drift's done. Reeled in.")
 
 
@@ -317,5 +322,7 @@ func _draw_feedback() -> void:
 	var font := ThemeDB.fallback_font
 	var width := font.get_string_size(_feedback, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
 	var pos := Vector2(roundf((_stream.VIEW.x - width) * 0.5), _stream.VIEW.y - 24)
+	draw_set_transform(_stream.screen_origin())  # HUD: fixed on screen
 	draw_rect(Rect2(pos + Vector2(-3, -8), Vector2(width + 6, 10)), Color(0, 0, 0, 0.5 * col.a))
 	draw_string(font, pos, _feedback, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, col)
+	draw_set_transform(Vector2.ZERO)

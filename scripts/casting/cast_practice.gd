@@ -140,20 +140,27 @@ func _draw() -> void:
 	if not active:
 		return
 	_draw_ruler()
+	_draw_target()
+	draw_set_transform(_stream.screen_origin())  # HUD: fixed on screen
 	_draw_header()
 	_draw_stroke_log()
 	_draw_results()
-	_draw_target()
+	draw_set_transform(Vector2.ZERO)
 
 
 func _target_point() -> Vector2:
-	var tip: Vector2 = _stream.hand_position() + Vector2(0, -_stream.ROD_LENGTH)
-	return tip + Vector2(0, -WorldScale.to_px(TARGET_REACH[target_index]))
+	var turn: float = _stream.facing_angle()
+	var tip: Vector2 = _stream.hand_position() + Vector2(0, -_stream.ROD_LENGTH).rotated(turn)
+	return tip + Vector2(0, -WorldScale.to_px(TARGET_REACH[target_index])).rotated(turn)
 
 
 ## Faint marks up the cast line where Short ends and Middle ends.
 func _draw_ruler() -> void:
-	var tip: Vector2 = (_stream.hand_position() + Vector2(0, -_stream.ROD_LENGTH)).floor()
+	# Drawn as if facing up the screen, then turned to face the water.
+	var turn: float = _stream.facing_angle()
+	var hand: Vector2 = _stream.hand_position()
+	draw_set_transform(hand.floor(), turn)
+	var tip := Vector2(0, -_stream.ROD_LENGTH)
 	var x := tip.x + 26.0
 	var font := ThemeDB.fallback_font
 	var col := Color(1, 1, 1, 0.35)
@@ -166,6 +173,7 @@ func _draw_ruler() -> void:
 	for b in bands:
 		var y: float = tip.y - WorldScale.to_px((b[1] + b[2]) * 0.5)
 		draw_string(font, Vector2(x + 4, y + 3), b[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 8, col)
+	draw_set_transform(Vector2.ZERO)
 
 
 func _draw_target() -> void:

@@ -80,8 +80,23 @@ func _ready() -> void:
 	_cast = _stream.get_node(^"Cast")
 	_cast.model.landed.connect(_on_landed)
 	_river = _stream.get(&"river")
+	# A stretch brings its own trout, spread over the whole river.
+	var stretch: Stretch = _stream.get(&"stretch")
+	var area := Rect2()
+	if stretch != null and not stretch.trout.is_empty():
+		stocking = stretch.trout
+		area = Rect2(Vector2.ZERO, stretch.size_m)
 	for species in stocking:
-		fish.append(Fish.new(species, _rng, _river))
+		fish.append(Fish.new(species, _rng, _river, area, _lies_except))
+
+
+## The lies (m) of every trout but `me`, so trout spread out over the water.
+func _lies_except(me: Fish) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for f in fish:
+		if f != me:
+			out.append(f.lie)
+	return out
 
 
 func current_fly() -> FlyPattern:
@@ -166,6 +181,7 @@ func _on_landed(_presentation: String, _quality: float) -> void:
 	phase = Phase.DRIFT
 	_fly_taken = false
 	drift.start(_tip_m(), at)
+	drift.downstream = _downstream_at(at)
 	var best := 0.0
 	for f in fish:
 		best = maxf(best, f.on_landing(at, _cast.model.presentation))
@@ -195,7 +211,7 @@ func _update_drift(delta: float) -> void:
 		_try_set()
 		if phase != Phase.DRIFT:
 			return
-	if drift.fly.x > WorldScale.to_m(_stream.VIEW.x - 4.0):
+	if not _stream.in_play(WorldScale.vec_to_px(drift.fly)):
 		_cast.reel_in_line("Drift's done. Reeled in.")
 		_end_drift()
 
@@ -256,7 +272,8 @@ func hook_set_pose() -> Vector2:
 	if t < 0.0 or t > 1.0:
 		return Vector2.ZERO
 	var k := t / 0.3 if t < 0.3 else lerpf(1.0, 0.45, (t - 0.3) / 0.7)
-	return Vector2(0.0, -1.0).slerp(Vector2(0.95, -0.3).normalized(), clampf(k, 0.0, 1.0))
+	var turn: float = _cast.model.facing_angle
+	return Vector2(0.0, -1.0).slerp(Vector2(0.95, -0.3).normalized(), clampf(k, 0.0, 1.0)).rotated(turn)
 
 
 func _on_fish_event(f: Fish, event: StringName) -> void:
@@ -311,9 +328,20 @@ func _update_fight(delta: float, stick: Vector2) -> void:
 ## Where the hooked fish is (m), kept on screen and in the water.
 func _fish_position() -> Vector2:
 	var p: Vector2 = _stream.rod_tip() + Vector2.from_angle(fight.angle) * WorldScale.to_px(fight.distance)
-	p.x = clampf(p.x, 4.0, _stream.VIEW.x - 4.0)
-	p.y = clampf(p.y, _stream.BANK_TOP + 3.0, _stream.BANK_BOTTOM - 3.0)
-	return WorldScale.vec_to_m(p)
+	return WorldScale.vec_to_m(_stream.keep_in_water(p, WorldScale.vec_to_px(hooked.pos)))
+
+
+## Which way the water runs at `at` (m), for the drift's bow and mends. The
+## test screen's river runs +x; on a stretch it's the local current, so a fly
+## in an eddy mends against the eddy's reversed current.
+func _downstream_at(at: Vector2) -> Vector2:
+	if _river == null or _river.stretch == null:
+		return Vector2.RIGHT
+	var v := _river.flow_at(at)
+	if v.length() > 0.05:
+		return v.normalized()
+	var k := _river.nearest_centre(at)
+	return _river.centre_dir[k] if k >= 0 else Vector2.RIGHT
 
 
 ## The rod tip in metres.
@@ -374,10 +402,12 @@ func _draw() -> void:
 				_draw_line(tip, (tip + _cast.fly_pos) * 0.5, _cast.fly_pos, COL_LINE)
 				current_fly().draw_at(self, _cast.fly_pos)
 	_draw_rings()
+	draw_set_transform(_stream.screen_origin())  # HUD: fixed on screen
 	_draw_hud()
 	if phase == Phase.FIGHT:
 		_draw_fight_meter()
 	_draw_card()
+	draw_set_transform(Vector2.ZERO)
 
 
 func _draw_fish(f: Fish) -> void:
@@ -387,10 +417,22 @@ func _draw_fish(f: Fish) -> void:
 	var col := COL_FISH_SHADOW
 	if f.state == Fish.State.RISING or f.state == Fish.State.TAKEN:
 		col = f.species.color
-	# Trout hold facing upstream (left), so the tail trails downstream (right).
-	draw_rect(Rect2(p + Vector2(-3, 0), Vector2(6, 2)), col)
-	draw_rect(Rect2(p + Vector2(3, 0), Vector2(2, 1)), col)
-	draw_rect(Rect2(p + Vector2(4, 1), Vector2(1, 1)), col)
+	# Trout hold facing into the current, so the tail trails downstream. In an
+	# eddy the current runs back upstream, so they face downstream there.
+	draw_set_transform(p, _facing_into_current(f.lie))
+	draw_rect(Rect2(Vector2(-3, 0), Vector2(6, 2)), col)
+	draw_rect(Rect2(Vector2(3, 0), Vector2(2, 1)), col)
+	draw_rect(Rect2(Vector2(4, 1), Vector2(1, 1)), col)
+	draw_set_transform(Vector2.ZERO)
+
+
+## Rotation for a trout drawn head-left so it faces into the current at `at` (m),
+## in 45-degree steps to keep the pixels crisp.
+func _facing_into_current(at: Vector2) -> float:
+	var v := _river.flow_at(at) if _river != null else Vector2.ZERO
+	if v.length() < 0.01:
+		return 0.0
+	return snappedf(wrapf(v.angle(), -PI, PI), PI / 4.0)
 
 
 func _draw_drift(tip: Vector2) -> void:
