@@ -106,7 +106,7 @@ One `GameState` model holds everything that persists: the day, the `CatchJournal
 
 ### Units
 
-Decided 2026-11-02 ([REQ-0001](requirements/REQ-0001-world-units-in-metres.md)): metres in models and data (R11), 8 px per metre, so one screen is 40 m by 25 m. Field names carry their unit (`lie_area_m`, `stroke_time_per_m`). Controllers still hold some positions in pixels (`Cast.fly_pos`, the rod tip) and convert at their edges; step B moves world positions to metres.
+Decided 2026-11-02 ([REQ-0001](requirements/REQ-0001-world-units-in-metres.md)): metres in models and data (R11), 8 px per metre, so one screen is 40 m by 25 m. Field names carry their unit (`size_m`, `stroke_time_per_m`). Controllers still hold some positions in pixels (`Cast.fly_pos`, the rod tip) and convert at their edges; step B moves world positions to metres.
 
 ---
 
@@ -191,7 +191,7 @@ The design is in [FISH_LOGIC.md](FISH_LOGIC.md): generation (per season or visit
 | `Population` (planned) | Model | The fish in one stretch, generated from the stretch's spawn table and the river's lies, kept between visits. |
 | `MoodRules` (planned) | Rule set | `Conditions` plus a fish's own state into mood and feeding depth. |
 
-* **Today:** lies come from `RiverField.pick_lie()` inside the species' `lie_area_m`, which is placement data on an archetype (R12, step E). `bite_range_m` and `Fish.bite_chance_for()` are left over from the dropped landing roll and only tests use them (step E). Presentation arrives as a string and fish events are `StringName`s (R6, step C). The hook-set window check lives in `Fish.try_set()` (step C).
+* **Today:** each stretch's spawn table (`Stretch.spawn`, `SpawnEntry`: species and count) stocks it, and each fish takes a lie from `RiverField.pick_lie()` over the whole stretch (REQ-0004 C2). A species carries nothing about any place, and its diet is typed `DietEntry`s. Presentation arrives as a string and fish events are `StringName`s (R6, step C). The hook-set window check lives in `Fish.try_set()` (step C).
 
 ### 3.7 Hook set and fight
 
@@ -281,7 +281,7 @@ Autoloads: Controls, Clock, SaveGame
 | `fly_pos` written by two nodes; world positions still in pixels in controllers | **Drifts** (R2, R11, step B) |
 | Presentation strings, fish event `StringName`s | **Drifts** (R6, step C) |
 | Catches as dictionaries of resources; no catalog or game state | **Drifts** (R5, step D) |
-| `lie_area_m` on species; `diet` a dictionary of ids; `bite_range_m` unused | **Drifts** (R5, R12, step E) |
+| Spawn table on `Stretch`; typed `DietEntry` diets | **Fits** (R5, R12, REQ-0004 C2) |
 | `randomize()` in two places; a `_time` per controller | **Minor** (R8, step G) |
 | `FlyPattern.draw_at()` | **Minor** (R1 debt until fly art) |
 
@@ -307,10 +307,9 @@ The rules marked "Review" (R2, R6, R12) are checked by the PR template's Archite
 | R3 | `scripts/fishing/fishing_controller.gd` | 4 reaches | Step B |
 | R3 | `scripts/casting/cast_controller.gd` | 2 reaches | Step B |
 | R3 | `scripts/casting/cast_practice.gd` | 3 reaches | Step B |
-| R5 | `scripts/fishing/fish_species.gd` (`diet`) | 1 | Step E |
 | R8 | `scripts/fishing/fishing_controller.gd` (`randomize`) | 1 | Step G |
 | R8 | `scripts/casting/cast_model.gd` (`randomize`) | 1 | Step G |
-| R9 | `scripts/fishing/fishing_controller.gd` | 635 lines | Step A |
+| R9 | `scripts/fishing/fishing_controller.gd` | 621 lines | Step A |
 | R9 | `scripts/stream_scene.gd` | 460 lines | Step A2 |
 | R9 | `scripts/river/river_field.gd` | 660 lines | Split builder from queries (river thread) |
 
@@ -330,7 +329,7 @@ Small steps, each its own REQ and PR, each leaving the game playing the same unl
 | **B** | `FishingSession` owns the phase and wires Cast, Fishing and the views. Practice becomes a session mode. `FlyState` with the line model its only writer; world positions in metres. | R2, R3, R11 | A; casting thread agrees the wiring |
 | **C** | Enums for presentation and fish events; `HookSetModel`. | R6 | B, casting thread (changes `landed`'s argument type) |
 | **D** | ~~`data/catalog.tres`~~ (done in REQ-0004 C1); `GameState` with `CatchJournal` (ids) and `FlyBox`. | R5 | A |
-| **E** | Data hygiene: a spawn table on `Stretch` replaces `lie_area_m`; `DietEntry` replaces the `diet` dictionary; remove `bite_range_m` and the landing roll. | R5, R12 | Data class changes need a REQ |
+| **E** | ~~Data hygiene: spawn table, `DietEntry`, remove `bite_range_m` and the landing roll~~ (done in REQ-0004 C2). | R5, R12 | — |
 | **F** | Folders by layer (`scripts/<system>/models`, `views`, ...), done in the Godot editor so references follow. Optional, after B. | — | B |
 | **G** | `Clock` and `Conditions`; one seed per day split into RNG streams (generation, mood, take, cast) and shown in the debug overlay; then `MoodRules` and `Population`. | R8 | E |
 | **Later** | Nymph (`DepthDriftModel`), streamer (`RetrieveModel`), hatches, tying, saves. Each adds a model and data, not edits to existing models. | — | The above |
@@ -357,6 +356,7 @@ Every script, its layer and its system. `architecture_test.gd` fails if a script
 | `scripts/controls.gd` | `Controls` (autoload) | Service | Input |
 | `scripts/data/catalog.gd` | `Catalog` | Data (index) | All content |
 | `scripts/debug_overlay.gd` | (node) | View | UI and modes |
+| `scripts/fishing/diet_entry.gd` | `DietEntry` | Data | Fishing (fish, diets) |
 | `scripts/fishing/drift_model.gd` | `DriftModel` | Model | Fishing (line) |
 | `scripts/fishing/fight_model.gd` | `FightModel` | Model | Fishing (fight) |
 | `scripts/fishing/fish.gd` | `Fish` | Model | Fishing (fish) |
@@ -367,6 +367,7 @@ Every script, its layer and its system. `architecture_test.gd` fails if a script
 | `scripts/fishing/rules/drift_past_rules.gd` | `DriftPastRules` | Rule set (data) | Fishing (take) |
 | `scripts/fishing/stick_gestures.gd` | `StickGestures` | Model | Fishing (line) |
 | `scripts/river/river_field.gd` | `RiverField` | Model | River |
+| `scripts/river/spawn_entry.gd` | `SpawnEntry` | Data (place) | River, fish |
 | `scripts/river/stretch.gd` | `Stretch` | Data | River |
 | `scripts/stream_scene.gd` | (node) | Scene root + views, to split | River, scene wiring |
 | `scripts/world_scale.gd` | `WorldScale` | Model (static helper) | Units |

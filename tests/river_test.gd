@@ -285,17 +285,18 @@ func _test_trout_spread_over_the_stretch(f: RiverField, st: Stretch) -> void:
 	for run in 5:
 		rng.seed = run
 		var lies := PackedVector2Array()
-		for n in st.trout.size():
+		var count := st.stocked().size()
+		for n in count:
 			var l := f.pick_lie(area, rng, Fish.MIN_LIE_SCORE, lies, Fish.LIE_GAP)
 			if l == Vector2.INF:
 				break
 			lies.append(l)
-		var ok := lies.size() == st.trout.size()
+		var ok := lies.size() == count
 		for a in lies.size():
 			ok = ok and f.is_water(lies[a])
 			for b in range(a + 1, lies.size()):
 				ok = ok and lies[a].distance_to(lies[b]) >= Fish.LIE_GAP
-		_check(ok, "run %d: %d trout get their own lies, in water and %.0f m apart" % [run, st.trout.size(), Fish.LIE_GAP])
+		_check(ok, "run %d: %d trout get their own lies, in water and %.0f m apart" % [run, count, Fish.LIE_GAP])
 
 
 func _check(ok: bool, label: String) -> void:

@@ -1,6 +1,13 @@
-[gd_resource type="Resource" script_class="FishSpecies" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="FishSpecies" load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1_species"]
+[ext_resource type="Script" path="res://scripts/fishing/diet_entry.gd" id="2_diet"]
+[ext_resource type="Resource" path="res://data/insects/caddis.tres" id="3_caddis"]
+
+[sub_resource type="Resource" id="diet_caddis"]
+script = ExtResource("2_diet")
+insect = ExtResource("3_caddis")
+weight = 1.0
 
 [resource]
 script = ExtResource("1_species")
@@ -8,13 +15,9 @@ id = &"cutthroat"
 display_name = "Westslope Cutthroat"
 description = "Red slash under the jaw. Holds in the riffle and rises slow and deliberate, so don't rush the set."
 color = Color(0.36, 0.36, 0.22, 1)
-lie_area_m = Rect2(3.75, 8.5, 10, 6)
-diet = {
-&"caddis": 1.0
-}
-selectivity = 0.6
 bite_chance = 0.6
-bite_range_m = 5.0
+diet = Array[ExtResource("2_diet")]([SubResource("diet_caddis")])
+selectivity = 0.6
 set_min = 0.25
 set_max = 0.85
 pull = 0.75
