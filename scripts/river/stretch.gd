@@ -34,8 +34,21 @@ extends Resource
 @export var gravel: Array[Vector3] = []
 ## Where the angler starts (m), on dry land.
 @export var angler_start := Vector2(10, 5)
-## The trout living here, one per entry. Each takes its own lie.
-@export var trout: Array[FishSpecies] = []
+## The spawn table: which species live here and how many. Each fish takes its
+## own lie from the river field.
+@export var spawn: Array[SpawnEntry] = []
+
+
+## One species per fish, in spawn-table order: each entry repeated `count`
+## times.
+func stocked() -> Array[FishSpecies]:
+	var out: Array[FishSpecies] = []
+	for entry in spawn:
+		if entry == null or entry.species == null:
+			continue
+		for i in entry.count:
+			out.append(entry.species)
+	return out
 
 
 ## Thalweg depth (0..1) at fraction `u` along the river.

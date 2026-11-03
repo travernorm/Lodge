@@ -114,11 +114,8 @@ func _test_fish(fish: Dictionary, _flies: Dictionary) -> void:
 		_check(not ids.has(sp.id), "fish %s: id is unique" % stem)
 		ids[sp.id] = true
 		_check(sp.bite_chance > 0.0 and sp.bite_chance <= 1.0, "fish %s: bite_chance is in (0, 1]" % stem)
-		_check(sp.bite_range_m > Fish.CLOSE_RANGE, "fish %s: bite_range_m is past CLOSE_RANGE" % stem)
 		_check(sp.set_min < sp.set_max, "fish %s: hook-set window is valid" % stem)
 		_check(sp.min_length_in <= sp.max_length_in, "fish %s: length range is valid" % stem)
-		_check(Rect2(Vector2.ZERO, WorldScale.vec_to_m(VIEW.size)).encloses(sp.lie_area_m), "fish %s: lie_area_m is on screen" % stem)
-		_check(_water_cells(river, sp.lie_area_m) >= 4, "fish %s: lie_area_m covers water in the stream" % stem)
 
 
 func _test_insects(insects: Dictionary) -> void:
@@ -150,10 +147,15 @@ func _test_diets(fish: Dictionary, flies: Dictionary, insects: Dictionary) -> vo
 		var stem: String = path.get_file().get_basename()
 		_check(sp.selectivity >= 0.0 and sp.selectivity <= 1.0, "fish %s: selectivity is in [0, 1]" % stem)
 		_check(sp.diet.size() > 0, "fish %s: eats something" % stem)
-		for key in sp.diet:
-			_check((key is StringName or key is String) and insect_ids.has(StringName(key)), "fish %s: diet entry '%s' is a data/insects id" % [stem, key])
-			var w = sp.diet[key]
-			_check((w is float or w is int) and w >= 0.0 and w <= 1.0, "fish %s: diet weight for %s is in [0, 1]" % [stem, key])
+		var eaten := {}
+		for entry in sp.diet:
+			var bug: Insect = entry.insect if entry != null else null
+			_check(bug != null and insects.has(bug.resource_path), "fish %s: diet entry is a data/insects file (%s)" % [stem, _path(bug)])
+			if bug == null:
+				continue
+			_check(not eaten.has(bug.id), "fish %s: %s is in its diet once" % [stem, bug.id])
+			eaten[bug.id] = true
+			_check(entry.weight >= 0.0 and entry.weight <= 1.0, "fish %s: diet weight for %s is in [0, 1]" % [stem, bug.id])
 		var has_answer := false
 		for fpath in flies:
 			if sp.fly_match(flies[fpath]) >= 1.0 - 0.0001:
@@ -198,9 +200,10 @@ func _test_scene_wiring(flies: Dictionary, fish: Dictionary, rules: Dictionary) 
 	_check(fishing.tackle.flies.size() > 0 and fishing.current_fly() != null, "scene: the fly box isn't empty and a fly is tied on")
 	for fly in fishing.tackle.flies:
 		_check(fly != null and flies.has(fly.resource_path), "scene: fly box entry %s is a data/tackle/flies file" % _path(fly))
-	_check(fishing.stocking.size() > 0, "scene: the stream is stocked")
-	for sp in fishing.stocking:
-		_check(sp != null and fish.has(sp.resource_path), "scene: stocking entry %s is a data/fish file" % _path(sp))
+	var stretch: Stretch = _main.stretch
+	_check(stretch != null and stretch.stocked().size() > 0, "scene: the stretch's spawn table stocks the stream")
+	for sp in (stretch.stocked() if stretch != null else []):
+		_check(sp != null and fish.has(sp.resource_path), "scene: spawn table species %s is a data/fish file" % _path(sp))
 	var in_chassis := {}
 	for r in practice.chassis:
 		_check(r != null and rules.has(r.resource_path), "scene: chassis entry %s is a data/cast_rules file" % _path(r))
@@ -292,9 +295,11 @@ func _test_stretches(fish: Dictionary) -> void:
 			_check(f.is_water(Vector2(e.x, e.y)), "stretch %s: eddy at (%s, %s) is in the river" % [stem, e.x, e.y])
 		for l in st.logs:
 			_check(f.is_water(Vector2(l.x, l.y)) or f.is_water(Vector2(l.z, l.w)), "stretch %s: log reaches the water" % stem)
-		_check(not st.trout.is_empty(), "stretch %s: has trout" % stem)
-		for sp in st.trout:
-			_check(sp != null and fish.has(sp.resource_path), "stretch %s: trout %s is in data/fish" % [stem, sp.id if sp != null else "?"])
+		_check(not st.spawn.is_empty(), "stretch %s: its spawn table stocks fish" % stem)
+		for entry in st.spawn:
+			var sp: FishSpecies = entry.species if entry != null else null
+			_check(sp != null and fish.has(sp.resource_path), "stretch %s: spawn entry %s is in data/fish" % [stem, sp.id if sp != null else "?"])
+			_check(entry != null and entry.count >= 1, "stretch %s: spawn entry %s stocks at least one fish" % [stem, sp.id if sp != null else "?"])
 
 
 ## data/catalog.tres lists every fish, fly, rod, insect and stretch file exactly

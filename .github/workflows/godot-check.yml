@@ -14,15 +14,15 @@ jobs:
   tests:
     # On a pull request, GitHub checks out the PR merged into the latest main,
     # so this also catches two PRs that pass alone but break each other.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       GODOT_VERSION: 4.3-stable
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Cache Godot
         id: godot-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: godot
           key: godot-${{ env.GODOT_VERSION }}-linux

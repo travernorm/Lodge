@@ -179,7 +179,7 @@ Steps 1 to 3 need nothing new from other systems. Step 4 is built. Step 7 needs 
 
 These are proposals; each field change to a data class needs its own REQ.
 
-* **`FishSpecies`:** habitat preference per water type, temperature range, light preference, diet (insect ids), selectivity, seasonal activity and presence, size range (already there), fight stats (already there).
+* **`FishSpecies`:** habitat preference per water type, temperature range, light preference, diet (`DietEntry`: insect and weight), selectivity, seasonal activity and presence, size range (already there), fight stats (already there).
 * **`Fish`** (runtime): species, length, resting lie, feeding lie, mood, hunger, wariness, refusal count, presentations since last take.
 * **`Stretch`:** the baked river field(s), the species table with abundance, trophy fish placements, how fast it refills.
 * **`Hatch`:** insect id, stages, time window, intensity by weather.

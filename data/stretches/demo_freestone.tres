@@ -1,10 +1,30 @@
-[gd_resource type="Resource" script_class="Stretch" load_steps=6 format=3]
+[gd_resource type="Resource" script_class="Stretch" load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/river/stretch.gd" id="1_7rl41"]
-[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="2_taxhy"]
+[ext_resource type="Script" path="res://scripts/river/spawn_entry.gd" id="2_spawn"]
 [ext_resource type="Resource" path="res://data/fish/redband.tres" id="3_ere81"]
 [ext_resource type="Resource" path="res://data/fish/cutthroat.tres" id="4_3jtx1"]
 [ext_resource type="Resource" path="res://data/fish/brook.tres" id="5_uv1mv"]
+
+[sub_resource type="Resource" id="spawn_redband_a"]
+script = ExtResource("2_spawn")
+species = ExtResource("3_ere81")
+count = 2
+
+[sub_resource type="Resource" id="spawn_cutthroat"]
+script = ExtResource("2_spawn")
+species = ExtResource("4_3jtx1")
+count = 1
+
+[sub_resource type="Resource" id="spawn_redband_b"]
+script = ExtResource("2_spawn")
+species = ExtResource("3_ere81")
+count = 1
+
+[sub_resource type="Resource" id="spawn_brook"]
+script = ExtResource("2_spawn")
+species = ExtResource("5_uv1mv")
+count = 1
 
 [resource]
 script = ExtResource("1_7rl41")
@@ -18,4 +38,4 @@ logs = Array[Vector4]([Vector4(61, 56, 68, 53.5), Vector4(118.5, 53, 114, 47.5)]
 eddies = Array[Vector4]([Vector4(52.75, 30.75, 3, 0.45)])
 gravel = Array[Vector3]([])
 angler_start = Vector2(10, 7.5)
-trout = Array[ExtResource("2_taxhy")]([ExtResource("3_ere81"), ExtResource("3_ere81"), ExtResource("4_3jtx1"), ExtResource("3_ere81"), ExtResource("5_uv1mv")])
+spawn = Array[ExtResource("2_spawn")]([SubResource("spawn_redband_a"), SubResource("spawn_cutthroat"), SubResource("spawn_redband_b"), SubResource("spawn_brook")])

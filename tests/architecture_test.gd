@@ -64,9 +64,9 @@ const DATA_WRITE := "\\b(species|sp|pattern|tuning|stretch|take_rules|insect|rod
 const LOOSE_EXPORT := "@export.*\\bvar\\s+\\w+\\s*(:\\s*(Dictionary|Array)\\s*(=|$)|:=\\s*(\\{|\\[))"
 
 ## R5: content is found through the catalog (data/catalog.tres), never named
-## in code, so a new file joins the game by itself (REQ-0004). Fish join this
-## list when the spawn tables land (C2).
-const CONTENT_PATH := "res://data/(tackle/flies|tackle/rods|insects)/"
+## in code, so a new file joins the game by itself (REQ-0004). Fish come from
+## each stretch's spawn table.
+const CONTENT_PATH := "res://data/(tackle/flies|tackle/rods|insects|fish)/"
 
 # --- Ledger ---------------------------------------------------------------
 
@@ -89,13 +89,12 @@ const DEBT_UNSEEDED := {
 	"res://scripts/fishing/fishing_controller.gd": 1,  # F9
 	"res://scripts/casting/cast_model.gd": 1,  # F9
 }
-## R5 debt: loosely typed data exports per file. Step E empties this.
-const DEBT_LOOSE := {
-	"res://scripts/fishing/fish_species.gd": 1,  # F5: diet is {insect id: weight}
-}
+## R5 debt: loosely typed data exports per file. Empty since REQ-0004 C2
+## made the diet typed (DietEntry). Adding an entry needs Traver's OK.
+const DEBT_LOOSE := {}
 ## R9 debt: line caps above MAX_LINES. Steps A and A2 bring them down.
 const DEBT_LINES := {
-	"res://scripts/fishing/fishing_controller.gd": 635,  # F1: step A (615 lines on 2026-11-03)
+	"res://scripts/fishing/fishing_controller.gd": 621,  # F1: step A (601 lines after REQ-0004 C2)
 	"res://scripts/river/river_field.gd": 660,  # F11: builder and query in one (645)
 	"res://scripts/stream_scene.gd": 460,  # F1: step A2 (445)
 }

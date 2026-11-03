@@ -22,11 +22,8 @@ enum Phase { NONE, DRIFT, FIGHT, REEL }
 ## (data/catalog.tres), in its order. Y (F) cycles the flies this rod throws and
 ## L2 (R) the rods, while the line is reeled in. The first of each starts on.
 var tackle := Tackle.new(Catalog.shared().rods, Catalog.shared().flies)
-## One fish is stocked for each entry. Starts with one trout in the pool; more
-## species are waiting in data/fish/.
-@export var stocking: Array[FishSpecies] = [
-	preload("res://data/fish/redband.tres"),
-]
+## One species per fish, from the stretch's spawn table (Stretch.spawn).
+var stocking: Array[FishSpecies] = []
 
 ## The bite rules: each trout rolls as the fly drifts past it.
 @export var take_rules: DriftPastRules = preload("res://data/take_rules/drift_past.tres")
@@ -94,11 +91,12 @@ func _ready() -> void:
 	_cast.model.landed.connect(_on_landed)
 	_cast.model.rod = tackle.rod()
 	_river = _stream.get(&"river")
-	# A stretch brings its own trout, spread over the whole river.
+	# The stretch's spawn table stocks it, spread over the whole river. The
+	# one-screen test stream (no stretch) has no fish.
 	var stretch: Stretch = _stream.get(&"stretch")
 	var area := Rect2()
-	if stretch != null and not stretch.trout.is_empty():
-		stocking = stretch.trout
+	if stretch != null:
+		stocking = stretch.stocked()
 		area = Rect2(Vector2.ZERO, stretch.size_m)
 	for species in stocking:
 		fish.append(Fish.new(species, _rng, _river, area, _lies_except))
