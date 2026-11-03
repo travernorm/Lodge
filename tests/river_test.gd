@@ -34,6 +34,8 @@ func _initialize() -> void:
 	_test_stretch_boulders(f, st)
 	_test_eddy_circulates(f, st)
 	_test_trout_spread_over_the_stretch(f, st)
+	_test_field_matches_fixture(f)
+	_test_a_new_feature_is_one_entry(st)
 	if _failures == 0:
 		print("River tests passed.")
 		quit(0)
@@ -215,19 +217,19 @@ func _on_map(f: RiverField, p: Vector2) -> bool:
 
 ## Every boulder: a slower pocket behind it and a seam off each side.
 func _test_stretch_boulders(f: RiverField, st: Stretch) -> void:
-	for r in st.rocks:
-		var c := Vector2(r.x, r.y)
+	for r in st.features.filter(func(x): return x is Boulder):
+		var c: Vector2 = r.centre
 		var k := f.nearest_centre(c)
 		var down := f.centre_dir[k]
 		var side := down.orthogonal()
-		var pocket := f.flow_at(c + down * r.z * 2.0).length()
-		var open := f.flow_at(c - down * r.z * 4.0).length()
+		var pocket := f.flow_at(c + down * r.radius * 2.0).length()
+		var open := f.flow_at(c - down * r.radius * 4.0).length()
 		_check(pocket < open * 0.5, "boulder at %s has a slow pocket behind it (%.2f vs %.2f m/s)" % [c, pocket, open])
 		var seam_a := 0.0
 		var seam_b := 0.0
 		for t in [1.0, 2.0, 3.0]:
-			seam_a = maxf(seam_a, f.seam_at(c + down * r.z * t + side * r.z * 1.3))
-			seam_b = maxf(seam_b, f.seam_at(c + down * r.z * t - side * r.z * 1.3))
+			seam_a = maxf(seam_a, f.seam_at(c + down * r.radius * t + side * r.radius * 1.3))
+			seam_b = maxf(seam_b, f.seam_at(c + down * r.radius * t - side * r.radius * 1.3))
 		_check(seam_a > 0.4 and seam_b > 0.4, "boulder at %s has a seam off each side (%.2f, %.2f)" % [c, seam_a, seam_b])
 
 
@@ -235,10 +237,12 @@ func _test_stretch_boulders(f: RiverField, st: Stretch) -> void:
 ## back round without leaving downstream, the swirl has no sources or sinks, and
 ## the eddy line is a strong seam with a lie on it.
 func _test_eddy_circulates(f: RiverField, st: Stretch) -> void:
-	_check(not st.eddies.is_empty(), "the stretch has an eddy")
-	if st.eddies.is_empty():
+	var eddies := st.features.filter(func(x): return x is Eddy)
+	_check(not eddies.is_empty(), "the stretch has an eddy")
+	if eddies.is_empty():
 		return
-	var e := st.eddies[0]
+	var eddy: Eddy = eddies[0]
+	var e := Vector4(eddy.centre.x, eddy.centre.y, eddy.radius, eddy.strength)
 	var c := Vector2(e.x, e.y)
 	var k := f.nearest_centre(c)
 	var down := f.centre_dir[k]
@@ -276,6 +280,45 @@ func _test_eddy_circulates(f: RiverField, st: Stretch) -> void:
 	_check(line_seam > 0.45, "the eddy line is a strong seam (%.2f)" % line_seam)
 	var lie := f.best_lie(Rect2(c - Vector2.ONE * e.z, Vector2.ONE * e.z * 2.0))
 	_check(lie.z > 0.6, "trout can hold on the eddy line (%.2f)" % lie.z)
+
+
+## The demo stretch's water matches the recorded fixture, cell for cell
+## (every 6th cell), so a refactor of how the field is built can't quietly
+## change the river. Re-record with tools/record_field_fixture.gd only when a
+## change to the water is intended, and say so in the PR.
+func _test_field_matches_fixture(f: RiverField) -> void:
+	var text := FileAccess.get_file_as_string("res://tests/fixtures/demo_field.txt")
+	_check(text.length() > 0, "fixture: tests/fixtures/demo_field.txt is readable")
+	var worst := 0.0
+	var cells := 0
+	for line in text.split("\n"):
+		if line.is_empty() or line.begins_with("#"):
+			continue
+		var v := line.split(" ")
+		var idx := int(v[1]) * f.cols + int(v[0])
+		var got := [f.velocity[idx].x, f.velocity[idx].y, f.depth[idx], f.seam[idx], f.lie[idx]]
+		for k in 5:
+			worst = maxf(worst, absf(float(v[k + 2]) - float(got[k])))
+		cells += 1
+	_check(cells > 1000 and worst < 0.001, "fixture: %d cells match the recorded water (worst difference %.6f)" % [cells, worst])
+
+
+## Adding a feature to a stretch is one more entry in its list: a boulder
+## dropped mid-river makes dry rock and a slow pocket behind it, with no other
+## change.
+func _test_a_new_feature_is_one_entry(st: Stretch) -> void:
+	var at := Vector2(10.0, 18.5)  # mid-river near the head
+	var plain := RiverField.new()
+	plain.build_stretch(st)
+	var more := st.duplicate() as Stretch
+	more.features = st.features.duplicate()
+	more.features.append(Boulder.make(at, 1.0))
+	var f := RiverField.new()
+	f.build_stretch(more)
+	var down: Vector2 = f.flow_frame(at)[0]
+	_check(plain.is_water(at) and not f.is_water(at), "feature kit: a new boulder entry makes dry rock")
+	_check(f.flow_at(at + down * 2.0).length() < plain.flow_at(at + down * 2.0).length() * 0.5,
+		"feature kit: and a slow pocket behind it")
 
 
 ## Five trout on five lies, all in water, at least Fish.LIE_GAP apart.

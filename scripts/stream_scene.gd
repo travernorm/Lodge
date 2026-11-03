@@ -351,9 +351,9 @@ func _make_stretch_texture() -> ImageTexture:
 			data[idx * 4 + 2] = col.b8
 			data[idx * 4 + 3] = col.a8
 	var img := Image.create_from_data(size.x, size.y, false, Image.FORMAT_RGBA8, data)
-	for g in stretch.gravel:
-		var c := WorldScale.vec_to_px(Vector2(g.x, g.y))
-		var r := WorldScale.to_px(g.z)
+	for g in stretch.features.filter(func(x: RiverFeature) -> bool: return x is GravelBar):
+		var c := WorldScale.vec_to_px(g.centre)
+		var r := WorldScale.to_px(g.radius)
 		for y in range(maxi(0, int(c.y - r)), mini(size.y, int(c.y + r) + 1)):
 			for x in range(maxi(0, int(c.x - r)), mini(size.x, int(c.x + r) + 1)):
 				if Vector2(x, y).distance_to(c) <= r and wet_px[y * size.x + x] < 0.5:
@@ -416,13 +416,19 @@ func _draw() -> void:
 		var col := COL_FOAM if speed > foam or river.seam_at(WorldScale.vec_to_m(s)) > 0.6 else COL_STREAK
 		draw_line(s.floor(), (s + v / speed * length).floor(), col, 1.0)
 
-	for r in river.rocks:
-		_draw_rock(WorldScale.vec_to_px(Vector2(r.x, r.y)), WorldScale.to_px(r.z))
-	if stretch != null:
-		for l in stretch.logs:
-			_draw_log(WorldScale.vec_to_px(Vector2(l.x, l.y)), WorldScale.vec_to_px(Vector2(l.z, l.w)))
-
+	for f in river.features: _draw_feature(f)
 	_draw_angler()
+
+
+## Boulders and logs have art; other kinds above ground show their footprint.
+func _draw_feature(f: RiverFeature) -> void:
+	if f is Boulder:
+		_draw_rock(WorldScale.vec_to_px((f as Boulder).centre), WorldScale.to_px((f as Boulder).radius))
+	elif f is FallenLog:
+		_draw_log(WorldScale.vec_to_px((f as FallenLog).a), WorldScale.vec_to_px((f as FallenLog).b))
+	elif not f is GravelBar and not f.footprint().is_empty():
+		var pts := Array(f.footprint()).map(func(q: Vector2) -> Vector2: return WorldScale.vec_to_px(q).floor())
+		draw_polyline(PackedVector2Array(pts + [pts[0]]), COL_ROCK, 1.0)
 
 
 ## A boulder with a foam cushion piling up on its upstream face.

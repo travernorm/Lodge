@@ -18,8 +18,9 @@ extends RefCounted
 ## - Speed follows depth (roughly v ~ depth^(2/3), as in Manning's formula), so
 ##   the fastest water is over the thalweg, the deepest line, and the banks are
 ##   slow.
-## - A boulder makes a slow cushion in front, a slack pocket behind (with a
-##   little back-flow right behind it) and a seam off each side.
+## - Features on the bed (RiverFeature: boulders, logs, eddies ...) shape the
+##   current. The field runs them in order and knows none of them by name
+##   (REQ-0004 C3); each kind's rules live in scripts/river/features/.
 ## - Trout hold in slow, deep-enough water with fast water close by.
 
 ## Units: metres and metres per second throughout (REQ-0001). Views convert to
@@ -38,13 +39,6 @@ const DEPTH_SPEED_EXP := 2.0 / 3.0
 ## Shallowest water at the very edge, as a fraction of the thalweg depth.
 const EDGE_DEPTH := 0.04
 
-## Boulder wake: how long the slack pocket runs, in rock radii.
-const WAKE_LENGTH := 6.0
-## How fast the wake spreads sideways with distance downstream.
-const WAKE_SPREAD := 0.12
-## 1 = dead slack right behind the rock; a bit more gives a little back-flow.
-const WAKE_STRENGTH := 1.12
-
 ## Lie scoring. Speeds are fractions of WATER_SPEED; depth is relative.
 const HOLD_SPEED := Vector2(8.0, 20.0) / 55.0  # comfortable below x, too fast above y
 const FOOD_SPEED := Vector2(14.0, 32.0) / 55.0  # nearby water this fast brings food
@@ -60,12 +54,6 @@ const CHANNEL_STEP := 1.0
 const CURVE_SMOOTH := 6.0
 ## The thalweg never moves more than this fraction of the half-width off centre.
 const MAX_THALWEG_SHIFT := 0.45
-## Fallen logs: how far (m) their slack water reaches, and how much they slow it.
-const LOG_REACH := 1.0
-const LOG_SLOW := 0.9
-## Inside an eddy the main current is calmed by this much at the centre, so the
-## swirl takes over.
-const EDDY_CALM := 0.7
 
 var top := 0.0  # far bank, y (m); 0 for a stretch
 var bottom := 0.0  # near bank, y (m); the stretch's height for a stretch
@@ -77,8 +65,9 @@ var velocity := PackedVector2Array()
 var depth := PackedFloat32Array()  # 0..1, 1 = deepest water in the reach
 var seam := PackedFloat32Array()  # 0..1
 var lie := PackedFloat32Array()  # 0..1
-## Boulders: x, y = centre, z = radius (m).
-var rocks: Array[Vector3] = []
+## What's on the bed, in order: the stretch's features, or the boulders of a
+## straight reach.
+var features: Array[RiverFeature] = []
 ## The stretch this was built from, or null for a straight reach.
 var stretch: Stretch
 
@@ -98,9 +87,13 @@ var centre := PackedVector2Array()
 var centre_dir := PackedVector2Array()
 
 var _thalweg_y: Callable
-## Stretch only: +1 or -1 per eddy, the way it turns.
-var _eddy_spin := PackedFloat32Array()
 var _thalweg_depth: Callable
+## Per feature: the number its prepare() returned this build.
+var _feature_state := PackedFloat32Array()
+## Stretch only, per cell: the nearest centreline segment, and which side of
+## the flow the cell is on (+ = right).
+var _near_k := PackedInt32Array()
+var _near_n := PackedFloat32Array()
 
 
 ## Builds the field.
@@ -114,14 +107,19 @@ func build(p_top: float, p_bottom: float, p_width: float, thalweg_y: Callable,
 	width = p_width
 	_thalweg_y = thalweg_y
 	_thalweg_depth = thalweg_depth
-	rocks = p_rocks
+	features = []
+	for r in p_rocks:
+		features.append(Boulder.make(Vector2(r.x, r.y), r.z))
 	stretch = null
 	centre = PackedVector2Array()
 	centre_dir = PackedVector2Array()
 	wet = PackedByteArray()
+	_near_k = PackedInt32Array()
+	_near_n = PackedFloat32Array()
 	shore = PackedFloat32Array()
 	bend = PackedFloat32Array()
 	_allocate()
+	_prepare_features()
 	_build_flow()
 	_build_seams()
 	_build_lies()
@@ -138,7 +136,7 @@ func build_stretch(p_stretch: Stretch) -> void:
 	top = 0.0
 	bottom = stretch.size_m.y
 	width = stretch.size_m.x
-	rocks = stretch.rocks
+	features = stretch.features
 	_allocate()
 	_build_channel()
 	_build_seams()
@@ -159,19 +157,32 @@ func _allocate() -> void:
 
 func is_water(p: Vector2) -> bool:
 	if wet.is_empty():
-		return p.y >= top and p.y <= bottom and not is_rock(p)
+		return p.y >= top and p.y <= bottom and not is_solid(p)
 	var i := roundi(p.x / CELL)
 	var j := roundi((p.y - top) / CELL)
 	if i < 0 or j < 0 or i >= cols or j >= rows:
 		return false
-	return wet[j * cols + i] == 1 and not is_rock(p)
+	return wet[j * cols + i] == 1 and not is_solid(p)
 
 
-func is_rock(p: Vector2) -> bool:
-	for r in rocks:
-		if p.distance_squared_to(Vector2(r.x, r.y)) < r.z * r.z:
+## True inside something solid in the water, like a boulder.
+func is_solid(p: Vector2) -> bool:
+	for f in features:
+		if f.blocks(p):
 			return true
 	return false
+
+
+## Which way the river runs at p, and which side of the flow p is on:
+## [direction (unit), +1 right or -1 left]. A straight reach runs along +x.
+func flow_frame(p: Vector2) -> Array:
+	if _near_k.is_empty():
+		return [Vector2.RIGHT, 1.0 if p.y >= (top + bottom) * 0.5 else -1.0]
+	var i := clampi(roundi(p.x / CELL), 0, cols - 1)
+	var j := clampi(roundi((p.y - top) / CELL), 0, rows - 1)
+	var idx := j * cols + i
+	var k := maxi(_near_k[idx], 0)
+	return [centre_dir[k], 1.0 if _near_n[idx] >= 0.0 else -1.0]
 
 
 ## Current (m/s) at a point (m). Zero on the bank and inside rocks.
@@ -277,7 +288,7 @@ func _build_flow() -> void:
 			var d := _bed_depth(p)
 			var idx := j * cols + i
 			depth[idx] = d
-			velocity[idx] = _around_rocks(p, Vector2(k * pow(d, DEPTH_SPEED_EXP), 0.0))
+			velocity[idx] = _apply_features(p, Vector2(k * pow(d, DEPTH_SPEED_EXP), 0.0))
 
 
 ## Depth of the bed at p: deepest on the thalweg, shelving to the banks.
@@ -296,33 +307,21 @@ func _section_sum(x: float) -> float:
 	return s
 
 
-## Bends the current around each boulder (ideal flow past a cylinder) and cuts
-## the slack pocket behind it. Works in the current's own frame, so it suits a
-## river running in any direction.
-func _around_rocks(p: Vector2, base: Vector2) -> Vector2:
-	var v := base
-	for r in rocks:
-		var rel := p - Vector2(r.x, r.y)
-		var rad := r.z
-		var d2 := rel.length_squared()
-		if d2 < rad * rad:
-			return Vector2.ZERO
-		var speed := v.length()
-		var angle := v.angle() if speed > 0.0 else 0.0
-		if angle != 0.0:
-			rel = rel.rotated(-angle)
-		var r2 := rad * rad
-		var r4 := d2 * d2
-		# Potential flow past a cylinder in a stream along +x, unit speed.
-		var u := 1.0 - r2 * (rel.x * rel.x - rel.y * rel.y) / r4
-		var w := -2.0 * r2 * rel.x * rel.y / r4
-		var shaped := Vector2(u, w) * speed
-		if rel.x > 0.0:
-			var half := rad * (1.0 + WAKE_SPREAD * rel.x / rad)
-			var wake := exp(-pow(rel.y / half, 2.0)) * exp(-(rel.x - rad) / (WAKE_LENGTH * rad))
-			shaped.x *= 1.0 - WAKE_STRENGTH * clampf(wake, 0.0, 1.0)
-		v = shaped.rotated(angle) if angle != 0.0 else shaped
-	return v
+## Runs every feature over the current v at p: obstacles bend it, then it is
+## calmed and the swirls are added (see RiverFeature).
+func _apply_features(p: Vector2, v: Vector2) -> Vector2:
+	for f in features:
+		v = f.shape_flow(p, v)
+	var keep := 1.0
+	for f in features:
+		keep *= f.calm(p)
+	return v * keep + eddy_swirl(p)
+
+
+func _prepare_features() -> void:
+	_feature_state.resize(features.size())
+	for n in features.size():
+		_feature_state[n] = features[n].prepare(self)
 
 
 # --- Winding channel (Stretch) ----------------------------------------------
@@ -432,28 +431,18 @@ func _build_channel() -> void:
 		depth[idx] = d
 		velocity[idx] = dir * lerpf(ks[k], ks[k + 1], t) * pow(d, DEPTH_SPEED_EXP)
 
-	# Which way each eddy turns: back upstream along its nearer bank.
-	_eddy_spin.clear()
-	for e in stretch.eddies:
-		var i := clampi(roundi(e.x / CELL), 0, cols - 1)
-		var j := clampi(roundi((e.y - top) / CELL), 0, rows - 1)
-		var k := maxi(near_k[j * cols + i], 0)
-		var right := Vector2(-tang[k].y, tang[k].x)
-		var bank := right * (1.0 if near_n[j * cols + i] >= 0.0 else -1.0)
-		_eddy_spin.append(-signf(Vector2(-bank.y, bank.x).dot(tang[k])))
-
+	centre = c
+	centre_dir = tang
+	_near_k = near_k
+	_near_n = near_n
+	_prepare_features()
 	for j in rows:
 		for i in cols:
 			var idx := j * cols + i
 			if wet[idx] == 0:
 				continue
-			var p := cell_pos(i, j)
-			var v := _beside_logs(p, velocity[idx])
-			v = _around_rocks(p, v)
-			velocity[idx] = v * _eddy_calm(p) + eddy_swirl(p)
+			velocity[idx] = _apply_features(cell_pos(i, j), velocity[idx])
 
-	centre = c
-	centre_dir = tang
 	thalweg = PackedVector2Array()
 	for k in n:
 		var tp := c[k] + Vector2(-tang[k].y, tang[k].x) * offs[k]
@@ -469,42 +458,11 @@ func _profile(across: float, w: float, off: float, td: float) -> float:
 
 
 
-## The swirl the eddies add at p (m/s): each is the curl of a Gaussian stream
-## function, so it has no sources or sinks and its streamlines close on
-## themselves. Peak speed is the eddy's strength at one radius from its centre.
+## The swirl the features (eddies) add at p (m/s).
 func eddy_swirl(p: Vector2) -> Vector2:
 	var v := Vector2.ZERO
-	if stretch == null:
-		return v
-	for e_i in stretch.eddies.size():
-		var e := stretch.eddies[e_i]
-		var rel := p - Vector2(e.x, e.y)
-		var g := exp(-rel.length_squared() / (2.0 * e.z * e.z))
-		if g < 0.0005:
-			continue
-		var spin := _eddy_spin[e_i] if e_i < _eddy_spin.size() else 1.0
-		v += Vector2(-rel.y, rel.x) / e.z * g * exp(0.5) * e.w * WATER_SPEED * spin
-	return v
-
-
-## How much of the main current is left at p inside the eddies (0..1).
-func _eddy_calm(p: Vector2) -> float:
-	var keep := 1.0
-	for e in stretch.eddies:
-		var g := exp(-(p - Vector2(e.x, e.y)).length_squared() / (2.0 * e.z * e.z))
-		keep *= 1.0 - EDDY_CALM * g
-	return keep
-
-
-## Slack water tucked beside a fallen log.
-func _beside_logs(p: Vector2, v: Vector2) -> Vector2:
-	for l in stretch.logs:
-		var a := Vector2(l.x, l.y)
-		var d := Vector2(l.z, l.w) - a
-		var t := clampf((p - a).dot(d) / maxf(d.length_squared(), 0.0001), 0.0, 1.0)
-		var dist := p.distance_to(a + d * t)
-		if dist < LOG_REACH * 2.5:
-			v *= 1.0 - LOG_SLOW * exp(-pow(dist / LOG_REACH, 2.0))
+	for n in features.size():
+		v += features[n].swirl(p, _feature_state[n] if n < _feature_state.size() else 1.0)
 	return v
 
 
@@ -597,7 +555,7 @@ func _build_lies() -> void:
 			var idx := j * cols + i
 			# Too shallow or too fast to hold in: no lie, whatever the food.
 			if depth[idx] <= DEPTH_NEEDED.x or sp[idx] >= hold_speed.y \
-					or (not wet.is_empty() and wet[idx] == 0) or is_rock(cell_pos(i, j)):
+					or (not wet.is_empty() and wet[idx] == 0) or is_solid(cell_pos(i, j)):
 				lie[idx] = 0.0
 				continue
 			var near := 0.0
