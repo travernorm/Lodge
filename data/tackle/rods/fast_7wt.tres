@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="FlyRod" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/tackle/fly_rod.gd" id="1_rod"]
+
+[resource]
+script = ExtResource("1_rod")
+id = &"fast_7wt"
+display_name = "Fast 7-weight"
+description = "A stiff rod for heavy flies and heavy fish. It throws a mile of line if your timing is crisp, and it punishes sloppy strokes."
+weight = 7
+fly_types = 6
+max_line_m = 16.5
+forgiveness = 0.75
+rated_length_in = 28.0

@@ -44,7 +44,7 @@ func _initialize() -> void:
 # --- Data ------------------------------------------------------------------
 
 func _test_data_loads() -> void:
-	for path in ["res://data/flies/parachute_adams.tres", "res://data/flies/elk_hair_caddis.tres", "res://data/flies/royal_wulff.tres"]:
+	for path in ["res://data/tackle/flies/parachute_adams.tres", "res://data/tackle/flies/elk_hair_caddis.tres", "res://data/tackle/flies/royal_wulff.tres"]:
 		var fly := load(path) as FlyPattern
 		_check(fly != null and fly.display_name != "", "data: %s loads" % path.get_file())
 	for sp in [_cutthroat, _redband, _brook]:

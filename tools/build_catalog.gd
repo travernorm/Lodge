@@ -1,14 +1,15 @@
 extends SceneTree
 ## Writes data/catalog.tres from the data/<kind>/ folders (REQ-0004 C1).
-## Run it after adding, moving or deleting a fish, fly, insect or stretch file:
+## Run it after adding, moving or deleting a fish, fly, rod, insect or stretch file:
 ##   godot --headless --path . --script res://tools/build_catalog.gd
 ## tests/data_test.gd fails until you do, so a new file can't be forgotten.
 ##
 ## Entries keep their current order and new files go at the end (sorted by
-## file name), so the fly box order only changes when you change it.
+## file name), so the fly box and rod order only change when you change them.
 
 const FOLDERS := {
-	"flies": "res://data/flies",
+	"flies": "res://data/tackle/flies",
+	"rods": "res://data/tackle/rods",
 	"fish": "res://data/fish",
 	"insects": "res://data/insects",
 	"stretches": "res://data/stretches",

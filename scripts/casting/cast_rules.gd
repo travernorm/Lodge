@@ -32,7 +32,8 @@ func stroke_ideal(model: CastModel) -> float:
 	return t.base_stroke_time + model.line_out * t.stroke_time_per_m
 
 
-## +/- seconds counted as perfect and okay for the stroke being held now.
+## +/- seconds counted as perfect and okay for the stroke being held now,
+## before the rod's forgiveness (CastModel.perfect_window() applies it).
 func perfect_window(model: CastModel) -> float:
 	return model.tuning.perfect_window
 
@@ -45,7 +46,7 @@ func ok_window(model: CastModel) -> float:
 ## Returns [quality, message]. An empty message means nothing worth saying.
 func score_stroke(model: CastModel, elapsed: float, stroke_name: String) -> Array:
 	var error := elapsed - model.phase_ideal
-	var q := timing_quality(error, perfect_window(model), ok_window(model))
+	var q := timing_quality(error, model.perfect_window(), model.ok_window())
 	var msg := ""
 	if q < 1.0:
 		msg = ("Early on the %s cast" if error < 0.0 else "Late on the %s cast") % stroke_name
@@ -59,7 +60,7 @@ func after_false_cast(model: CastModel, q: float) -> String:
 	if q < t.line_gain_threshold:
 		return "Sloppy false cast. No line gained."
 	var gain := lerpf(t.line_gain_min, t.line_gain_max, inverse_lerp(t.line_gain_threshold, 1.0, q))
-	model.line_out = minf(model.line_out + gain, t.line_max)
+	model.line_out = minf(model.line_out + gain, model.max_line(t.line_max))
 	return "Tight loop" if q >= 0.95 else ""
 
 

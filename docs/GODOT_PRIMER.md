@@ -52,7 +52,7 @@ Autoloads are convenient, which is exactly why they're dangerous. Every autoload
 
 ### 6. Resources
 
-A **Resource** is a data object saved as a `.tres` file and edited in the Godot inspector. You define the fields in a script (`extends Resource`, with `@export var` fields) and then make as many files as you like. Lodge uses these for flies (`data/flies/`), fish species (`data/fish/`), casting rule sets (`data/cast_rules/`) and cast tuning.
+A **Resource** is a data object saved as a `.tres` file and edited in the Godot inspector. You define the fields in a script (`extends Resource`, with `@export var` fields) and then make as many files as you like. Lodge uses these for flies (`data/tackle/flies/`), fish species (`data/fish/`), casting rule sets (`data/cast_rules/`) and cast tuning.
 
 Resources are how a game with 100 fish and hundreds of flies stays manageable: each new fish is a file, not code. Two things to know:
 

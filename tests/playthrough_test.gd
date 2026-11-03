@@ -125,6 +125,12 @@ func _run() -> void:
 		return
 	catches += 1
 
+	# 2c. Rods: L2 / R cycles every rod, a catch on the second rod, and a rod
+	# with no fly to throw won't cast while fishing but casts in practice.
+	if not await _rod_pass():
+		return
+	catches += 1
+
 	# 3. Practice mode under every rule set: no bites, every landing is scored.
 	await _tap(&"practice_mode")
 	if not _practice.active or _fishing.enabled:
@@ -208,7 +214,7 @@ func _mend_feed_pass() -> bool:
 
 
 func _fly_box_pass() -> bool:
-	var count: int = _fishing.flies.size()
+	var count: int = _fishing.tackle.usable_flies().size()
 	if count < 2:
 		_fail("The fly box has %d fly; expected the whole box" % count)
 		return false
@@ -216,7 +222,7 @@ func _fly_box_pass() -> bool:
 	for i in count:
 		seen[_fishing.current_fly().id] = true
 		await _tap(&"change_fly")
-	if _fishing.fly_index != 0 or seen.size() != count:
+	if _fishing.tackle.fly_index != 0 or seen.size() != count:
 		_fail("Y didn't cycle every fly and come back round (%d of %d seen)" % [seen.size(), count])
 		return false
 	await _tap(&"change_fly")
@@ -229,10 +235,61 @@ func _fly_box_pass() -> bool:
 		return false
 	for i in count - 1:
 		await _tap(&"change_fly")
-	if _fishing.fly_index != 0:
+	if _fishing.tackle.fly_index != 0:
 		_fail("Couldn't tie the first fly back on")
 		return false
 	print("  ok    fly box: Y cycles %d flies; caught a %s on the %s" % [count, _trout.species.display_name, fly.display_name])
+	return true
+
+
+## REQ-0005: L2 / R cycles every rod and comes back round, each rod reaching
+## the cast; the trout is caught on the second rod; a rod that throws no fly in
+## the box won't start a cast while fishing, but casts in practice.
+func _rod_pass() -> bool:
+	var tackle: Tackle = _fishing.tackle
+	var count := tackle.rods.size()
+	if count < 2:
+		_fail("The rod rack has %d rod; expected every rod in the catalog" % count)
+		return false
+	for i in count:
+		await _tap(&"change_rod")
+		if _cast.model.rod != tackle.rod():
+			_fail("The %s didn't reach the cast" % tackle.rod().display_name)
+			return false
+	if tackle.rod_index != 0:
+		_fail("L2 didn't cycle every rod and come back round")
+		return false
+	await _tap(&"change_rod")
+	var rod: FlyRod = tackle.rod()
+	if tackle.fly() == null or not await _catch_one(1, false):
+		_fail_context("rod %s" % rod.display_name)
+		return false
+	var bare := ""
+	for i in count:
+		if tackle.fly() == null:
+			bare = tackle.rod().display_name
+			break
+		await _tap(&"change_rod")
+	if bare != "":
+		Input.action_press(&"cast_back")
+		await _wait(0.2)
+		Input.action_release(&"cast_back")
+		await _wait(0.1)
+		if _cast.model.state != CastModel.State.IDLE:
+			_fail("The %s cast with no fly it can throw" % bare)
+			return false
+		await _tap(&"practice_mode")
+		var scored := _practice_attempts()
+		await _cast_once(1)
+		if _practice_attempts() != scored + 1:
+			_fail("The %s didn't cast in practice" % bare)
+			return false
+		await _wait_for(func(): return _cast.model.state == CastModel.State.IDLE, 3.0)
+		await _tap(&"practice_mode")
+	while tackle.rod_index != 0:
+		await _tap(&"change_rod")
+	print("  ok    rods: L2 cycles %d rods; caught a %s on the %s%s" % [count, _trout.species.display_name, rod.display_name,
+		"; the %s won't cast with no fly, but casts in practice" % bare if bare != "" else ""])
 	return true
 
 

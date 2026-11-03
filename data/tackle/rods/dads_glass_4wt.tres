@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="FlyRod" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/tackle/fly_rod.gd" id="1_rod"]
+
+[resource]
+script = ExtResource("1_rod")
+id = &"dads_glass_4wt"
+display_name = "Dad's glass 4-weight"
+description = "Soft, slow fibreglass from the back of Dad's closet. It forgives a lazy stroke, but it won't throw a long line or stop a big fish."
+weight = 4
+fly_types = 1
+max_line_m = 10.25
+forgiveness = 1.3
+rated_length_in = 16.0

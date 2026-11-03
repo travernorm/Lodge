@@ -18,7 +18,8 @@ extends CastRules
 ## Fraction of the tempo counted as perfect / okay either side of it.
 @export var perfect_fraction := 0.15
 @export var ok_fraction := 0.38
-## Line out (m) at each step: Short, Middle, Long.
+## Line out (m) at each step: Short, Middle, Long. With a rod, the last step
+## is the rod's longest line instead, and no step goes past it (REQ-0005).
 @export var step_lengths := PackedFloat32Array([4.5, 8.25, 12.5])
 ## A false cast must average at least this quality to climb a step.
 @export var climb_quality := 0.55
@@ -28,13 +29,13 @@ extends CastRules
 var _step := 0
 
 
-func start_line(_model: CastModel) -> float:
+func start_line(model: CastModel) -> float:
 	_step = 0
-	return step_lengths[0]
+	return lengths(model)[0]
 
 
 func stroke_ideal(model: CastModel) -> float:
-	return tempo + _step_for(model.line_out) * tempo_per_step
+	return tempo + _step_for(model, model.line_out) * tempo_per_step
 
 
 func perfect_window(model: CastModel) -> float:
@@ -47,23 +48,40 @@ func ok_window(model: CastModel) -> float:
 
 func after_false_cast(model: CastModel, q: float) -> String:
 	# Re-sync from line_out in case something else changed it mid-cast.
-	_step = _step_for(model.line_out)
+	var steps := lengths(model)
+	_step = _step_for(model, model.line_out)
 	if q < climb_quality:
-		return "Sloppy false cast. Still %s." % CastRules.distance_label(step_lengths[_step])
-	if _step >= step_lengths.size() - 1:
-		return "Holding at Long"
+		return "Sloppy false cast. Still %s." % CastRules.distance_label(steps[_step])
+	if _step >= steps.size() - 1:
+		return "Holding at %s" % CastRules.distance_label(steps[_step])
 	_step += 1
-	model.line_out = step_lengths[_step]
-	return "Step up: %s" % CastRules.distance_label(step_lengths[_step])
+	model.line_out = steps[_step]
+	var label := CastRules.distance_label(steps[_step])
+	if _step == steps.size() - 1 and label != CastRules.distance_label(step_lengths[_step]):
+		return "Step up: %s. That's all this rod carries." % label
+	return "Step up: %s" % label
 
 
 func delivery_reach(model: CastModel, q: float) -> float:
 	return model.line_out * lerpf(worst_reach, 1.0, q)
 
 
-func _step_for(line: float) -> int:
+## Line out (m) at each step for this cast: step_lengths, with the last step
+## set by the rod's longest line and no step past it.
+func lengths(model: CastModel) -> PackedFloat32Array:
+	var out := step_lengths.duplicate()
+	var last := out.size() - 1
+	var cap := model.max_line(out[last])
+	for i in out.size():
+		out[i] = minf(out[i], cap)
+	out[last] = cap
+	return out
+
+
+func _step_for(model: CastModel, line: float) -> int:
+	var steps := lengths(model)
 	var best := 0
-	for i in step_lengths.size():
-		if line >= step_lengths[i] - 0.0625:
+	for i in steps.size():
+		if line >= steps[i] - 0.0625:
 			best = i
 	return best

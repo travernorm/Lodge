@@ -79,7 +79,8 @@ func _process(delta: float) -> void:
 		if Input.is_action_just_pressed(Controls.BACK):
 			reel_in_line("Reeled in.")
 
-	var r: bool = Input.is_action_pressed(Controls.CAST_BACK) and not fighting
+	var rigged: bool = _fishing == null or model.is_busy() or _fishing.can_cast()
+	var r: bool = Input.is_action_pressed(Controls.CAST_BACK) and not fighting and rigged
 	model.update(_time, r, Input.is_action_pressed(Controls.CAST_FORWARD))
 	_tug()
 	queue_redraw()
@@ -136,8 +137,8 @@ func _drift(delta: float) -> void:
 		return
 	fly_pos += _stream.flow_at(fly_pos) * delta
 	var out := WorldScale.to_m(fly_pos.distance_to(_stream.rod_tip()))
-	model.line_out = clampf(out, tuning.line_start, tuning.line_max)
-	if not _stream.in_play(fly_pos) or out > tuning.line_max + 3.0:
+	model.line_out = clampf(out, tuning.line_start, model.max_line(tuning.line_max))
+	if not _stream.in_play(fly_pos) or out > model.max_line(tuning.line_max) + 3.0:
 		reel_in_line("Drift's done. Reeled in.")
 
 
@@ -257,8 +258,9 @@ func _draw_curve(a: Vector2, control: Vector2, b: Vector2, color: Color) -> void
 
 
 func _draw_fly(p: Vector2) -> void:
-	if _fishing != null:
-		_fishing.current_fly().draw_at(self, p)
+	var fly: FlyPattern = _fishing.current_fly() if _fishing != null else null
+	if fly != null:
+		fly.draw_at(self, p)
 		return
 	var q := p.floor()
 	draw_rect(Rect2(q + Vector2(-1, 0), Vector2(3, 2)), COL_FLY)
