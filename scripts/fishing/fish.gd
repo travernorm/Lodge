@@ -18,7 +18,9 @@ extends RefCounted
 ##   &"take"    took the fly: the hook-set window is open
 ##   &"spat"    you waited too long and it spat the fly
 
-enum State { HOLDING, WAITING, RISING, TAKEN, HOOKED, GONE }
+## CAUGHT: landed this session. It stays out of the water until the session
+## ends: it never rises, bites or comes back (a break-off is GONE and returns).
+enum State { HOLDING, WAITING, RISING, TAKEN, HOOKED, GONE, CAUGHT }
 enum SetResult { HOOKED, TOO_EARLY, TOO_LATE, NO_FISH }
 
 const RISE_TIME := 0.35
@@ -96,9 +98,9 @@ func respawn() -> void:
 	_dimple_timer = _rng.randf_range(0.5, DIMPLE_EVERY.y)
 
 
-## Visible in the water (not gone off somewhere).
+## Visible in the water (not gone off somewhere, and not caught).
 func is_present() -> bool:
-	return state != State.GONE
+	return state != State.GONE and state != State.CAUGHT
 
 
 ## Rolls `chance` for a bite. On a bite it rises after `delay` seconds (a
@@ -205,9 +207,10 @@ func try_set() -> SetResult:
 	return SetResult.NO_FISH
 
 
-## Landed or broke off: gone for a moment, then a fish takes the lie again.
-func leave() -> void:
-	state = State.GONE
+## Broke off: gone for a moment, then a fish takes the lie again. Landed
+## (`landed` true): out of the water for the rest of the session.
+func leave(landed := false) -> void:
+	state = State.CAUGHT if landed else State.GONE
 	_timer = GONE_TIME
 	pos = lie
 

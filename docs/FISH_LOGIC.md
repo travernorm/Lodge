@@ -57,6 +57,8 @@ The population is generated once per season, or on the first visit, and then **k
 * A fish you kept (to sell at the market) is gone, and the stretch refills slowly. This ties fishing to the economy: overfishing one spot to sell fish makes it worse.
 * A little daily churn: some fish swap lies, so a stretch never feels solved.
 
+*Today:* there is no population to keep yet, only the play session. A fish you land is out of the water for the rest of the session (`Fish.State.CAUGHT`), so you can't catch the same trout twice. A fish that breaks off or throws the hook comes back to its lie a few seconds later.
+
 ## Step 2: Mood
 
 ### What it decides

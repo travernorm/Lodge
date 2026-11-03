@@ -105,7 +105,7 @@ func _ready() -> void:
 func _lies_except(me: Fish) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	for f in fish:
-		if f != me:
+		if f != me and f.state != Fish.State.CAUGHT:
 			out.append(f.lie)
 	return out
 
@@ -409,11 +409,11 @@ func _land_fish() -> void:
 	])
 	_card_at = _time
 	Controls.rumble(0.4, 0.4, 0.12)
-	_end_fight("Landed it! Released to fight another day.", 1.0)
+	_end_fight("Landed it! Released to fight another day.", 1.0, true)
 
 
-func _end_fight(message: String, quality: float) -> void:
-	hooked.leave()
+func _end_fight(message: String, quality: float, landed := false) -> void:
+	hooked.leave(landed)
 	hooked = null
 	fight = null
 	phase = Phase.NONE

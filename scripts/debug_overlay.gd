@@ -206,7 +206,8 @@ func _draw_water() -> void:
 	var fishing := get_tree().get_first_node_in_group(&"fishing")
 	if fishing != null:
 		for f in fishing.fish:
-			draw_arc(WorldScale.vec_to_px(f.lie), 3.5, 0.0, TAU, 12, COL_FAST, 1.0)
+			if f.state != Fish.State.CAUGHT:
+				draw_arc(WorldScale.vec_to_px(f.lie), 3.5, 0.0, TAU, 12, COL_FAST, 1.0)
 	draw_set_transform(Vector2.ZERO)
 
 	# Key, and what the water is doing under the fly.
