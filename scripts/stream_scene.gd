@@ -42,7 +42,9 @@ const BANK_BOTTOM := BANK_BOTTOM_M * WorldScale.PX_PER_M
 
 ## Water faster than this fraction of RiverField.WATER_SPEED shows white foam streaks.
 const FOAM_SPEED := 36.0 / 55.0
-const STREAK_COUNT := 90
+## How many little current streaks drift on screen. 22 (down from 90, Traver 2026-11-03):
+## the water textures now show the movement, so the streaks are just accents.
+const STREAK_COUNT := 22
 const STREAK_LIFE := Vector2(3.0, 8.0)
 
 ## Walking speed (px/s, 8 px = 1 m). 60 = 7.5 m/s, raised 1.5x from 40 so the bank feels less sluggish.
@@ -414,9 +416,7 @@ func _draw() -> void:
 		var col := COL_FOAM if speed > foam or river.seam_at(WorldScale.vec_to_m(s)) > 0.6 else COL_STREAK
 		draw_line(s.floor(), (s + v / speed * length).floor(), col, 1.0)
 
-	for f in river.features:
-		_draw_feature(f)
-
+	for f in river.features: _draw_feature(f)
 	_draw_angler()
 
 
