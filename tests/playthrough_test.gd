@@ -343,11 +343,20 @@ func _catch_one(false_casts: int, debug_views: bool) -> bool:
 	if not done:
 		printerr("  fight never ended")
 		return false
-	# The trout swims off and comes back before the next cast.
-	if not await _wait_for(func(): return _trout.state == Fish.State.HOLDING and _cast.model.state == CastModel.State.IDLE, 10.0):
-		printerr("  trout didn't come back (%s) or line not reeled in (%s)" % [
-			Fish.State.keys()[_trout.state], CastModel.State.keys()[_cast.model.state]])
+	# A landed trout is out of the water for the rest of the session.
+	if _trout.state != Fish.State.CAUGHT or _trout.is_present():
+		printerr("  the landed trout is still in the water (%s)" % Fish.State.keys()[_trout.state])
 		return false
+	await _wait(Fish.GONE_TIME + 0.5)
+	if _trout.state != Fish.State.CAUGHT:
+		printerr("  the landed trout came back (%s)" % Fish.State.keys()[_trout.state])
+		return false
+	if not await _wait_for(func(): return _cast.model.state == CastModel.State.IDLE, 10.0):
+		printerr("  line not reeled in (%s)" % CastModel.State.keys()[_cast.model.state])
+		return false
+	# The stretch holds only a few trout and this run lands more than that, so
+	# the test puts its tame trout back for the next catch.
+	_trout.respawn()
 	return true
 
 
