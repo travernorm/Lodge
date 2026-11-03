@@ -79,6 +79,10 @@ func _test_flies(flies: Dictionary) -> void:
 		_check(not ids.has(fly.id), "fly %s: id is unique" % stem)
 		ids[fly.id] = true
 		_check(fly.fly_type in FlyPattern.Type.values(), "fly %s: fly_type is Dry, Nymph or Streamer" % stem)
+		if fly.sprite_sheet != null:
+			var sheet := fly.sprite_sheet
+			_check(sheet.get_width() == sheet.get_height() * FlyView.VIEWS,
+				"fly %s: sprite_sheet is %d square views in a row" % [stem, FlyView.VIEWS])
 
 
 ## Rods (REQ-0005): valid numbers, and the first rod in the catalog (the one

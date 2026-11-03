@@ -83,7 +83,7 @@ The data folders today, each covered by `tests/data_test.gd`:
 
 * `data/insects/`: `Insect`, the shared key between flies, diets and (later) hatches.
 * `data/tackle/`: tackle, the things you fish with (REQ-0005).
-  * `data/tackle/flies/`: `FlyPattern`, each pointing at the insects it imitates, with a fly type (dry, nymph, streamer).
+  * `data/tackle/flies/`: `FlyPattern`, each pointing at the insects it imitates, with a fly type (dry, nymph, streamer) and its art (`assets/flies/<id>.png`, 8 views in a row).
   * `data/tackle/rods/`: `FlyRod`: which fly types it throws, its longest line, timing forgiveness and the fish length it's rated for.
 * `data/fish/`: `FishSpecies`, with diet, selectivity, hook-set window, fight stats, sizes.
 * `data/cast_rules/`: the casting rule sets (one `CastRules` per file).
@@ -180,10 +180,11 @@ var on_water: bool
 
 ### 3.5 Flies and the fly box
 
-* **Data:** `FlyPattern` (id, name, colours, `imitates: Array[Insect]`, `fly_type`) and `FlyRod` (REQ-0005), both in `data/tackle/` and `scripts/tackle/`. Later fly fields (size, sink rate) each need a REQ.
+* **Data:** `FlyPattern` (id, name, colours, `imitates: Array[Insect]`, `fly_type`, `sprite_sheet`) and `FlyRod` (REQ-0005), both in `data/tackle/` and `scripts/tackle/`. Later fly fields (size, sink rate) each need a REQ.
 * **Model:** `Tackle` (`scripts/tackle/tackle.gd`) is the one writer of which rod and fly are rigged. The fly box offers only flies the rod throws (`FlyRod.throws()`); changing rods keeps the fly if it fits.
 * **Model (planned, step D):** `FlyBox`: which patterns you have, how many, which is tied on. Emits `fly_changed`.
-* **Today:** `fishing_controller.gd` owns one `Tackle`, built from the catalog, and hands its rod to the cast and the fight. Owned gear (how many of each) comes with `FlyBox` in step D. `FlyPattern.draw_at()` draws inside data (R1 debt, fine until real fly art).
+* **Today:** `fishing_controller.gd` owns one `Tackle`, built from the catalog, and hands its rod to the cast and the fight. Owned gear (how many of each) comes with `FlyBox` in step D.
+* **View:** `FlyView` (`scripts/tackle/fly_view.gd`) draws a fly from its art, `FlyPattern.sprite_sheet` (8 views in a row in `assets/flies/`, the hook eye as the head). On the water the fly faces the rod tip; the fly box shows it side on. A fly with no art draws as a few pixels in its colours. The cast node and the fishing node each own one. `FlyBoxView` (`scripts/tackle/fly_box_view.gd`) draws the fly box corner of the HUD (the fly's picture, its name, the rod) and owns its own `FlyView` for the picture.
 
 ### 3.6 Fish
 
@@ -309,13 +310,12 @@ The rules marked "Review" (R2, R6, R12) are checked by the PR template's Archite
 
 | Rule | File | Cap today | Paid back by |
 |---|---|---|---|
-| R1 | `scripts/tackle/fly_pattern.gd` | `draw_at()` only | A `FlyView` when fly art arrives |
 | R3 | `scripts/fishing/fishing_controller.gd` | 4 reaches | Step B |
 | R3 | `scripts/casting/cast_controller.gd` | 2 reaches | Step B |
 | R3 | `scripts/casting/cast_practice.gd` | 3 reaches | Step B |
 | R8 | `scripts/fishing/fishing_controller.gd` (`randomize`) | 1 | Step G |
 | R8 | `scripts/casting/cast_model.gd` (`randomize`) | 1 | Step G |
-| R9 | `scripts/fishing/fishing_controller.gd` | 621 lines | Step A |
+| R9 | `scripts/fishing/fishing_controller.gd` | 615 lines | Step A |
 | R9 | `scripts/stream_scene.gd` | 460 lines | Step A2 |
 | R9 | `scripts/river/river_field.gd` | 623 lines | Split builder from queries (river thread) |
 
@@ -383,7 +383,9 @@ Every script, its layer and its system. `architecture_test.gd` fails if a script
 | `scripts/river/water_view.gd` | `WaterView` | View | River (drawing) |
 | `scripts/stream_scene.gd` | (node) | Scene root + views, to split | River, scene wiring |
 | `scripts/tackle/fly_pattern.gd` | `FlyPattern` | Data | Tackle (flies) |
+| `scripts/tackle/fly_box_view.gd` | `FlyBoxView` | View | Tackle (fly box HUD) |
 | `scripts/tackle/fly_rod.gd` | `FlyRod` | Data | Tackle (rods) |
+| `scripts/tackle/fly_view.gd` | `FlyView` | View | Tackle (flies, drawing) |
 | `scripts/tackle/tackle.gd` | `Tackle` | Model | Tackle (what's rigged) |
 | `scripts/world_scale.gd` | `WorldScale` | Model (static helper) | Units |
 

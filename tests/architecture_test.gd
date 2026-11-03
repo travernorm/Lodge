@@ -75,9 +75,7 @@ const ALLOWED_PURE := {
 	"res://scripts/world_scale.gd": ["pixels"],  # it is the conversion
 }
 ## R1 debt: pure scripts that still break a rule. [labels]
-const DEBT_PURE := {
-	"res://scripts/tackle/fly_pattern.gd": ["drawing"],  # F10 (moved from scripts/fishing/ by REQ-0005): draw_at() until fly art (a FlyView)
-}
+const DEBT_PURE := {}
 ## R3 debt: REACH matches per file. Step B (FishingSession) empties this.
 const DEBT_REACH := {
 	"res://scripts/fishing/fishing_controller.gd": 4,  # F2: get_parent, get_node("Cast"), .get(&"river"), .get(&"stretch")
@@ -94,7 +92,7 @@ const DEBT_UNSEEDED := {
 const DEBT_LOOSE := {}
 ## R9 debt: line caps above MAX_LINES. Steps A and A2 bring them down.
 const DEBT_LINES := {
-	"res://scripts/fishing/fishing_controller.gd": 621,  # F1: step A (601 lines after REQ-0004 C2)
+	"res://scripts/fishing/fishing_controller.gd": 615,  # F1: step A (fly box HUD moved to FlyBoxView)
 	"res://scripts/river/river_field.gd": 623,  # F11: builder and query in one (603 after REQ-0004 C3)
 	"res://scripts/stream_scene.gd": 460,  # F1: step A2 (445)
 }

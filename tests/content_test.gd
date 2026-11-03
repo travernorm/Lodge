@@ -18,6 +18,7 @@ func _initialize() -> void:
 	_test_new_rows_link_each_other()
 	_test_bad_cells()
 	_test_missing_row_is_reported()
+	_test_art_cells()
 	_clean()
 	if _failures == 0:
 		print("Content tests passed.")
@@ -114,6 +115,26 @@ func _test_missing_row_is_reported() -> void:
 
 
 ## Copies today's sheets to TMP with one text swap per kind and rows added.
+## A fly's art is a file path, not an id: a real texture links, anything else
+## is a bad cell.
+func _test_art_cells() -> void:
+	var prop := {}
+	for c in Sheets.columns(FlyPattern):
+		if c.name == "sprite_sheet":
+			prop = c
+	_check(not prop.is_empty(), "flies.csv has a sprite_sheet column")
+	if prop.is_empty():
+		return
+	var errors := PackedStringArray()
+	var path := "res://assets/flies/parachute_adams.png"
+	var art: Variant = Sheets.decode(path, prop, "art", errors, {})
+	_check(art is Texture2D and errors.is_empty(), "a sprite_sheet cell links the texture at its path")
+	_check(Sheets.encode(art, prop) == path, "and writes back as the same path")
+	Sheets.decode("res://assets/flies/no_such_fly.png", prop, "art", errors, {})
+	Sheets.decode("res://data/insects/pmd.tres", prop, "art", errors, {})
+	_check(errors.size() == 2, "a missing file or one that isn't a texture is a bad cell %s" % [errors])
+
+
 func _sheets(swaps: Dictionary, extra := {}) -> void:
 	DirAccess.make_dir_recursive_absolute(TMP)
 	for kind in Sheets.KINDS:

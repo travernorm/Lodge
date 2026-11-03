@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="FlyPattern" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing/insect.gd" id="1_v074m"]
+[ext_resource type="Resource" path="res://data/insects/pmd.tres" id="2_c1wwf"]
+[ext_resource type="Script" path="res://scripts/tackle/fly_pattern.gd" id="3_v0qgs"]
+[ext_resource type="Texture2D" path="res://assets/flies/pale_morning_dun.png" id="4_71ho2"]
+
+[resource]
+script = ExtResource("3_v0qgs")
+id = &"pale_morning_dun"
+display_name = "Pale Morning Dun"
+description = "Pale yellow mayfly with light dun wings. On summer mornings the riffles are thick with the real thing."
+body_color = Color(0.890196, 0.768627, 0.352941, 1)
+wing_color = Color(0.784314, 0.8, 0.784314, 1)
+hackle_color = Color(0.85098, 0.65098, 0.25098, 1)
+fly_type = 0
+imitates = Array[ExtResource("1_v074m")]([ExtResource("2_c1wwf")])
+sprite_sheet = ExtResource("4_71ho2")

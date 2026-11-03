@@ -48,10 +48,12 @@ var _flight_from := Vector2.ZERO
 var _flight_to := Vector2.ZERO
 var _tugged_stroke := -1.0
 var _snagged := false
+var _fly_view: FlyView
 
 
 func _ready() -> void:
 	add_to_group(&"cast")
+	_fly_view = FlyView.add_to(self)
 	_stream = get_parent() as Node2D
 	_fishing = _stream.get_node_or_null(^"Fishing")
 	model = CastModel.new(tuning, 0, rules)
@@ -178,6 +180,7 @@ func _on_landed(presentation: String, quality: float) -> void:
 # --- Drawing ---------------------------------------------------------------
 
 func _draw() -> void:
+	_fly_view.clear()
 	var tip: Vector2 = _stream.rod_tip()
 	match model.state:
 		CastModel.State.BACK, CastModel.State.GAP, CastModel.State.BACK_TO_FORWARD:
@@ -260,7 +263,7 @@ func _draw_curve(a: Vector2, control: Vector2, b: Vector2, color: Color) -> void
 func _draw_fly(p: Vector2) -> void:
 	var fly: FlyPattern = _fishing.current_fly() if _fishing != null else null
 	if fly != null:
-		fly.draw_at(self, p)
+		_fly_view.show_fly(fly, p, _stream.rod_tip() - p)  # head up the line, at the angler
 		return
 	var q := p.floor()
 	draw_rect(Rect2(q + Vector2(-1, 0), Vector2(3, 2)), COL_FLY)

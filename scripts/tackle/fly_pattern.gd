@@ -17,6 +17,10 @@ enum Type { DRY, NYMPH, STREAMER }
 ## The bugs this fly passes for (data/insects/). A generalist lists several,
 ## a specific pattern one, and an attractor lists `attractor`.
 @export var imitates: Array[Insect] = []
+## The fly's art: 8 square views in one row, its head (the hook eye) pointing
+## S, SE, E, NE, N, NW, W, SW on screen (assets/flies/). FlyView draws it.
+## Empty, the fly draws as a few pixels in the colours above.
+@export var sprite_sheet: Texture2D
 
 
 ## What it imitates, as the families for the tie-on message: "mayfly",
@@ -28,11 +32,3 @@ func kinds_text() -> String:
 			kinds.append(insect.kind)
 	return ", ".join(kinds)
 
-
-## Draws the fly as a few pixels. scale 1 is the in-world size; the HUD uses 2.
-func draw_at(canvas: CanvasItem, p: Vector2, scale := 1.0) -> void:
-	var q := p.floor()
-	var s := scale
-	canvas.draw_rect(Rect2(q + Vector2(-1, 0) * s, Vector2(3, 1) * s), hackle_color)
-	canvas.draw_rect(Rect2(q + Vector2(0, 1) * s, Vector2(2, 1) * s), body_color)
-	canvas.draw_rect(Rect2(q + Vector2(0, -1) * s, Vector2(1, 1) * s), wing_color)
