@@ -87,6 +87,8 @@ var _water_tex: ImageTexture
 var _tufts: Array[Vector2] = []
 var _rng := RandomNumberGenerator.new()
 @onready var _cast: Node = get_node_or_null(^"Cast")
+## Paints the water with a WaterLook when it has one (scripts/river/water_view.gd).
+@onready var _water: WaterView = get_node_or_null(^"Water")
 
 
 func _enter_tree() -> void:
@@ -114,6 +116,8 @@ func _ready() -> void:
 	if camera != null:
 		camera.make_current()
 		camera.reset_smoothing()
+	if stretch != null and _water != null:
+		_water.setup(river)
 	_water_tex = _make_stretch_texture() if stretch != null else _make_water_texture()
 	for i in STREAK_COUNT:
 		_streaks.append(_random_water_point())
@@ -318,13 +322,16 @@ func _make_stretch_texture() -> ImageTexture:
 	var dither: Array[float] = [-0.03, 0.01, 0.03, -0.01]
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1979
+	var clear_water := _water != null and _water.is_active()
 	var data := PackedByteArray()
-	data.resize(size.x * size.y * 3)
+	data.resize(size.x * size.y * 4)
 	for y in size.y:
 		for x in size.x:
 			var idx := y * size.x + x
 			var col := COL_GRASS
-			if wet_px[idx] >= 0.5:
+			if wet_px[idx] >= 0.5 and clear_water:
+				col = Color.TRANSPARENT  # the WaterView paints it, underneath
+			elif wet_px[idx] >= 0.5:
 				var d := depth_px[idx] + dither[(y % 2) * 2 + (x % 2)]
 				var band := 0
 				while band < cuts.size() and d > cuts[band]:
@@ -339,10 +346,11 @@ func _make_stretch_texture() -> ImageTexture:
 					col = COL_GRAVEL  # the inside of a bend widens into a point bar
 				elif rng.randf() < 0.025:
 					col = COL_TUFT
-			data[idx * 3] = col.r8
-			data[idx * 3 + 1] = col.g8
-			data[idx * 3 + 2] = col.b8
-	var img := Image.create_from_data(size.x, size.y, false, Image.FORMAT_RGB8, data)
+			data[idx * 4] = col.r8
+			data[idx * 4 + 1] = col.g8
+			data[idx * 4 + 2] = col.b8
+			data[idx * 4 + 3] = col.a8
+	var img := Image.create_from_data(size.x, size.y, false, Image.FORMAT_RGBA8, data)
 	for g in stretch.gravel:
 		var c := WorldScale.vec_to_px(Vector2(g.x, g.y))
 		var r := WorldScale.to_px(g.z)
