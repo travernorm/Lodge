@@ -24,7 +24,7 @@ Follow these steps in order, scaled to the change. The top priority throughout i
 
 * **Player feel.** Does it feel tactile on a controller, especially the R/L bumper cast and right-stick work? Is it readable at 320×200 on a 7-inch screen? Is the simplest version first, with its rules or odds visible, before depth is layered on? Does it keep the solitary, cabin-core, river-first tone?
 * **Engine and performance.** Godot 4.3 with the GL Compatibility renderer, so no compute shaders and nothing that blocks the Switch port. A steady 60 fps on the Deck. The web build is single-threaded. Logic is frame-rate independent (uses `delta`) and survives `Engine.time_scale` changes. Randomness goes through a seedable `RandomNumberGenerator` so tests are repeatable. Heavy work (like river hydraulics) is baked offline, not simulated live.
-* **Architecture.** Does it fit the existing patterns? Gameplay numbers and content are data (`.tres` in `data/`), not code. Rules live in plain models that can be tested without the scene (`cast_model.gd`, `drift_model.gd`, `fight_model.gd`, `river_field.gd`), with scene glue kept thin. Actions go through the `Controls` autoload. Systems talk through signals and a few named methods, listed in the [system map](#system-map). Avoid growing already-large files (see `docs/refactor-backlog.md`). The layers, owners and contracts are in `docs/ARCHITECTURE.md`; check a change against it, and update it in the same PR when a system or link changes.
+* **Architecture.** Does it fit the existing patterns? Gameplay numbers and content are data (`.tres` in `data/`), not code. Rules live in plain models that can be tested without the scene (`cast_model.gd`, `drift_model.gd`, `fight_model.gd`, `river_field.gd`), with scene glue kept thin. Actions go through the `Controls` autoload. Systems talk through signals and a few named methods, listed in the [system map](#system-map). Avoid growing already-large files (see `docs/refactor-backlog.md`). The layers, owners, contracts and numbered rules (R1 to R12) are in `docs/ARCHITECTURE.md`; check a change against it, and update it in the same PR when a system or link changes. `tests/architecture_test.gd` enforces most of the rules and holds the debt ledger.
 
 ## Standing rules
 
@@ -35,6 +35,7 @@ Follow these steps in order, scaled to the change. The top priority throughout i
 * **Switch, later.** Keep to GL Compatibility, modest asset sizes, and no plugins or native extensions without discussing it first.
 * **Original content.** Art, sound, fonts and text are original or properly licensed, with the license noted when added.
 * **Game code needs approval.** Outside an approved REQ or a small-track fix, only tests, CI, tools and docs change without asking.
+* **The architecture debt ledger only shrinks.** The caps in `tests/architecture_test.gd` (mirrored in ARCHITECTURE.md section 9) can be lowered by any PR that pays debt back, and must be when the test says so. Raising a cap or adding an entry needs Traver's explicit OK in the PR, with the reason in its Architecture section.
 * **Every handoff says how to get it:** in GitHub Desktop, **Fetch origin**, then **Pull origin**, then open Godot and press **Cmd+B**. After a merge to `main`, it's also playable at https://travernorm.github.io/Lodge/.
 
 ---
@@ -60,11 +61,12 @@ Keep this table current. A PR that adds a system, or a new dependency between tw
 
 All tests run headless from `tools/run_tests.sh` and in CI on every PR.
 
-1. **Unit tests** per system (`cast_test`, `cast_rules_test`, `fishing_test`, `river_test`): the models' rules on their own, fast and exact.
-2. **Contract tests** across file sets (`data_test`): every file in `data/insects`, `data/flies`, `data/fish` and `data/cast_rules` loads as the right class with valid fields; ids match file names and are unique; fish lie areas are on screen and in water; every fly imitates real insects and every diet names real ones, and every fish has a fly that fully matches it; the scene's fly box, stocking and rule set chassis point at real data and every rule set file is reachable in game; every action has a controller binding and a key with no doubled bindings. These read folders, so new data is covered automatically.
-3. **Smoke test** (`smoke_test`): the main scene loads and one full catch plays through the real input system.
-4. **Integration playthrough** (`playthrough_test`): plays the real scene through input across systems: a catch under every rule set with no false casts and with one, walking the bank between catches, the debug views cycled during a drift and a fight, practice mode under every rule set (no bites, every landing scored), and B reeling in.
-5. **Manual playtest** (below), on the keyboard and the DualSense.
+1. **Architecture check** (`architecture_test`): reads the source and fails on a broken layer rule (models touching the tree, nodes reaching into siblings, writes to shared data, untyped data links, unseeded randomness, new autoloads, oversized files, scripts or data folders missing from ARCHITECTURE.md). Each failure names its rule.
+2. **Unit tests** per system (`cast_test`, `cast_rules_test`, `fishing_test`, `river_test`): the models' rules on their own, fast and exact.
+3. **Contract tests** across file sets (`data_test`): every file in `data/insects`, `data/flies`, `data/fish` and `data/cast_rules` loads as the right class with valid fields; ids match file names and are unique; fish lie areas are on screen and in water; every fly imitates real insects and every diet names real ones, and every fish has a fly that fully matches it; the scene's fly box, stocking and rule set chassis point at real data and every rule set file is reachable in game; every action has a controller binding and a key with no doubled bindings. These read folders, so new data is covered automatically.
+4. **Smoke test** (`smoke_test`): the main scene loads and one full catch plays through the real input system.
+5. **Integration playthrough** (`playthrough_test`): plays the real scene through input across systems: a catch under every rule set with no false casts and with one, walking the bank between catches, the debug views cycled during a drift and a fight, practice mode under every rule set (no bites, every landing scored), and B reeling in.
+6. **Manual playtest** (below), on the keyboard and the DualSense.
 
 The runner also fails a test that prints a `SCRIPT ERROR` or engine `ERROR:` even if it exits 0, because Godot can log a broken script and carry on.
 
@@ -122,7 +124,8 @@ Several PRs are often open at once and have conflicted before. To keep that mana
 
 **Include when** the change adds a system or shared pattern, adds a dependency between systems, changes the scene tree, a data class's fields, the input map or a save format, or has performance implications.
 
-* Check layering, boundaries and contracts. Flag divergence from patterns, and recommend an approach with tradeoffs.
+* Check the change against ARCHITECTURE.md rule by rule (R1 to R12) and section 5 (where new code goes). Name the layer of every new script, the owner of every new piece of state, and any debt in the ledger the change could pay back or would add to. Flag divergence from patterns, and recommend an approach with tradeoffs.
+* Record the result as an "Architecture" section in the REQ.
 * Reconcile with `docs/refactor-backlog.md`:
   1. **Pull in** backlog items in files this REQ already touches, when efficient. Propose them in Step 3, remove them from the backlog, and note the absorbing REQ.
   2. **Push out** out-of-scope cleanups found nearby: a one-line observation plus files, the trigger condition, and a rough effort.
@@ -140,6 +143,7 @@ Several PRs are often open at once and have conflicted before. To keep that mana
 ## Step 5: Self review
 
 * Review the diff against the REQ's acceptance criteria, the standing rules and the system map. Check that the README and `docs/TOOLING.md` still describe the game.
+* Run the architecture check (the questions in `CLAUDE.md`) and fill in the PR template's Architecture section. If `architecture_test` prints a "debt paid" note, lower that cap in the test and in ARCHITECTURE.md section 9.
 
 ## Step 6: Testing
 

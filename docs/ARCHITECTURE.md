@@ -1,60 +1,130 @@
 # Lodge architecture
 
-**Status: draft for Traver's review.** Nothing in here has been built yet unless the "Today" column says so. Changes to game code still go through [DEVELOPMENT_PROCESS.md](DEVELOPMENT_PROCESS.md): each migration step below becomes its own REQ and PR.
+**Status: adopted (2026-11-03).** This is the map every change is checked against, whoever writes it. The rules in section 1 are numbered (R1 to R12) so tests, reviews and PRs can cite them. Most are enforced by `tests/architecture_test.gd`, which runs in CI on every PR. Where today's code still breaks a rule, the debt is written down in section 9 with a cap that can only go down.
 
-This is the map every change should be checked against, whoever writes it. If you're new to Godot's vocabulary (nodes, scenes, signals, autoloads, resources), read [GODOT_PRIMER.md](GODOT_PRIMER.md) first.
+The audit behind this version, with evidence and a comparison to how larger games are built, is in [ARCHITECTURE_AUDIT.md](ARCHITECTURE_AUDIT.md). New to Godot's vocabulary (nodes, scenes, signals, autoloads, resources)? Read [GODOT_PRIMER.md](GODOT_PRIMER.md) first. Fish behaviour in detail is in [FISH_LOGIC.md](FISH_LOGIC.md).
 
-It covers fishing first (fish behaviour in detail is in [FISH_LOGIC.md](FISH_LOGIC.md)): casting, the line and fly on the water, the river, flies, fish and rises, the hook set, the fight and the catch journal, then how nymphing, streamers, fly tying and seasons plug in later. Walking the land, perception checks, the lodge sim and expansions will get their own sections when they're designed.
+## How to use this document
+
+**Before writing code** (any agent or person):
+
+1. Find where the change goes in section 5, and which system owns it in section 3.
+2. Check it against the rules in section 1. If it needs to break one, stop and say so in the REQ or PR; don't work around it.
+3. If it touches a file in the debt ledger (section 9), don't add to that debt. Paying some back in passing is welcome, if it's in scope.
+
+**In the same PR:**
+
+* A new script goes in the class index (section 11). A new data folder goes in section 2 and in `tests/data_test.gd`. The test fails otherwise.
+* A new link between systems goes in section 3 and in the system map in [DEVELOPMENT_PROCESS.md](DEVELOPMENT_PROCESS.md).
+* If debt went down, lower its cap in `tests/architecture_test.gd` and section 9. Raising a cap needs Traver's OK, stated in the PR.
+* Fill in the PR template's Architecture section.
+
+Changes to game code still go through [DEVELOPMENT_PROCESS.md](DEVELOPMENT_PROCESS.md): each migration step in section 10 is its own REQ and PR.
 
 ---
 
-## 1. Four layers, one direction
+## 1. Layers and rules
 
-Every script in Lodge belongs to exactly one layer. A layer may use the layers **below** it, never above.
+Every script belongs to exactly one layer. A layer may use the layers **below** it, never above.
 
 ```
   ┌──────────────────────────────────────────────────────────────┐
   │ 4. VIEWS        draw and play sounds; read state, change none│  Node2D / Control
-  │    CastView, LineView, FishView, Hud, CatchCard, FlyBoxScreen│
+  │    CastView, LineView, FishView, Hud, CatchCard ...          │
   ├──────────────────────────────────────────────────────────────┤
   │ 3. SESSION      owns the phase, reads input, wires models    │  Node
-  │    FishingSession (one per stretch), PracticeMode            │
+  │    FishingSession (one per stretch), its modes (practice)    │
   ├──────────────────────────────────────────────────────────────┤
   │ 2. MODELS       the rules; no nodes, no Input, no drawing    │  RefCounted
-  │    CastModel, DriftModel, FishBrain, FightModel, RiverField, │
-  │    CatchJournal, FlyBox ...                                  │
+  │    CastModel, DriftModel, Fish, FightModel, RiverField ...   │
   ├──────────────────────────────────────────────────────────────┤
   │ 1. DATA         content and tuning, edited in the inspector  │  Resource (.tres)
-  │    FlyPattern, Insect, FishSpecies, CastRules, TakeRules ... │
+  │    FlyPattern, Insect, FishSpecies, Stretch, CastRules ...   │
   └──────────────────────────────────────────────────────────────┘
      SERVICES (autoloads, usable from layers 3 and 4 only):
-     Controls (today), Clock, SaveGame (later)
+     Controls (today), Clock and SaveGame (planned)
+     GAME STATE (planned): one GameState model, owned by the game root, saved by SaveGame
 ```
 
-The rules that make this work:
+A script whose base class is `RefCounted` or `Resource` is layer 1 or 2. A script whose base class is a `Node` is layer 3 or 4. The test tells them apart that way.
 
-1. **Models never touch the tree.** No `get_node`, `get_tree`, `get_parent`, `Input`, `Controls`, autoloads or drawing in layer 2. They get everything they need as arguments (the stick vector, the flow as a `Callable`, a seeded `RandomNumberGenerator`) and report back by return value or signal. This is what makes them testable without playing. *Today: true for every model. Section 9 proposes a test that keeps it true.*
-2. **One owner per value.** Each piece of state (the phase, the fly's position, the hooked fish, the fly box) is written by exactly one object. Everyone else reads it or asks the owner to change it.
-3. **Call down, signal up.** The session calls methods on its models and views. Models and views tell the session things with signals. Siblings never call each other; the session connects them.
-4. **Data is read-only at runtime.** A `FishSpecies` describes every redband. A runtime `Fish` holds what's true of *this* redband (its length, its lie, its mood).
-5. **Ids, not objects, cross into saves.** Anything stored (journal, fly box, progress) stores `StringName` ids and looks the resource up through a registry.
-6. **No strings as types.** Phases, presentations and fish events are enums or small typed classes, not `"Delicate"` or `&"take"`.
+| # | Rule | Enforced by |
+|---|---|---|
+| **R1** | **Models and data are pure.** Layers 1 and 2 never use the tree (`get_node`, `get_tree`, `get_parent`), `Input`, `Controls`, drawing, node callbacks (`_ready`, `_process`, `_draw`), pixels (`to_px`) or the wall clock (`Time`, `OS`). They get what they need as arguments (the stick vector, the flow as a `Callable`, a seeded RNG) and answer with return values or signals. | Test |
+| **R2** | **One owner per value.** Each piece of state (the phase, the fly's position, the hooked fish, the fly box) is written by exactly one object. Everyone else reads it or asks the owner. | Review |
+| **R3** | **Call down, signal up.** The owner calls methods on its children; children tell the owner things with signals. A node never climbs to its parent, never fetches a sibling with `get_node`, and never reads properties by name (`.get(&"river")`). Groups are fine for optional, read-only lookups (the debug overlay). | Test (ledger) |
+| **R4** | **Data is read-only at runtime.** A `FishSpecies` describes every redband; a runtime `Fish` holds what's true of *this* one. Nothing writes to a loaded resource's fields. Tests that need different numbers duplicate the resource first. | Test |
+| **R5** | **Data links are typed references; ids only at the save boundary.** One data file points at another with a typed export (`Array[Insect]`), never a dictionary or array of id strings. Ids (`StringName`) are for what's saved and for looking things up in the catalog. | Test (ledger) |
+| **R6** | **No strings as types.** Phases, presentations, fish events and outcomes are enums or small typed classes, not `"Delicate"` or `&"take"`. | Review |
+| **R7** | **Autoloads are few and agreed.** Only `Controls` today. `Clock` and `SaveGame` are planned. Anything else is Traver's call. No gameplay rule lives in an autoload. | Test |
+| **R8** | **One clock, seeded dice.** Randomness comes from a `RandomNumberGenerator` that someone seeds and passes in, never `randf()` or `randomize()`. Game time comes from one owner (the session today, `Clock` later), passed into models. | Test (ledger) |
+| **R9** | **Small files, split along layers.** A script past 400 lines is split: drawing into views, rules into models. | Test (ledger) |
+| **R10** | **Everything is on the map.** Every script is in the class index (section 11). Every data folder is described in section 2 and loaded by `tests/data_test.gd`. Every link between systems is in the system map. | Test |
+| **R11** | **Metres in models and data.** Models and data use metres and metres per second. Only views and the stream scene's layout convert, through `WorldScale` (8 px per metre). | Test (as part of R1) |
+| **R12** | **Kinds and places are separate.** Data that describes a *kind* of thing (a species, a fly) says nothing about *where* it is. Where things live, and how many, belongs to the *place* (a `Stretch`'s spawn table). | Review |
+
+The rules marked "Review" can't be checked from the text reliably. The PR template asks about them.
 
 ---
 
-## 2. The fishing loop as a pipeline
+## 2. Data architecture
 
-Every fishing style (dry, nymph, streamer) runs the same six stages. What changes between styles is which model handles stage 2 and which rules decide stage 3.
+### Kinds of data
+
+| Kind | Example | Lives in | Changes at runtime? |
+|---|---|---|---|
+| **Archetype** (what a kind of thing is) | `FishSpecies`, `FlyPattern`, `Insect` | `data/<kind>/<id>.tres` | Never (R4) |
+| **Rule set** (swappable logic and its numbers) | `CastRules` and subclasses, `DriftPastRules`, `CastTuning` | `data/cast_rules/`, `data/take_rules/`, `data/cast_tuning.tres` | Never |
+| **Place** (a location and what's in it) | `Stretch`: shape, features, which species live there | `data/stretches/` | Never |
+| **Runtime state** (this fish, this drift) | `Fish`, `DriftModel`, `FightModel` | Models, created by the session | Every frame |
+| **Saved state** (what persists) | catch journal, fly box, stretch populations, day | `GameState` (planned) | Saved with a version |
+
+The data folders today, each covered by `tests/data_test.gd`:
+
+* `data/insects/`: `Insect`, the shared key between flies, diets and (later) hatches.
+* `data/flies/`: `FlyPattern`, each pointing at the insects it imitates.
+* `data/fish/`: `FishSpecies`, with diet, selectivity, hook-set window, fight stats, sizes.
+* `data/cast_rules/`: the casting rule sets (one `CastRules` per file).
+* `data/take_rules/`: the bite rules (`DriftPastRules`).
+* `data/stretches/`: `Stretch`, one per river location (today the demo freestone).
+* `data/cast_tuning.tres`: casting numbers shared by every rule set.
+
+### References and ids
+
+* **Between data files:** typed resource references (R5). `FlyPattern.imitates: Array[Insect]` is the model to copy. Godot keeps them valid when files move, and the inspector shows a picker instead of a text box. Godot 4.3 has no typed dictionaries, so a weighted link is a small entry resource (for example a `DietEntry` with `insect: Insect` and `weight: float`).
+* **Ids:** every archetype has an `id` that matches its file name (`data_test` checks). Ids are never renamed or reused, because saves will store them.
+* **At the save boundary:** saved state stores ids only, never resources or nodes. Loading looks the id up in the catalog.
+
+### The catalog (planned, step D)
+
+One `data/catalog.tres` lists every archetype by kind. Code that needs "all flies" or "the fly with this id" asks the catalog. It replaces listing folders at runtime, which breaks in exported builds (Godot renames files to `.remap`). `data_test` checks the catalog and the folders agree, so a new file can't be forgotten.
+
+### Game state and saves (planned, step D)
+
+One `GameState` model holds everything that persists: the day, the `CatchJournal` (`CatchRecord`s of ids), the `FlyBox`, each stretch's population. The game root owns it; sessions read and change it through methods. `SaveGame` (autoload) writes it as a dictionary with a `version`, and every format change ships with a migration and a fixture test (DEVELOPMENT_PROCESS.md, standing rules).
+
+### Units
+
+Decided 2026-11-02 ([REQ-0001](requirements/REQ-0001-world-units-in-metres.md)): metres in models and data (R11), 8 px per metre, so one screen is 40 m by 25 m. Field names carry their unit (`lie_area_m`, `stroke_time_per_m`). Controllers still hold some positions in pixels (`Cast.fly_pos`, the rod tip) and convert at their edges; step B moves world positions to metres.
+
+---
+
+## 3. Systems
+
+Each system lists what it **owns** (writes), what it **reads**, what it **emits**, and how today's code compares.
+
+### 3.1 The fishing loop
+
+Every style (dry, nymph, streamer) runs the same stages. What changes between styles is the line model and the take rules.
 
 ```
- Cast ──landed──▶ Line on the water ──FlyState every frame──▶ Fish decide ──take──▶ Hook set ──hooked──▶ Fight ──landed──▶ Journal
- CastModel        DriftModel (dry)                          Fish (mood, lies)      HookSetModel         FightModel          CatchJournal
- + CastRules      DepthDriftModel (nymph, later)            + TakeRules            (timing window)      + species data      CatchRecord
-                  RetrieveModel (streamer, later)           (one roll per drift
-                                                             past each fish)
+ Cast ──landed──▶ Line on the water ──FlyState──▶ Fish decide ──take──▶ Hook set ──hooked──▶ Fight ──landed──▶ Journal
+ CastModel        DriftModel (dry)                Fish + take rules     HookSetModel         FightModel         CatchJournal
+ + CastRules      later: DepthDriftModel (nymph), (one roll per drift   (timing window)      + species data     CatchRecord
+                  RetrieveModel (streamer)         past each fish)
 ```
 
-The **FishingSession** owns which stage is active:
+One **FishingSession** owns which stage is active, as one enum:
 
 ```
 IDLE ──bumpers──▶ CASTING ──landed in water──▶ ON_WATER ──take──▶ TAKE ──set in window──▶ FIGHT ──landed──▶ LANDED ──card closed──▶ IDLE
@@ -62,265 +132,264 @@ IDLE ──bumpers──▶ CASTING ──landed in water──▶ ON_WATER ─�
                      └────────────▶ IDLE ◀─────────┴─────────────────────────┴────────────────────────┘
 ```
 
-One enum, one owner. Today this state is split across `CastModel.State`, `FishingController.Phase`, `Fish.State` and `Practice.active`, and the scripts check each other's flags to work out where they are.
+*Today:* the phase is split across `CastModel.State`, `FishingController.Phase`, `Fish.State` and `Practice.active`, and the three nodes check each other's flags (debt R3, step B).
 
-### The one shared contract: `FlyState`
-
-The single most important seam is between "where is the fly and how is it moving" and "does a fish want it". Make it a small typed value that every line model produces and every fish reads:
+**The one shared contract: `FlyState`** (planned, step B). A small typed value every line model produces and every fish reads. Fish never look at the cast, the line or a controller, which is what lets nymphs and streamers arrive later as a new line model plus new take rules.
 
 ```gdscript
 class_name FlyState extends RefCounted
 var pattern: FlyPattern      # what's tied on
-var pos: Vector2             # world position
-var depth: float             # 0 = in the surface film (dry). Nymphs sink, streamers swim
-var velocity: Vector2        # actual movement of the fly
-var drag: float              # 0..1: how unnaturally it's moving against the current
-var landing: Presentation    # how it arrived: DELICATE, FAIR, SPLASHY (an enum)
+var pos: Vector2             # world position (m)
+var depth: float             # 0 = in the film (dry)
+var velocity: Vector2        # m/s
+var drag: float              # 0..1
+var landing: Presentation    # enum: DELICATE, FAIR, SPLASHY
 var since_landing: float
 var on_water: bool
 ```
 
-Fish never look at the cast, the line, or the controller. They only see a `FlyState`, the river, and the conditions. That's what lets nymph and streamer fishing arrive later as a new line model plus new take rules, without rewriting fish.
+### 3.2 Casting
 
----
+*Owned by the casting thread. This covers boundaries, not the rhythm.*
 
-## 3. Systems
+* **Owns:** the bumper stroke state machine, line out, false-cast count, aim, delivery offset, landing quality.
+* **Reads:** bumper states and aim (passed in), `CastTuning`, the active `CastRules`.
+* **Emits:** `landed(presentation, quality)`, `collapsed(reason)`, feedback text.
+* **Today:** `CastModel` and the `CastRules` chassis fit (the chassis is the template for any swappable rules). `cast_controller.gd` asks Fishing `can_pick_up()` and `line_target()`, owns the coaching text everyone writes to, and writes `fly_pos`, which Fishing also writes (R2, R3). `CastModel` calls `randomize()` when no RNG is passed (R8). **Target:** a `CastView`; the session feeds the model and decides when casting is allowed.
 
-Each system lists what it **owns** (writes), **reads**, **emits**, its **data**, and how today's code compares.
+### 3.3 Line and fly on the water
 
-### 3.1 Casting
-
-*Owned by the casting thread. This document describes boundaries only, not the rhythm.*
-
-* **Owns:** the R/L stroke state machine, line out, false-cast count, aim, the delivery offset and landing quality.
-* **Reads:** bumper states and the aim stick (passed in by the session), `CastTuning`, the active `CastRules`.
-* **Emits:** `delivered(offset, quality)`, `landed(presentation, quality)`, `collapsed(reason)`, `feedback(text, quality)`.
-* **Data:** `data/cast_tuning.tres`, `data/cast_rules/*.tres` (a swappable strategy resource, one per rule set).
-* **Today:** `CastModel` and `CastRules` fit this exactly; the chassis pattern is the template for other swappable rules below. Drift is in `cast_controller.gd`: it asks `Fishing.can_pick_up()` and `Fishing.line_target()`, runs its own fallback drift when Fishing is missing, owns the coaching text everyone else writes to, and writes `fly_pos` that Fishing also writes. **Target:** `CastController` becomes `CastView` (drawing the line in the air, meter, rings) and the session feeds the model input and decides when casting is allowed.
-
-### 3.2 Line and fly on the water
-
-* **Owns:** the `FlyState` and the line's shape (tip, belly, slack) while the fly is on the water.
-* **Reads:** the rod tip, the right stick's gestures (mend, strip, twitch), the river's flow (and depth, for nymphs).
+* **Owns:** the `FlyState` and the line's shape (tip, belly, slack).
+* **Reads:** the rod tip, right-stick gestures (`StickGestures`), the river's flow.
 * **Emits:** `mended(ok)`, `drift_ended`.
-* **Models by style:**
-  * Dry fly: `DriftModel` (today). Belly bows, drag builds, a mend flips it.
-  * Nymph, later: `DepthDriftModel`. Same belly and mend, plus sink rate from the fly's weight and depth from `RiverField.depth_at()`. Strike indicator replaces the visible fly.
-  * Streamer, later: `RetrieveModel`. The fly swings on a tight line and moves when you strip or jerk the right stick.
-* **Today:** `DriftModel` fits. It's driven from `fishing_controller.gd`, which copies its fly position into `Cast.fly_pos` each frame. `StickGestures` is a good small model; keep it and give it strip and twitch later.
+* **Today:** `DriftModel` fits, including mends that feed line. `fishing_controller.gd` drives it and copies its fly into `Cast.fly_pos` every frame.
 
-### 3.3 River
+### 3.4 River and stretches
 
 *Owned by the river hydraulics thread.*
 
-* **Owns:** one baked `RiverField` per stretch and water level: velocity, depth, seams, lie scores, water and rock masks.
-* **Reads:** nothing at runtime (baked offline, per the approved plan). The session picks which field from the stretch and the season's water level.
-* **Offers:** `flow_at`, `depth_at`, `seam_at`, `lie_at`, `is_water`, `pick_lie`. Read-only.
-* **Today:** `RiverField` fits. Drift is that `stream_scene.gd` builds it at load, wraps its methods, and exposes screen constants (`VIEW`, `BANK_TOP`, `BANK_BOTTOM`) that fishing code reads directly. **Target:** a `Stretch` resource bundles the baked field(s), bounds, art and spawn table, and nothing outside the river and its view reads screen constants.
+* **Owns:** one `RiverField` per stretch: velocity, depth, seams, lie scores, water and rock masks. Read-only to everyone else: `flow_at`, `depth_at`, `lie_at`, `is_water`, `pick_lie`.
+* **Data:** `Stretch` (shape, features, species). Built at load today; baked offline later (backlog).
+* **Today:** `stream_scene.gd` (445 lines) builds the field, walks the angler, runs the camera, generates textures and draws the water (R9). Fishing reads `river` and `stretch` from it by name (R3). **Target:** a `RiverView`, an `Angler` node and a camera owner, with the field and stretch handed to the session (step A2, agreed with the river thread).
 
-### 3.4 Flies and the fly box
+### 3.5 Flies and the fly box
 
-* **Owns:** `FlyBox` model: which patterns you have, how many of each, which is tied on.
-* **Data:** `FlyPattern` (today: id, name, description, colours, and `imitates`, a list of `Insect` resources from `data/insects/`, added by REQ-0003). `Insect` is the one shared key a fly, a fish's `diet` and later a hatch point at. Later fields, each needing a REQ because it changes a data class: `style` (dry, emerger, nymph, streamer), `size`, `sink_rate`, `profile`.
-* **Emits:** `fly_changed(pattern)`.
-* **Today:** the fly box is an exported array plus an index inside `fishing_controller.gd`, and the HUD for it is drawn there too. `FlyPattern.draw_at()` mixes drawing into data; acceptable while flies are three rectangles, but it should become a sprite or a `FlyView` once there's real art.
+* **Data:** `FlyPattern` (id, name, colours, `imitates: Array[Insect]`). Later fields (style, size, sink rate) each need a REQ.
+* **Model (planned, step D):** `FlyBox`: which patterns you have, how many, which is tied on. Emits `fly_changed`.
+* **Today:** an exported array plus an index in `fishing_controller.gd`. `FlyPattern.draw_at()` draws inside data (R1 debt, fine until real fly art).
 
-### 3.5 Fish
+### 3.6 Fish
 
-The full design is in [FISH_LOGIC.md](FISH_LOGIC.md). In short, fish logic runs in three steps, slowest to fastest:
-
-1. **Generation** (per season or visit): which species, how many and how big, from the stretch's lies and water types, the season, the water temperature and the species table. The biggest fish take the best lies. The population is **kept** between visits, so spooked, released and kept fish all leave a mark.
-2. **Mood** (per game hour): how keen each fish is (0 to 1), and whether it's looking up or down. The **hatch** is the main driver. Then the species' response to temperature, light and season, then its own hunger and wariness.
-3. **Take** (one roll per drift past the fish): `mood × lane × landing × drift × fly match`, with a floor and a ceiling. The result is a take, a refusal, an ignore or a spook, and each one shows the player something.
-
-Time of day, season and weather are not stored on each fish. They build one shared `Conditions` snapshot (section 3.9), which gives the hatch and the water temperature. Mood reads those, and the take's fly match reads the hatch again.
-
-How that splits into code:
+The design is in [FISH_LOGIC.md](FISH_LOGIC.md): generation (per season or visit), mood (per game hour), take (one roll per drift past the fish). Time, season and weather build one shared `Conditions` snapshot; fish read the hatch and the water, not the clock.
 
 | Part | Kind | Holds |
 |---|---|---|
-| `FishSpecies` | Data | Everything true of every fish of this kind: habitat preference per water type, temperature range, light preference, diet, selectivity, seasonal presence and activity, hook-set window, fight stats, size range. |
-| `Fish` | Model | This one fish: length, resting lie, feeding lie, mood, hunger, wariness, refusals, presentations since its last take, and its state (holding, interested, rising, taken, hooked, spooked, gone). |
-| `Population` | Model | The fish in one stretch: generates them from the `Stretch` data and the river field, keeps them between visits, refills slowly. |
-| `MoodRules` | Data with logic | Turns `Conditions` plus a fish's own state into its mood and feeding depth. |
-| `TakeRules` | Data with logic (like `CastRules`) | The roll: given the `Fish`, a `FlyState` and the `Conditions`, returns the chance, each factor (so they can be shown on screen) and the outcome. Holds the floor, the ceiling and the streak protection. |
+| `FishSpecies` | Data | What's true of every fish of the kind: diet, selectivity, hook-set window, fight stats, sizes. Later habitat preference, temperature range, light preference. Not where it lives (R12). |
+| `Fish` | Model | This fish: length, lie, state; later mood, hunger, wariness, refusals. |
+| `DriftPastRules` | Rule set | The bite roll: lane, landing and drift shares × fly match. The only bite rules since 2026-11-02. |
+| `Population` (planned) | Model | The fish in one stretch, generated from the stretch's spawn table and the river's lies, kept between visits. |
+| `MoodRules` (planned) | Rule set | `Conditions` plus a fish's own state into mood and feeding depth. |
 
-`TakeRules` is a swappable chassis, the same pattern as the casting rule sets, so each layer can be played before the next goes on. The order is in FISH_LOGIC.md ("Building it up"): today's odds, then drift, then refusals and streak protection, then one hatch with fly match, then mood by time of day, then generation from lies, then seasons and weather.
+* **Today:** lies come from `RiverField.pick_lie()` inside the species' `lie_area_m`, which is placement data on an archetype (R12, step E). `bite_range_m` and `Fish.bite_chance_for()` are left over from the dropped landing roll and only tests use them (step E). Presentation arrives as a string and fish events are `StringName`s (R6, step C). The hook-set window check lives in `Fish.try_set()` (step C).
 
-* **Lies** come from the river: `RiverField.pick_lie()` (open PR #7 starts this), later with separate resting and feeding scores, which need the river thread's agreement. Not from a screen rectangle.
-* **Randomness** in fish logic lives in three places only: generation, mood's small drift, and the take roll with its spook check. All of them use a seeded `RandomNumberGenerator`.
-* **Emits** (as an enum, not strings): `NATURAL_RISE`, `RISING`, `TOOK`, `REFUSED`, `SPOOKED`, `SPAT`.
-* **Today:** `fish.gd` holds the runtime fish well, but the bite formula is constants inside it (`PRESENTATION_FACTOR`, `CLOSE_RANGE`). It rolls once per cast, not once per presentation. Presentation arrives as a string, events are `StringName`s, and the hook-set window check lives here too. `lie_area` is a screen `Rect2`, and each fish is rerolled when it comes back.
+### 3.7 Hook set and fight
 
-### 3.6 Hook set
-
-* **Model:** `HookSetModel`, tiny and pure: opens a window on `TOOK`, takes a set input with its timestamp, returns `HOOKED`, `TOO_EARLY`, `TOO_LATE`. The window comes from the species and, later, the style (nymph takes are subtler; streamer takes are a jolt you strip-set).
-* **Today:** `Fish.try_set()` does this. Moving it out is small and lets styles change the set without touching fish.
-
-### 3.7 Fight
-
-* **Model:** `FightModel` (today). Pressure from the stick, tension, stamina, runs and rests, side pressure.
-* **Reads:** the species' fight stats, later the rod and tippet strength (gear as data).
-* **Emits:** `run_started`, result `LANDED`, `SNAPPED`, `THREW_HOOK`.
-* **Today:** the model fits well. Its glue (fish position on screen, rumble, splash bursts, the meter) is in `fishing_controller.gd`; the target moves the glue to the session and the drawing to `FishView` and `Hud`.
+* **Hook set (planned, step C):** `HookSetModel`, tiny and pure: opens a window on a take, returns `HOOKED`, `TOO_EARLY` or `TOO_LATE`.
+* **Fight:** `FightModel` fits. Its glue (fish position, rumble, bursts, the meter) is in `fishing_controller.gd`; it moves to the session and views in steps A and B.
 
 ### 3.8 Catch journal
 
-* **Owns:** `CatchJournal` model, a list of `CatchRecord`s plus derived facts (species seen, personal bests, first catch on each fly).
-* **CatchRecord:** `species_id`, `fly_id`, `length_in`, `stretch_id`, `game_day`, `time_of_day`, `season`, `water_level`, `style`. Ids only, so it can be saved and survives data changes.
-* **Feeds:** the catch card, the journal screen, the "catch them all" collection, the market (selling fish), and later lodge reputation.
-* **Today:** `catches: Array[Dictionary]` holding resource references, inside `fishing_controller.gd`. Nothing saves yet, so this is the cheapest moment to fix it, before the save format exists.
+* **Planned (step D):** `CatchJournal` of `CatchRecord`s: `species_id`, `fly_id`, `length_in`, `stretch_id`, day, time of day, season. Ids only. Feeds the catch card, the collection, the market, the fishing report.
+* **Today:** `catches: Array[Dictionary]` holding resources, inside `fishing_controller.gd`. Nothing saves yet, so this is the cheapest moment to fix it.
 
-### 3.9 Conditions: time, seasons, weather, hatches (later)
+### 3.9 Conditions (planned, step G)
 
-The design target (four 30-day seasons, six time slots, 10°F temperature bands, five weathers, the hatch calendar and the species palette) is in [SPECIES_AND_CONDITIONS.md](SPECIES_AND_CONDITIONS.md).
+Design target in [SPECIES_AND_CONDITIONS.md](SPECIES_AND_CONDITIONS.md): four 30-day seasons, six day slots, 10°F temperature bands, five weathers, hatches.
 
-* **Service:** `Clock` autoload: game day, time of day, season. The only global clock; models get the time passed in.
-* **Value:** `Conditions` (season, time of day, weather, water temperature, water level, the active hatch and its stage), rebuilt by the session about once per game hour. It's the one place time, season and weather turn into things fish respond to: the hatch and the water. `MoodRules`, `TakeRules`, `Population` and the river all read it; none of them read the clock directly.
-* **Data:** `Season` resources with hatch tables and water ranges (`Hatch`: insect id, stages, time window, intensity by weather), and seasonal activity on `FishSpecies`.
-* **Visible in the world:** views read `Conditions` to show the season (Stardew-style), and the hatch is drawn as bugs on the water, so the information fish use is information the player can see.
+* `Clock` autoload: day, slot, season. The only global time; models get it passed in (R8).
+* `Conditions` value, rebuilt about once per game hour: season, slot, weather, water temperature and level, the active hatch. Fish, mood rules and views read it, never the clock.
 
-### 3.10 Fly tying (later)
+### 3.10 Modes and later systems
 
-* **Data:** `Material` (id, name, where found), `Recipe` (fly id, materials and counts, how it's unlocked).
-* **Model:** `TyingBench`: given the inventory and a recipe, can you tie it, and what changes. Adds to `FlyBox`.
-* **Links:** perception checks and exploration unlock recipes and give materials; the journal and observed hatches suggest which flies to tie. Keep tying and exploration talking through ids and signals (`recipe_unlocked(id)`), never direct calls.
-
-### 3.11 Modes: practice, tutorial, guiding
-
-* Practice mode is a different **session configuration**, not a sibling that flips flags on other nodes: the session runs with fish disabled and a target scorer added.
-* **Today:** `cast_practice.gd` sets `Fishing.enabled`, writes `Cast.rules` and `Cast.model.rules`, and calls `Cast.reel_in_line()`. It works, but it's a third node reaching into two others. Guiding clients later will be another mode, so the pattern is worth fixing once.
+* **Practice** is a session configuration (fish off, target scorer on), not a sibling that flips flags on other nodes. *Today:* `cast_practice.gd` sets `Fishing.enabled`, swaps `Cast.rules` and calls `Cast.reel_in_line()` (R3, step B). Guiding clients will be another mode.
+* **Fly tying, perception checks, the lodge:** each arrives as data plus a model, talking to others through ids and signals (`recipe_unlocked(id)`), never direct calls.
 
 ---
 
 ## 4. Target scene tree
 
 ```
-Game (Node)                         top-level: loads stretches, owns the pause and menus
-├─ Stretch: CabinCreek (scene)      one per river location; swapped when you walk off-screen
+Game (Node)                         owns GameState, pause and menus; loads stretches
+├─ Stretch: CabinCreek (scene)      one per river location
 │  ├─ RiverView (Node2D)            water, banks, rocks, streaks; reads the RiverField
-│  ├─ FishingSession (Node)         phase, input, models; no drawing
+│  ├─ FishingSession (Node)         phase, input, models, the RNG streams; no drawing
 │  ├─ FishLayer (Node2D)            one FishView per Fish
 │  ├─ LineView (Node2D)             line on the water, the fly, rings
 │  ├─ CastView (Node2D)             line in the air, timing meter
-│  └─ Angler (Node2D)               walking, rod pose
+│  ├─ Angler (Node2D)               walking, rod pose
+│  └─ Camera2D                      owned by the stretch, follows the angler
 ├─ Hud (CanvasLayer)                fly box, catch count, coaching text, fight meter, catch card
-├─ Screens (CanvasLayer)            journal, fly box, tying bench, game menu (backlog item 1)
-└─ DebugLayer (CanvasLayer)         unchanged: finds things through groups
+├─ Screens (CanvasLayer)            journal, fly box, game menu with controls (backlog)
+└─ DebugLayer (CanvasLayer)         finds things through groups
 Autoloads: Controls, Clock, SaveGame
 ```
 
-`Hud` listens to session signals; it never asks the cast or fishing nodes for state. Coaching text gets one owner (`Hud.say(text, quality)`) instead of everyone calling `Cast.show_message()`.
+`Hud` listens to session signals. Coaching text has one owner (`Hud.say(text, quality)`).
 
 ---
 
-## 5. Units and space
-
-**Decided (Traver, 2026-11-02): models and data work in metres.** Cast reach, line out, drift, fight distance, bite range, river cells and current speeds are all in metres and metres per second. Only views convert to pixels, through one constant in a small static class, `WorldScale.PX_PER_M`. That makes multi-screen stretches, scrolling, zoom and the Switch possible without retuning every number, and lets the river bake use real cell sizes.
-
-The approved scale is **8 px per metre**: one screen is 40 m by 25 m and the test creek is about 11 m wide. At that scale today's casting distances already match a real small stream (Short up to 6 m, Middle up to 10 m, line max about 15 m). Water speeds don't: they're tuned for the screen and come out several times faster than a real riffle. The switch converts every number exactly, so the game plays the same, and slowing the water toward real speeds is a separate feel experiment afterwards.
-
-The plan, the scale and the per-system steps are in [REQ-0001](requirements/REQ-0001-world-units-in-metres.md). It needs the casting and river threads to agree, and Traver's approval, before game code changes.
-
----
-
-## 6. Where the current code fits and drifts
-
-| # | Area | Fits or drifts | Notes |
-|---|---|---|---|
-| 1 | Models (`CastModel`, `DriftModel`, `FightModel`, `Fish`, `RiverField`, `StickGestures`) | **Fits** | Pure `RefCounted`, no tree access, unit tested. Keep this. |
-| 2 | Data as `.tres`, `data_test.gd` contracts | **Fits** | Ids match file names, folders auto-covered. |
-| 3 | `CastRules` chassis | **Fits** | The template for `TakeRules` and style strategies. |
-| 4 | `Controls` autoload, input parity tests | **Fits** | Only autoload; stays that way until `Clock` and `SaveGame`. |
-| 5 | Seeded RNG passed into models | **Mostly fits** | Controllers call `randomize()` and tests poke `_rng` (backlog item). |
-| 6 | `fishing_controller.gd` does drift glue, fish events, hook set glue, the fight, the fly box, the catch log, HUD and card drawing | **Drifts** | God script, and a hot file in every open PR. Split first. |
-| 7 | `Cast` ⇄ `Fishing` ⇄ `Practice` call each other via `get_node` | **Drifts** | Two-way dependency between siblings; no single phase owner. |
-| 8 | Fly position written by both `Cast` and `Fishing` | **Drifts** | Should be one `FlyState` owned by the line model. |
-| 9 | Presentation as `String`, fish events as `StringName` | **Drifts** | Make enums. |
-| 10 | Bite rule constants inside `Fish`, rolled once per cast | **Partly fixed** | A first `TakeRules` chassis landed early (2026-11-02, Traver's call) with "Landing roll", "Drift past" and "Match the fly". Traver picked Drift past (2026-11-02), so the chassis was retired: `DriftPastRules` is the one bite rules (one roll per pass, data in `data/take_rules/drift_past.tres`), with the fly match built in. It reads `DriftModel` and the presentation string directly until `FlyState` (step B) exists. Since REQ-0003 it also weighs the tied-on fly, which the controller passes as an argument until `FlyState.pattern` carries it. See FISH_LOGIC.md. |
-| 11 | `FishSpecies.lie_area` is a screen rectangle | **Drifts** | PR #7 moves lies to the river field. |
-| 12 | Fishing code reads `stream.VIEW`, `BANK_TOP`, `BANK_BOTTOM`, and every rule measures in pixels | **Drifts** | Screen constants and units leaking into rules. REQ-0001 moves rules to metres. |
-| 13 | `catches` holds resources in dictionaries | **Drifts** | Needs `CatchRecord` with ids before saves. |
-| 14 | Coaching text owned by `cast_controller.gd` | **Drifts** | Move to `Hud`. |
-| 15 | Each controller keeps its own `_time` | **Minor** | Fine until pause and time of day; then `Clock`. |
-| 16 | `FlyPattern.draw_at()` | **Minor** | Drawing inside data; fine until real fly art. |
-| 17 | Debug overlay finds nodes by group | **Fits** | Right tool for optional, read-only lookups. |
-
----
-
-## 7. Migration plan
-
-Small steps, each its own REQ and PR, each leaving the game playing the same unless the REQ says otherwise. The tests (`tools/run_tests.sh`, especially `playthrough_test.gd`) are the safety net: steps A to D should pass them unchanged.
-
-| Step | What | Behaviour change | Depends on |
-|---|---|---|---|
-| **0** | This document and the primer. Add the layer check (section 9) as a test. | None | — |
-| **A** | Split views out of `fishing_controller.gd`: `Hud` (fly box, catch count, coaching text, fight meter), `CatchCard`, `LineView`, `FishView`. Absorbs the backlog item. | None | PR #5 merged (it edits the same file) |
-| **B** | Add `FishingSession` as the single phase owner. `Cast` stops calling `Fishing`; `Practice` becomes a session mode. Introduce `FlyState` and make the line model its only writer. | None | A |
-| **C** | Enums for presentation and fish events; move `try_set` into `HookSetModel`. | None | B, coordinated with the casting thread (it changes the `landed` signal's argument type) |
-| **D** | `CatchRecord` and `CatchJournal` with ids; a `FlyBox` model. | None visible | A |
-| **E** | `TakeRules` chassis with today's odds as the default (numbers moved into data), then the first layers from FISH_LOGIC.md as feel experiments: drift, then refusals and streak protection. The chassis and the drift layer were built ahead of B and C (2026-11-02). Traver picked Drift past, so the chassis is gone for now; bring it back as a base class when the next layer needs a side-by-side trial. `DriftPastRules` moves onto `FlyState` when B lands. | Only in the experiments | B, C, PR #7 merged |
-| **F** | Metres in models and data ([REQ-0001](requirements/REQ-0001-world-units-in-metres.md): `WorldScale`, then river, casting, fishing), then a `Stretch` resource. | None (exact conversion) | Casting and river threads' agreement. Can start before A; its fishing step pairs well with A |
-| **G** | `Clock` autoload and `Conditions` with one fixed hatch, then `MoodRules` by time of day, then `Population` from lies. | Yes, layer by layer | E, F |
-| **Later** | Nymph (`DepthDriftModel`), streamer (`RetrieveModel`), hatches, fly tying, saves. Each is a REQ that adds a model and data, not edits to existing models. | Yes | The above |
-
-Steps A, B and D are refactors of game code, so they need Traver's go-ahead like any feature. Step E is the first one a player would notice.
-
-### Coordination
-
-* **Casting thread:** owns `scripts/casting/` and the rule sets. Step B changes how `cast_controller.gd` is wired (input passed in, no calls into Fishing) and step C changes the `landed` signal's argument type. Both need to land between casting PRs, agreed with that thread first.
-* **River thread:** owns `scripts/river/` and `stream_scene.gd`'s field. Step F (units, `Stretch`) is theirs to agree to. `pick_lie` from PR #7 is exactly the hook fish lies need.
-* **Open PRs today:** #5 (hook-set animation) and #7 (fish pick lies) both edit `fishing_controller.gd` and `fish.gd`. No refactor of those files should start until both merge.
-
----
-
-## 8. Where does new code go?
+## 5. Where new code goes
 
 | I want to add... | It goes in | Not in |
 |---|---|---|
-| A new fly, fish, rule set or tuning number | A `.tres` in `data/` (covered by `data_test.gd` automatically) | Code constants |
-| A rule (odds, timing, physics, scoring) | A model in layer 2, with a unit test | A node script |
-| A choice between rule variants | A strategy resource like `CastRules` / `TakeRules` | `if` branches on a mode flag |
-| Something on screen | A view node that reads state and listens to signals | The session or a model |
-| A reaction to something happening | Connect to the owning model's signal in the session | Polling another node's variables |
-| A new phase in the fishing loop | The session's phase enum and a new model | A boolean flag on an existing node |
-| Something saved | A record with ids in a model, saved through `SaveGame` with a version | Resources or nodes in the save |
-| Something global (clock, save, audio) | An autoload, only after discussing it | Any gameplay rule |
-| A new input | `tools/setup_input_map.gd`, a constant in `Controls`, the README table | Raw action strings |
-
-**File size:** split any script heading past ~300 lines along the layer lines above. **New class:** add it to this document's section 3 in the same PR.
-
----
-
-## 9. Keeping it true: tests that enforce the layers
-
-Rules that only live in a document erode, especially when each change is written by a fresh AI session. Proposed `tests/architecture_test.gd` (tests can be added without a REQ), which reads the source files and fails if:
-
-1. Any model script (`*_model.gd`, `fish.gd`, `river_field.gd`, `stick_gestures.gd`, rule scripts, future `scripts/**/models/`) mentions `get_node`, `get_tree`, `get_parent`, `Input.`, `Controls.`, `_draw` or `draw_`. *All of them pass today.*
-2. Any script assigns to a field of a loaded `FishSpecies`, `FlyPattern` or `CastTuning` (a text check for `species.<field> =` and the like), since shared data must stay read-only.
-3. A script in `scripts/` other than the session calls `get_node` on a sibling system. *Fails today on purpose for `Cast`, `Fishing` and `Practice`; starts as an allow-list that step B empties.*
-4. The project has an autoload not listed in this document.
-5. A script passes ~400 lines (a warning list, with `fishing_controller.gd` allowed until step A).
+| A fly, fish, rule set or tuning number | A `.tres` in `data/` | Code constants |
+| A rule (odds, timing, physics, scoring) | A model (layer 2) with a unit test | A node script |
+| A choice between rule variants | A strategy resource like `CastRules` | `if` branches on a mode flag |
+| Where a species lives, or how many | The `Stretch`'s spawn table (R12) | `FishSpecies` |
+| A link from one data file to another | A typed export, or an entry resource with a weight (R5) | A dictionary of ids |
+| Something on screen | A view that reads state and listens to signals | The session or a model |
+| A reaction to an event | Connect to the owner's signal in the session | Polling another node |
+| A new phase | The session's phase enum and a model | A boolean on an existing node |
+| Something saved | A record of ids in `GameState`, with a version | Resources or nodes in the save |
+| Something global | An autoload, only after Traver agrees (R7) | Any gameplay rule |
+| A new input | `tools/setup_input_map.gd`, `Controls`, the README table | Raw action strings |
 
 ---
 
-## 10. Decision log
+## 6. Godot patterns we use, and why
 
-Short entries, newest last. A later session reads these before changing something that looks odd.
+* **Resources as data, `RefCounted` as rules.** Content is edited in the inspector and tested headless. Models run without a scene, so tests are fast and exact.
+* **Strategy resources ("chassis").** A rule set is a `Resource` subclass with the same methods; swapping the file swaps the rules. This is how feel experiments stay cheap.
+* **Signals up, calls down.** The owner wires its children in `_ready`. It keeps the tree rearrangeable and the dependencies one-way.
+* **Groups for tools.** Debug views find nodes by group, so they're optional and never in the gameplay path.
+* **Headless tests.** Every check, including this architecture test, runs from `tools/run_tests.sh` and in CI.
+
+---
+
+## 7. Fits and drifts, at a glance
+
+| Area | Status |
+|---|---|
+| Pure models with unit tests (`CastModel`, `DriftModel`, `FightModel`, `Fish`, `RiverField`, `StickGestures`) | **Fits** (R1 checked) |
+| Data as `.tres` with contract tests; ids match file names | **Fits** |
+| Casting rule chassis; bite rules as a resource | **Fits** |
+| `Controls` the only autoload; controller and keyboard parity | **Fits** (R7 checked) |
+| Metres in models and data | **Fits** (R11 checked) |
+| `fishing_controller.gd` (615 lines) and `stream_scene.gd` (445) do too much | **Drifts** (R9, steps A, A2) |
+| Cast, Fishing and Practice reach into each other; no single phase owner | **Drifts** (R2, R3, step B) |
+| `fly_pos` written by two nodes; world positions still in pixels in controllers | **Drifts** (R2, R11, step B) |
+| Presentation strings, fish event `StringName`s | **Drifts** (R6, step C) |
+| Catches as dictionaries of resources; no catalog or game state | **Drifts** (R5, step D) |
+| `lie_area_m` on species; `diet` a dictionary of ids; `bite_range_m` unused | **Drifts** (R5, R12, step E) |
+| `randomize()` in two places; a `_time` per controller | **Minor** (R8, step G) |
+| `FlyPattern.draw_at()` | **Minor** (R1 debt until fly art) |
+
+---
+
+## 8. Keeping it true
+
+`tests/architecture_test.gd` reads the source as text and checks R1, R3, R4, R5, R7, R8, R9, R10 and R11. Each failure names its rule. It has a **debt ledger**: code that breaks a rule today is listed with a cap.
+
+* No entry means a cap of zero. New code can't add debt.
+* A cap can only go down. When a refactor pays debt back, the test prints a note and the PR lowers the cap.
+* Raising a cap or adding an entry needs Traver's explicit OK in the PR.
+
+The rules marked "Review" (R2, R6, R12) are checked by the PR template's Architecture section and by self review (DEVELOPMENT_PROCESS.md Step 5).
+
+---
+
+## 9. Debt ledger (mirrors the test)
+
+| Rule | File | Cap today | Paid back by |
+|---|---|---|---|
+| R1 | `scripts/fishing/fly_pattern.gd` | `draw_at()` only | A `FlyView` when fly art arrives |
+| R3 | `scripts/fishing/fishing_controller.gd` | 4 reaches | Step B |
+| R3 | `scripts/casting/cast_controller.gd` | 2 reaches | Step B |
+| R3 | `scripts/casting/cast_practice.gd` | 3 reaches | Step B |
+| R5 | `scripts/fishing/fish_species.gd` (`diet`) | 1 | Step E |
+| R8 | `scripts/fishing/fishing_controller.gd` (`randomize`) | 1 | Step G |
+| R8 | `scripts/casting/cast_model.gd` (`randomize`) | 1 | Step G |
+| R9 | `scripts/fishing/fishing_controller.gd` | 635 lines | Step A |
+| R9 | `scripts/stream_scene.gd` | 460 lines | Step A2 |
+| R9 | `scripts/river/river_field.gd` | 660 lines | Split builder from queries (river thread) |
+
+By design, not debt: `scripts/world_scale.gd` converts to pixels (it is the conversion).
+
+---
+
+## 10. Migration plan
+
+Small steps, each its own REQ and PR, each leaving the game playing the same unless the REQ says otherwise. `playthrough_test.gd` is the safety net. Each step names the debt it pays.
+
+| Step | What | Pays | Depends on |
+|---|---|---|---|
+| **0** | This document, the audit, `architecture_test.gd`, agent guidance (this PR). | — | — |
+| **A** | Split views out of `fishing_controller.gd`: `Hud` (fly box, count, coaching text, fight meter), `CatchCard`, `LineView`, `FishView`. | R9 | — |
+| **A2** | Split `stream_scene.gd`: `RiverView`, `Angler`, camera owner. Agree with the river thread; pairs with REQ-0002's camera work. | R9 | River thread |
+| **B** | `FishingSession` owns the phase and wires Cast, Fishing and the views. Practice becomes a session mode. `FlyState` with the line model its only writer; world positions in metres. | R2, R3, R11 | A; casting thread agrees the wiring |
+| **C** | Enums for presentation and fish events; `HookSetModel`. | R6 | B, casting thread (changes `landed`'s argument type) |
+| **D** | `data/catalog.tres`; `GameState` with `CatchJournal` (ids) and `FlyBox`. | R5 | A |
+| **E** | Data hygiene: a spawn table on `Stretch` replaces `lie_area_m`; `DietEntry` replaces the `diet` dictionary; remove `bite_range_m` and the landing roll. | R5, R12 | Data class changes need a REQ |
+| **F** | Folders by layer (`scripts/<system>/models`, `views`, ...), done in the Godot editor so references follow. Optional, after B. | — | B |
+| **G** | `Clock` and `Conditions`; one seed per day split into RNG streams (generation, mood, take, cast) and shown in the debug overlay; then `MoodRules` and `Population`. | R8 | E |
+| **Later** | Nymph (`DepthDriftModel`), streamer (`RetrieveModel`), hatches, tying, saves. Each adds a model and data, not edits to existing models. | — | The above |
+
+Every step is a refactor of game code, so each needs Traver's go-ahead like any feature. Only step G and later change what a player sees.
+
+**Coordination.** The casting thread owns `scripts/casting/` and the rule sets (steps B and C touch its wiring). The river thread owns `scripts/river/` and the field in `stream_scene.gd` (steps A2 and E's spawn table).
+
+---
+
+## 11. Class index
+
+Every script, its layer and its system. `architecture_test.gd` fails if a script is missing here.
+
+| Script | Class | Layer | System |
+|---|---|---|---|
+| `scripts/casting/cast_controller.gd` | (node) | Session + view, to split | Casting |
+| `scripts/casting/cast_model.gd` | `CastModel` | Model | Casting |
+| `scripts/casting/cast_practice.gd` | (node) | Mode + view, to become a session mode | UI and modes |
+| `scripts/casting/cast_rules.gd` | `CastRules` | Rule set (data) | Casting |
+| `scripts/casting/cast_tuning.gd` | `CastTuning` | Data | Casting |
+| `scripts/casting/rules/tempo_rules.gd` | `TempoCastRules` | Rule set (data) | Casting |
+| `scripts/casting/rules/tiered_rules.gd` | `TieredCastRules` | Rule set (data) | Casting |
+| `scripts/controls.gd` | `Controls` (autoload) | Service | Input |
+| `scripts/debug_overlay.gd` | (node) | View | UI and modes |
+| `scripts/fishing/drift_model.gd` | `DriftModel` | Model | Fishing (line) |
+| `scripts/fishing/fight_model.gd` | `FightModel` | Model | Fishing (fight) |
+| `scripts/fishing/fish.gd` | `Fish` | Model | Fishing (fish) |
+| `scripts/fishing/fish_species.gd` | `FishSpecies` | Data | Fishing (fish) |
+| `scripts/fishing/fishing_controller.gd` | (node) | Session + views, to split | Fishing |
+| `scripts/fishing/fly_pattern.gd` | `FlyPattern` | Data | Fishing (flies) |
+| `scripts/fishing/insect.gd` | `Insect` | Data | Fishing (flies, diets) |
+| `scripts/fishing/rules/drift_past_rules.gd` | `DriftPastRules` | Rule set (data) | Fishing (take) |
+| `scripts/fishing/stick_gestures.gd` | `StickGestures` | Model | Fishing (line) |
+| `scripts/river/river_field.gd` | `RiverField` | Model | River |
+| `scripts/river/stretch.gd` | `Stretch` | Data | River |
+| `scripts/stream_scene.gd` | (node) | Scene root + views, to split | River, scene wiring |
+| `scripts/world_scale.gd` | `WorldScale` | Model (static helper) | Units |
+
+---
+
+## 12. Decision log
+
+Newest last. Read these before changing something that looks odd.
 
 | Date | Decision | Why |
 |---|---|---|
 | 2026-11-01 | Godot 4.3, GL Compatibility, 320×200 ×4 | Steam Deck first, Switch later, crisp pixels. |
-| 2026-11-02 | Rules in `RefCounted` models, content in `.tres` | Testable headless; 100 fish and hundreds of flies as data. |
-| 2026-11-02 | Casting rules as swappable resources (chassis) | Compare feel side by side; Traver picked Count the false casts. |
+| 2026-11-02 | Rules in `RefCounted` models, content in `.tres` | Testable headless; hundreds of flies and fish as data. |
+| 2026-11-02 | Casting rules as swappable resources | Compare feel side by side; Traver picked Count the false casts. |
 | 2026-11-02 | River flow baked offline, sampled at runtime | No compute shaders on GL Compatibility; cheap on Deck and Switch. |
 | 2026-11-02 | Start simple: one fish, one fly, visible odds | Hidden multi-condition bite rules felt broken in playtest. |
-| draft | Four layers, one phase owner, `FlyState` contract, `TakeRules` chassis, ids in saves | This document. Traver said it "seems okay" (2026-11-02). |
-| 2026-11-02 | Models and data use metres; views convert with `WorldScale.PX_PER_M` = 8 px/m (approved) | Traver's call. Multi-screen stretches, real-world data and the river bake all need real units. See REQ-0001. |
-| draft | Fish logic in three steps: generation, mood, take. Conditions feed the hatch and water, which feed mood; one take roll per presentation with a floor, a ceiling, refusals and streak protection | Brainstorm with Traver, 2026-11-02. See FISH_LOGIC.md. |
+| 2026-11-02 | Metres in models and data, 8 px per metre | Traver's call (REQ-0001). |
+| 2026-11-02 | Fish logic: generation, mood, take | Brainstorm with Traver. See FISH_LOGIC.md. |
+| 2026-11-02 | Drift past is the one bite rules, with fly match | Traver's pick after playing the variants (REQ-0003). |
+| 2026-11-03 | Numbered rules, enforced by `architecture_test.gd` with a debt ledger that only shrinks | Audit (ARCHITECTURE_AUDIT.md): the draft's rules weren't enforced and the code was drifting from them. |
+| 2026-11-03 | Typed references between data, ids only in saves; a catalog; kinds separate from places | Audit: matches how larger data-driven games stay consistent as content grows. |
 
-## 11. Open questions for Traver
+## 13. Open questions for Traver
 
-1. Does the migration order make sense, and should step A (splitting `fishing_controller.gd`) start as soon as PRs #5 and #7 merge?
-2. ~~Metres in models?~~ Decided: metres (2026-11-02). Scale approved at 8 px per metre (REQ-0001).
+1. Does the reprioritised order (A, A2, B, then D and E, then G) suit you, and should step A start next?
+2. Should the debt ledger allow small growth for a feature that must touch a big file before its split lands, or always block? (Recommended: block, and do the split first.)
 3. The fish logic questions at the end of [FISH_LOGIC.md](FISH_LOGIC.md).
