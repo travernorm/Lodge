@@ -32,6 +32,7 @@ func _initialize() -> void:
 	_test_input_parity()
 	_test_stretches(fish)
 	_test_take_rules()
+	_test_water_looks()
 	_test_catalog(flies, fish, insects, _load_dir("res://data/stretches", "Stretch"), rods)
 	_main.free()
 	if _failures == 0:
@@ -300,6 +301,26 @@ func _test_stretches(fish: Dictionary) -> void:
 			var sp: FishSpecies = entry.species if entry != null else null
 			_check(sp != null and fish.has(sp.resource_path), "stretch %s: spawn entry %s is in data/fish" % [stem, sp.id if sp != null else "?"])
 			_check(entry != null and entry.count >= 1, "stretch %s: spawn entry %s stocks at least one fish" % [stem, sp.id if sp != null else "?"])
+
+
+## Every water look has all three textures, and they're square, so they tile.
+## The scene's water view uses a look from data/looks.
+func _test_water_looks() -> void:
+	var looks := _load_dir("res://data/looks", "WaterLook")
+	_check(not looks.is_empty(), "there is at least one water look")
+	for path in looks:
+		var look: WaterLook = looks[path]
+		var stem: String = path.get_file().get_basename()
+		_check(look.is_complete(), "look %s: deep, mid and white textures are set" % stem)
+		for t in [look.deep, look.mid, look.white]:
+			if t != null:
+				_check(t.get_width() == t.get_height() and t.get_width() >= 16,
+					"look %s: %s is square and at least 16 px" % [stem, _path(t)])
+	var water := _main.get_node_or_null(^"Water") as WaterView
+	_check(water != null, "scene: Main has a Water view")
+	if water != null:
+		_check(water.look != null and looks.has(water.look.resource_path),
+			"scene: the water look is a data/looks file (%s)" % _path(water.look))
 
 
 ## data/catalog.tres lists every fish, fly, rod, insect and stretch file exactly

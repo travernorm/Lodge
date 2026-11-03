@@ -74,6 +74,10 @@ const COL_ROD := Color("e8d8a8")
 const COL_CUT_BANK := Color("5b3e26")
 const COL_LOG := Color("5a442c")
 const COL_LOG_LIGHT := Color("7a5e3e")
+## The old flat water: a colour per depth band, where each band starts, and a 2x2 dither.
+const BANDS: Array[Color] = [COL_SHALLOW, COL_RIFFLE, COL_WATER, COL_POOL, COL_DEEP]
+const CUTS: Array[float] = [0.1, 0.38, 0.62, 0.86]
+const DITHER: Array[float] = [-0.03, 0.01, 0.03, -0.01]
 
 var angler_pos := Vector2(160, BANK_BOTTOM + 16)
 var river := _make_river()
@@ -87,6 +91,8 @@ var _water_tex: ImageTexture
 var _tufts: Array[Vector2] = []
 var _rng := RandomNumberGenerator.new()
 @onready var _cast: Node = get_node_or_null(^"Cast")
+## Paints the water with a WaterLook when it has one (scripts/river/water_view.gd).
+@onready var _water: WaterView = get_node_or_null(^"Water")
 
 
 func _enter_tree() -> void:
@@ -114,6 +120,8 @@ func _ready() -> void:
 	if camera != null:
 		camera.make_current()
 		camera.reset_smoothing()
+	if stretch != null and _water != null:
+		_water.setup(river)
 	_water_tex = _make_stretch_texture() if stretch != null else _make_water_texture()
 	for i in STREAK_COUNT:
 		_streaks.append(_random_water_point())
@@ -289,17 +297,14 @@ func _random_water_point() -> Vector2:
 func _make_water_texture() -> ImageTexture:
 	var h := int(BANK_BOTTOM - BANK_TOP)
 	var img := Image.create(int(VIEW.x), h, false, Image.FORMAT_RGBA8)
-	var bands: Array[Color] = [COL_SHALLOW, COL_RIFFLE, COL_WATER, COL_POOL, COL_DEEP]
-	var cuts: Array[float] = [0.1, 0.38, 0.62, 0.86]
-	var dither: Array[float] = [-0.03, 0.01, 0.03, -0.01]
 	for y in h:
 		for x in int(VIEW.x):
 			var p := WorldScale.vec_to_m(Vector2(x + 0.5, BANK_TOP + y + 0.5))
-			var d := river.depth_at(p) + dither[(y % 2) * 2 + (x % 2)]
+			var d := river.depth_at(p) + DITHER[(y % 2) * 2 + (x % 2)]
 			var band := 0
-			while band < cuts.size() and d > cuts[band]:
+			while band < CUTS.size() and d > CUTS[band]:
 				band += 1
-			img.set_pixel(x, y, bands[band])
+			img.set_pixel(x, y, BANDS[band])
 	return ImageTexture.create_from_image(img)
 
 
@@ -313,23 +318,23 @@ func _make_stretch_texture() -> ImageTexture:
 	var wet_px := _layer_to_pixels(_wet_floats(), size, 1.0)
 	var shore_px := _layer_to_pixels(river.shore, size, 20.0)
 	var bend_px := _layer_to_pixels(river.bend, size, 1.0)
-	var bands: Array[Color] = [COL_SHALLOW, COL_RIFFLE, COL_WATER, COL_POOL, COL_DEEP]
-	var cuts: Array[float] = [0.1, 0.38, 0.62, 0.86]
-	var dither: Array[float] = [-0.03, 0.01, 0.03, -0.01]
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1979
+	var clear_water := _water != null and _water.is_active()
 	var data := PackedByteArray()
-	data.resize(size.x * size.y * 3)
+	data.resize(size.x * size.y * 4)
 	for y in size.y:
 		for x in size.x:
 			var idx := y * size.x + x
 			var col := COL_GRASS
-			if wet_px[idx] >= 0.5:
-				var d := depth_px[idx] + dither[(y % 2) * 2 + (x % 2)]
+			if wet_px[idx] >= 0.5 and clear_water:
+				col = Color.TRANSPARENT  # the WaterView paints it, underneath
+			elif wet_px[idx] >= 0.5:
+				var d := depth_px[idx] + DITHER[(y % 2) * 2 + (x % 2)]
 				var band := 0
-				while band < cuts.size() and d > cuts[band]:
+				while band < CUTS.size() and d > CUTS[band]:
 					band += 1
-				col = bands[band]
+				col = BANDS[band]
 			else:
 				var shore := shore_px[idx]
 				var b := bend_px[idx]
@@ -339,10 +344,11 @@ func _make_stretch_texture() -> ImageTexture:
 					col = COL_GRAVEL  # the inside of a bend widens into a point bar
 				elif rng.randf() < 0.025:
 					col = COL_TUFT
-			data[idx * 3] = col.r8
-			data[idx * 3 + 1] = col.g8
-			data[idx * 3 + 2] = col.b8
-	var img := Image.create_from_data(size.x, size.y, false, Image.FORMAT_RGB8, data)
+			data[idx * 4] = col.r8
+			data[idx * 4 + 1] = col.g8
+			data[idx * 4 + 2] = col.b8
+			data[idx * 4 + 3] = col.a8
+	var img := Image.create_from_data(size.x, size.y, false, Image.FORMAT_RGBA8, data)
 	for g in stretch.gravel:
 		var c := WorldScale.vec_to_px(Vector2(g.x, g.y))
 		var r := WorldScale.to_px(g.z)
