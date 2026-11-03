@@ -1,3 +1,4 @@
+@tool
 class_name Boulder
 extends RiverFeature
 ## A boulder: a slow cushion in front, a slack pocket behind (with a little

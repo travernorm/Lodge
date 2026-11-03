@@ -1,3 +1,4 @@
+@tool
 class_name FallenLog
 extends RiverFeature
 ## A fallen log: slack water tucked along it.

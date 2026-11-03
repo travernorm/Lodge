@@ -1,3 +1,4 @@
+@tool
 class_name Eddy
 extends RiverFeature
 ## An eddy: water circulating back upstream along the bank. The swirl is the

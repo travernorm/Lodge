@@ -1,3 +1,4 @@
+@tool
 class_name RiverFeature
 extends Resource
 ## One thing on the riverbed or bank: a boulder, a log, an eddy, a gravel bar.
@@ -5,6 +6,8 @@ extends Resource
 ## runs them in order without knowing any kind by name (REQ-0004 C3). A new
 ## kind is a new script in scripts/river/features/ that overrides the hooks it
 ## needs; the rest do nothing.
+## Every kind needs @tool, like Stretch, because WaterView builds the field in
+## the editor to preview the water.
 ##
 ## Everything is in metres. Features are shared data, so the hooks never write
 ## to the feature: anything worked out per build goes in the value prepare()

@@ -420,8 +420,7 @@ func _draw() -> void:
 	_draw_angler()
 
 
-## Boulders and logs have their own art. Other kinds (not gravel bars, which
-## are on the ground) are outlined from their footprint until they get some.
+## Boulders and logs have art; other kinds above ground show their footprint.
 func _draw_feature(f: RiverFeature) -> void:
 	if f is Boulder:
 		_draw_rock(WorldScale.vec_to_px((f as Boulder).centre), WorldScale.to_px((f as Boulder).radius))

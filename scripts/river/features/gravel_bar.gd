@@ -1,3 +1,4 @@
+@tool
 class_name GravelBar
 extends RiverFeature
 ## Extra gravel on the bank, drawn on the ground. It doesn't change the water.
