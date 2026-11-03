@@ -14,13 +14,13 @@ As a player, I want the river to look like real moving water, so that I can read
 
 - Depth and speed read at a glance: dark swirling slots are deep and slow, white water is fast and shallow, mid water is everything between.
 - The surface moves with the current, so the riffle hurries and the pool barely creeps.
-- Still pixel art at 320x200: no blur, no sub-pixel smearing, no visible tile grid.
+- Still pixel art at 640x400 (REQ-0007): no blur, no sub-pixel smearing, no visible tile grid.
 
 ## Scope
 
-1. **Assets.** `assets/water/` holds three seamless fill textures (`deep`, `mid`, `white`) at true size (32x32, nearest filter, repeat on) and one `boulder_foam` sprite. A `WaterLook` resource (`data/looks/water_spring.tres`) names the textures and holds the tuning numbers: the depth cut for deep, the speed cut for white, the dither width, the scroll speed.
+1. **Assets.** `assets/water/` holds three seamless fill textures (`deep`, `mid`, `white`) at true size (64x64 at the new 640x400 resolution, REQ-0007; nearest filter, repeat on) and one `boulder_foam` sprite. A `WaterLook` resource (`data/looks/water_spring.tres`) names the textures and holds the tuning numbers: the depth cut for deep, the speed cut for white, the dither width, the scroll speed.
 2. **Field texture.** When a stretch loads, the water view bakes the `RiverField` once into a small data texture, one texel per cell (0.25 m): R = depth, G = speed as a fraction of `WATER_SPEED`, B and A = flow direction. This is a one-time, low-resolution bake.
-3. **Water shader.** A `canvas_item` shader on the water picks deep, mid or white per pixel from that texture, with an ordered (Bayer) dither across each boundary so the edges read as pixel art (texture A's look). Each texture scrolls along the local flow using two-phase flow mapping, so it moves without stretching. Pixel positions are snapped, so nothing smears.
+3. **Water shader.** A `canvas_item` shader on the water blends deep, mid and white per pixel from that texture, with a soft, noise-warped edge between them, then snaps the result to the look's palette so it stays pixel art. Each texture scrolls along the local flow using two-phase flow mapping, so it moves without stretching. Pixel positions are snapped, so nothing smears.
 4. **Boulders.** Each boulder gets a `boulder_foam` sprite, placed from the stretch data.
 5. **Toggle.** A debug toggle switches between the old bands and the new textures, so Traver can compare them (feel experiment). Variants: still textures, and textures moving with the flow.
 6. **Code home.** A new `scripts/river/water_view.gd` view plus `shaders/water.gdshader`. The water drawing moves out of `stream_scene.gd`, which pays back some of its line-cap debt (R9).
@@ -46,7 +46,7 @@ As a player, I want the river to look like real moving water, so that I can read
 ## Acceptance criteria
 
 - The field texture matches `river.depth_at()` and `flow_at()` at sample points within 1/255 (unit test).
-- `data_test` checks that the `WaterLook` resource exists and that its textures load, are 32x32 and use nearest filtering.
+- `data_test` checks that the `WaterLook` resource exists and that its textures load, are 64x64 and use nearest filtering.
 - Over the demo stretch, every wet pixel draws water and every dry pixel draws none (test against the wet mask).
 - The playthrough still catches a fish with the new look on.
 - 60 fps on the Deck, and the web build renders it (playtest; the shader is plain GL Compatibility with no compute).
@@ -61,8 +61,8 @@ As a player, I want the river to look like real moving water, so that I can read
 ## Engineering review
 
 - **Licensing:** Traver's textures look AI-generated (likely PixelLab). Before shipping, confirm the tool's terms allow commercial use, and record the source in `assets/water/LICENSE.md`.
-- **Asset prep:** the sheet is upscaled about 5.3x, with soft edges and borders. The fill tiles need redrawing as seamless 32x32 tiles in Aseprite. For the prototype, the tiles in the preview were scaled down and quantised, and faint seams still show.
-- **Performance:** at 320x200 that's 64,000 pixels, each with 4 to 6 texture reads, which is trivial even on the web. The field texture for a 120 x 75 m stretch is 480x300 texels, baked once at about 0.6 MB.
+- **Asset prep:** the sheet is upscaled about 5.3x, with soft edges and borders. The fill tiles need redrawing as seamless 64x64 tiles in Aseprite (PixelLab can make seamless textures). The preview uses rough cuts from the sheet, so faint seams still show.
+- **Performance:** at 640x400 that's 256,000 pixels, each with 4 to 6 texture reads, which is still cheap, including on the web. The field texture for a 120 x 75 m stretch is 480x300 texels, baked once at about 0.6 MB.
 - **Determinism:** the shader uses `TIME` for the scroll only, and tests read the field texture, not the frame.
 
 ## Architecture
@@ -72,10 +72,12 @@ As a player, I want the river to look like real moving water, so that I can read
 
 ## Open questions
 
+Depends on REQ-0007 (640x400) landing first.
+
 1. Are the textures from PixelLab, and does your plan allow commercial use?
 2. Should the first version move with the flow, or start still and add motion after?
 3. Is white water decided by speed alone, or should boulders and logs also add foam?
 
 ![preview](img/REQ-0006-preview.png)
 
-Preview: Traver's textures picked per pixel by depth and speed on the spring mockup (Python render, not the game).
+Preview at 640x400: Traver's textures blended per pixel by depth and speed (Python render, not the game). The rocks, trees and angler are placeholders.
