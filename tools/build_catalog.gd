@@ -17,6 +17,12 @@ const FOLDERS := {
 
 
 func _initialize() -> void:
+	quit(0 if build() == OK else 1)
+
+
+## Writes the catalog and prints what it lists. Also run by
+## tools/import_content.gd after a sheet adds a file.
+static func build() -> Error:
 	var old := FileAccess.get_file_as_string(Catalog.PATH)
 	var cat := Catalog.new()
 	for field in FOLDERS:
@@ -28,10 +34,9 @@ func _initialize() -> void:
 	var err := ResourceSaver.save(cat, Catalog.PATH)
 	if err != OK:
 		printerr("Couldn't write %s (error %d)" % [Catalog.PATH, err])
-		quit(1)
-		return
-	print("Wrote %s" % Catalog.PATH)
-	quit(0)
+	else:
+		print("Wrote %s" % Catalog.PATH)
+	return err
 
 
 ## The paths one field of a catalog file lists, in order. Read from the text

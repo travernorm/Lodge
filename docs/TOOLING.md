@@ -54,12 +54,41 @@ The **Cast** node's `rules` property picks the rule set the game starts with.
 
 ## Adding flies and fish
 
-Flies and fish are data files, so adding one doesn't need code.
+Insects, flies, rods and fish are data files, so adding one doesn't need code. The quickest way is a content sheet (below): one row per thing in a spreadsheet. You can also duplicate a `.tres` in Godot's FileSystem panel and edit it in the inspector, then run `tools/import_content.gd -- --export` so the sheets catch up.
 
-- **New fly:** in Godot's FileSystem panel, duplicate a file in `data/tackle/flies/`, give it a new `id` (the file name), `display_name`, colours and `fly_type` (Dry, Nymph or Streamer), then run `tools/build_catalog.gd` so the fly box picks it up.
-- **New rod:** duplicate a file in `data/tackle/rods/`, give it a new `id` (the file name) and `display_name`, tick the fly types it throws, and set `max_line_m` (its longest line), `forgiveness` (1 is the baseline timing windows) and `rated_length_in` (fish longer than this snap the tippet sooner). Run `tools/build_catalog.gd`; L2 / R cycles rods in catalog order.
-- **New fish:** duplicate a file in `data/fish/`. Set `lie_area_m` (the rectangle of the stream where it holds, in metres from the screen's top-left; 8 px is 1 m), `bite_chance` and `bite_range_m`, the hook-set window (`set_min`/`set_max`), `pull` (around 1.0 snaps the tippet under full pressure) and size range. Then add it to `stocking` on the Fishing node.
-- **Bite odds:** `bite_chance` is the chance for a delicate cast right by the fish. Fair landings get 60% of it and splashy ones 25% (`PRESENTATION_FACTOR` in `scripts/fishing/fish.gd`), falling off to zero at `bite_range_m` metres away.
+- **New fly:** a row in `content/flies.csv`: a new `id`, `display_name`, colours, `fly_type` (Dry, Nymph or Streamer) and the insects it `imitates`. It joins the fly box at the end.
+- **New rod:** a row in `content/rods.csv`: the fly types it throws, `max_line_m` (its longest line), `forgiveness` (1 is the baseline timing windows) and `rated_length_in` (fish longer than this snap the tippet sooner). L2 / R cycles rods in catalog order.
+- **New fish:** a row in `content/fish.csv`: `bite_chance` (the odds for a perfect pass), `diet` and `selectivity`, the hook-set window (`set_min`/`set_max`), `pull` (around 1.0 snaps the tippet under full pressure), `toughness` and the size range. A species says nothing about where it lives: to put it in a river, add a `SpawnEntry` to that stretch's `spawn` list in `data/stretches/`.
+- **Bite odds:** `DriftPastRules` (`data/take_rules/`) splits `bite_chance` into lane, landing and drift shares, and `selectivity` sets how much a fly that isn't on the diet costs.
+
+## Content sheets
+
+`content/` holds one spreadsheet per kind, as CSV: `insects.csv`, `flies.csv`, `rods.csv` and `fish.csv`. Each row is one file in `data/`, and the columns are that kind's fields, named as in the inspector. Open them in Numbers, Excel or Google Sheets (File, Import), edit, save as CSV, then run:
+
+```sh
+godot --headless --path . --script res://tools/import_content.gd
+```
+
+Every cell is checked before anything is written. If any is wrong, the tool lists each problem with its sheet, row and column (for example `fish.csv row 4 (redband), diet: no Insect 'pmdd' (known: attractor, baetis, ...)`) and writes nothing. Otherwise it rewrites only the files whose rows changed, creates files for new rows, and rebuilds the catalog when something is new. Run `tools/run_tests.sh` afterwards: the data tests check the rest (every fish has a fly that matches it, and so on).
+
+How to fill a cell:
+
+| Field | Write it as | Example |
+|---|---|---|
+| Text, numbers | As is. Commas are fine; the app quotes them. | `0.65` |
+| Colour | html hex | `8a8a8a` |
+| Fly type, rod fly types | The inspector's names; several joined with `;` | `Dry`, `Dry;Nymph` |
+| A link, or a list of links | ids joined with `;` | `pmd;baetis` |
+| A diet | `insect:weight` pairs joined with `;` | `pmd:1;caddis:0.5` |
+| Empty | Keeps what the file has (or the default, for a new row) | |
+
+* **Ids** are lower case with `_`, unique, and the file name. Never rename one: a rename makes a new file and leaves the old one.
+* **Order:** a sheet can link to anything in the sheets before it (insects, then flies, then rods, then fish), including rows added in the same import.
+* **Deleting a row doesn't delete the file.** The tool lists files with no row; delete those by hand.
+* **New fields show up by themselves.** The columns are read from the scripts, so after adding an `@export` run `-- --export` to add its column. Ranges come from `@export_range`.
+* `-- --check` prints what an import would change and writes nothing. `-- --export` rewrites the sheets from `data/`.
+* `tests/content_test.gd` fails while the sheets and `data/` disagree, so they can't drift apart.
+* Stretches aren't in a sheet: spawn tables and river features are edited in the inspector.
 
 The drift and fight feel constants sit at the top of `scripts/fishing/drift_model.gd` and `scripts/fishing/fight_model.gd`, each with a comment. They're in metres and metres per second.
 

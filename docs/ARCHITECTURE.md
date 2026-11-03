@@ -92,6 +92,8 @@ The data folders today, each covered by `tests/data_test.gd`:
 * `data/cast_tuning.tres`: casting numbers shared by every rule set.
 * `data/catalog.tres`: the index of every fish, fly, insect and stretch (generated, see below).
 
+The content sheets in `content/` (`insects.csv`, `flies.csv`, `rods.csv`, `fish.csv`) are the spreadsheet view of the archetype folders: one row per file, one column per exported field. `tools/import_content.gd` checks every cell and writes the `.tres` files; the game never reads the sheets (the folder has a `.gdignore`), and `tests/content_test.gd` keeps them in step with `data/`. See TOOLING.md, "Content sheets".
+
 ### References and ids
 
 * **Between data files:** typed resource references (R5). `FlyPattern.imitates: Array[Insect]` is the model to copy. Godot keeps them valid when files move, and the inspector shows a picker instead of a text box. Godot 4.3 has no typed dictionaries, so a weighted link is a small entry resource (for example a `DietEntry` with `insect: Insect` and `weight: float`).
