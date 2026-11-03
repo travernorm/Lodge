@@ -21,6 +21,9 @@ const LAND_STAMINA := 0.25
 const MAX_DISTANCE := 18.75  # m: run past this and it breaks off
 const RUN_TIME := Vector2(0.6, 1.4)
 const REST_TIME := Vector2(1.0, 2.2)
+## How hard a fish past the rod's rating loads it: tension x (1 + OVERLOAD x
+## how far over it is). A fish 25% over pulls 1.5x as hard (REQ-0005).
+const OVERLOAD := 2.0
 
 var species: FishSpecies
 var tension := 0.0
@@ -31,6 +34,8 @@ var angle := -PI / 2.0
 var running := true
 ## -1 running upstream (left), 1 downstream (right).
 var run_dir := 1.0
+## Tension multiplier from a fish too big for the rod; 1 within its rating.
+var rod_load := 1.0
 
 var _phase_timer := 0.0
 var _over := 0.0
@@ -38,8 +43,9 @@ var _slack := 0.0
 var _rng: RandomNumberGenerator
 
 
-func _init(p_species: FishSpecies, start_distance: float, start_angle: float, rng: RandomNumberGenerator) -> void:
+func _init(p_species: FishSpecies, start_distance: float, start_angle: float, rng: RandomNumberGenerator, p_rod_load := 1.0) -> void:
 	species = p_species
+	rod_load = maxf(1.0, p_rod_load)
 	distance = start_distance
 	angle = start_angle
 	_rng = rng
@@ -47,6 +53,14 @@ func _init(p_species: FishSpecies, start_distance: float, start_angle: float, rn
 	running = true
 	run_dir = 1.0 if _rng.randf() < 0.6 else -1.0
 	_phase_timer = _rng.randf_range(RUN_TIME.x, RUN_TIME.y)
+
+
+## The tension multiplier for a fish `length_in` long on `rod`: 1 up to the
+## rod's rating, then 1 + OVERLOAD x the fraction over. No rod is 1.
+static func load_for(rod: FlyRod, length_in: float) -> float:
+	if rod == null or rod.rated_length_in <= 0.0:
+		return 1.0
+	return 1.0 + OVERLOAD * maxf(0.0, length_in / rod.rated_length_in - 1.0)
 
 
 ## How hard the fish is pulling right now, 0..~1.5.
@@ -66,7 +80,7 @@ func update(dt: float, stick: Vector2) -> Result:
 
 	var pressure := clampf(stick.length(), 0.0, 1.0)
 	var e := effort()
-	tension = move_toward(tension, pressure * (0.3 + e), TENSION_RATE * dt)
+	tension = move_toward(tension, pressure * (0.3 + e) * rod_load, TENSION_RATE * dt)
 
 	var side := clampf(-stick.x * run_dir, 0.0, 1.0) if running else 0.0
 	stamina = maxf(0.0, stamina - dt * (0.03 + tension * 0.12 + side * 0.08) / species.toughness)

@@ -4,9 +4,10 @@ extends SceneTree
 ## a new rule set, a new action) that something elsewhere still depends on.
 ##   godot --headless --path . --script res://tests/data_test.gd
 ##
-## Every file in data/insects, data/flies, data/fish, data/cast_rules and data/take_rules is checked, so new
-## data is covered without touching this file. data/catalog.tres must list
-## exactly the fish, fly, insect and stretch files on disk.
+## Every file in data/insects, data/tackle/flies, data/tackle/rods, data/fish,
+## data/cast_rules and data/take_rules is checked, so new data is covered
+## without touching this file. data/catalog.tres must list exactly the fish,
+## fly, rod, insect and stretch files on disk.
 
 const VIEW := Rect2(0, 0, 320, 200)
 
@@ -17,11 +18,13 @@ var _main: Node
 func _initialize() -> void:
 	_main = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	var insects := _load_dir("res://data/insects", "Insect")
-	var flies := _load_dir("res://data/flies", "FlyPattern")
+	var flies := _load_dir("res://data/tackle/flies", "FlyPattern")
+	var rods := _load_dir("res://data/tackle/rods", "FlyRod")
 	var fish := _load_dir("res://data/fish", "FishSpecies")
 	var rules := _load_dir("res://data/cast_rules", "CastRules")
 	_test_insects(insects)
 	_test_flies(flies)
+	_test_rods(rods, flies)
 	_test_fish(fish, flies)
 	_test_diets(fish, flies, insects)
 	_test_cast_rules(rules)
@@ -29,7 +32,7 @@ func _initialize() -> void:
 	_test_input_parity()
 	_test_stretches(fish)
 	_test_take_rules()
-	_test_catalog(flies, fish, insects, _load_dir("res://data/stretches", "Stretch"))
+	_test_catalog(flies, fish, insects, _load_dir("res://data/stretches", "Stretch"), rods)
 	_main.free()
 	if _failures == 0:
 		print("Data tests passed.")
@@ -74,6 +77,30 @@ func _test_flies(flies: Dictionary) -> void:
 		_check(fly.display_name != "", "fly %s: has a display name" % stem)
 		_check(not ids.has(fly.id), "fly %s: id is unique" % stem)
 		ids[fly.id] = true
+		_check(fly.fly_type in FlyPattern.Type.values(), "fly %s: fly_type is Dry, Nymph or Streamer" % stem)
+
+
+## Rods (REQ-0005): valid numbers, and the first rod in the catalog (the one
+## you start with) throws some fly in the box, so the game starts fishable.
+func _test_rods(rods: Dictionary, flies: Dictionary) -> void:
+	var ids := {}
+	for path in rods:
+		var rod: FlyRod = rods[path]
+		var stem: String = path.get_file().get_basename()
+		_check(String(rod.id) == stem, "rod %s: id matches its file name (%s)" % [stem, rod.id])
+		_check(rod.display_name != "", "rod %s: has a display name" % stem)
+		_check(not ids.has(rod.id), "rod %s: id is unique" % stem)
+		ids[rod.id] = true
+		_check(rod.fly_types > 0 and rod.fly_types < (1 << FlyPattern.Type.size()), "rod %s: throws at least one fly type" % stem)
+		_check(rod.max_line_m > CastRules.SHORT_MAX and rod.max_line_m <= 17.5, "rod %s: longest line is past Short and at most 17.5 m (%.2f)" % [stem, rod.max_line_m])
+		_check(rod.forgiveness >= 0.5 and rod.forgiveness <= 2.0, "rod %s: forgiveness is in [0.5, 2]" % stem)
+		_check(rod.rated_length_in > 0.0, "rod %s: rated for some fish" % stem)
+	var cat := load(Catalog.PATH) as Catalog
+	var first: FlyRod = cat.rods[0] if cat != null and not cat.rods.is_empty() else null
+	var fishable := false
+	for path in flies:
+		fishable = fishable or (first != null and first.throws(flies[path]))
+	_check(fishable, "rods: the starting rod (%s) throws a fly in data/tackle/flies" % (first.id if first != null else "none"))
 
 
 func _test_fish(fish: Dictionary, _flies: Dictionary) -> void:
@@ -107,7 +134,7 @@ func _test_insects(insects: Dictionary) -> void:
 
 ## Flies, diets and insects agree: every fly imitates real bugs, every diet
 ## names real bugs with weights in [0, 1], and every fish has a fly in
-## data/flies that it fully wants, so there's always a right answer.
+## data/tackle/flies that it fully wants, so there's always a right answer.
 func _test_diets(fish: Dictionary, flies: Dictionary, insects: Dictionary) -> void:
 	var insect_ids := {}
 	for path in insects:
@@ -131,7 +158,7 @@ func _test_diets(fish: Dictionary, flies: Dictionary, insects: Dictionary) -> vo
 		for fpath in flies:
 			if sp.fly_match(flies[fpath]) >= 1.0 - 0.0001:
 				has_answer = true
-		_check(has_answer, "fish %s: some fly in data/flies fully matches its diet" % stem)
+		_check(has_answer, "fish %s: some fly in data/tackle/flies fully matches its diet" % stem)
 
 
 func _water_cells(river: RiverField, area: Rect2) -> int:
@@ -168,9 +195,9 @@ func _test_scene_wiring(flies: Dictionary, fish: Dictionary, rules: Dictionary) 
 	_check(fishing != null and practice != null and cast != null, "scene: Cast, Fishing and Practice nodes exist")
 	if fishing == null or practice == null or cast == null:
 		return
-	_check(fishing.flies.size() > 0, "scene: the fly box isn't empty")
-	for fly in fishing.flies:
-		_check(fly != null and flies.has(fly.resource_path), "scene: fly box entry %s is a data/flies file" % _path(fly))
+	_check(fishing.tackle.flies.size() > 0 and fishing.current_fly() != null, "scene: the fly box isn't empty and a fly is tied on")
+	for fly in fishing.tackle.flies:
+		_check(fly != null and flies.has(fly.resource_path), "scene: fly box entry %s is a data/tackle/flies file" % _path(fly))
 	_check(fishing.stocking.size() > 0, "scene: the stream is stocked")
 	for sp in fishing.stocking:
 		_check(sp != null and fish.has(sp.resource_path), "scene: stocking entry %s is a data/fish file" % _path(sp))
@@ -270,15 +297,15 @@ func _test_stretches(fish: Dictionary) -> void:
 			_check(sp != null and fish.has(sp.resource_path), "stretch %s: trout %s is in data/fish" % [stem, sp.id if sp != null else "?"])
 
 
-## data/catalog.tres lists every fish, fly, insect and stretch file exactly
+## data/catalog.tres lists every fish, fly, rod, insect and stretch file exactly
 ## once, and nothing else, so the game sees all the content (REQ-0004 C1).
-func _test_catalog(flies: Dictionary, fish: Dictionary, insects: Dictionary, stretches: Dictionary) -> void:
+func _test_catalog(flies: Dictionary, fish: Dictionary, insects: Dictionary, stretches: Dictionary, rods: Dictionary) -> void:
 	var cat := load(Catalog.PATH) as Catalog
 	_check(cat != null, "catalog: %s loads as a Catalog" % Catalog.PATH)
 	if cat == null:
 		return
 	var fix := "Run tools/build_catalog.gd and commit data/catalog.tres."
-	for pair in [["flies", flies], ["fish", fish], ["insects", insects], ["stretches", stretches]]:
+	for pair in [["flies", flies], ["rods", rods], ["fish", fish], ["insects", insects], ["stretches", stretches]]:
 		var listed := {}
 		for res in cat.get(pair[0]):
 			_check(res != null, "catalog: no empty %s entries" % pair[0])

@@ -51,7 +51,19 @@ Press **Tab** (or click the **right stick, R3**) to switch between casting rule 
 | **Classic** | Strokes get longer as line goes out | Each clean false cast shoots 0.5 to 2 m of line. About 0 false casts is Short, 2 is Middle, 4 is Long |
 | **Find your tempo** | Your first back cast sets the beat, fast or slow | Each false cast adds line in proportion to how well it kept your beat |
 
-Distances are measured in metres from the rod tip (one screen is 40 m across): **Short** is up to 6 m, **Middle** up to 10.25 m, and **Long** beyond that, up to about 14.75 m of line. A bad delivery stroke still falls short of the line you have out, in every rule set. The numbers for each rule set live in `data/cast_rules/`, so they can be tuned in the Godot inspector. Fishing uses whichever rule set is selected, so you can also fish with each one. The game starts with Count the false casts (the `rules` property on the **Cast** node).
+Distances are measured in metres from the rod tip (one screen is 40 m across): **Short** is up to 6 m, **Middle** up to 10.25 m, and **Long** beyond that, up to the rod's longest line (see Rods below). A bad delivery stroke still falls short of the line you have out, in every rule set. The numbers for each rule set live in `data/cast_rules/`, so they can be tuned in the Godot inspector. Fishing uses whichever rule set is selected, so you can also fish with each one. The game starts with Count the false casts (the `rules` property on the **Cast** node).
+
+## Rods
+
+Your rod shapes the cast and the fight ([REQ-0005](docs/requirements/REQ-0005-fly-rods.md)). Press **L2** (or **R**) while reeled in to change rods; the rod's stats show on screen and its name sits above the fly box.
+
+| Rod | Throws | Longest line | Timing | Fights fish up to |
+|---|---|---|---|---|
+| Dad's glass 4-weight (you start with it) | Dries | 10.25 m (no Long) | Forgiving (windows ×1.3) | 16 in |
+| Graphite 5-weight | Dries, nymphs | 12.5 m | Steady (×1, the old feel) | 20 in |
+| Fast 7-weight | Nymphs, streamers | 16.5 m | Fast (windows ×0.75) | 28 in |
+
+A fish longer than the rod's rating pulls the line tighter, so it snaps the tippet sooner. Every fly in the box is a dry for now, so the 7-weight has nothing to throw until nymphs or streamers arrive; practice mode still casts with it. Rods are data in `data/tackle/rods/`: add a file and run `tools/build_catalog.gd`.
 
 ## How to fish
 
@@ -61,7 +73,7 @@ For now the stream holds **one Redband Rainbow**, holding in a good lie at the h
    - **Lane (20%):** the fly came through the fish's window at all.
    - **Landing (20%):** a delicate landing within 3 m of the fish (a fair one gets 10%). A splashy landing isn't punished, and casting right onto a fish is fine: it counts as a pass straight away.
    - **No drag (20%):** the fly rode the current through the pass. Drag, skating or an early mend's jolt anywhere in the pass loses some or all of it, so **mend before the fly reaches the fish**.
-   - **× Fly match:** how much the fly looks like what that trout is eating. The right bug is ×1. A bug it doesn't eat keeps (1 − selectivity) of the odds, so a choosy cutthroat on the wrong fly keeps ×0.4, while a brook trout barely cares. Each fish's diet and selectivity are in `data/fish/`, what each fly imitates is in `data/flies/`, and the bugs are in `data/insects/`.
+   - **× Fly match:** how much the fly looks like what that trout is eating. The right bug is ×1. A bug it doesn't eat keeps (1 − selectivity) of the odds, so a choosy cutthroat on the wrong fly keeps ×0.4, while a brook trout barely cares. Each fish's diet and selectivity are in `data/fish/`, what each fly imitates is in `data/tackle/flies/`, and the bugs are in `data/insects/`.
 2. **Wait for the rise.** If the fish bites, it comes up for the fly a moment later and the fly disappears.
 3. **Set the hook.** Press **Space** (or **Cross / A** on a controller, or flick the right stick up). You have about a second.
 4. **Fight.** **Hold Space** or **push the right stick** to pull it in, and watch the tension bar. Don't let the line go slack for long or it throws the hook. Pushing sideways against a run tires it faster. Reel it in close once it's tired to land it.
@@ -83,6 +95,7 @@ The bite numbers live in `data/take_rules/drift_past.tres`.
 | A or right stick flick up | Space | Set the hook |
 | Right stick hold | Space or I J K L | Pressure while fighting |
 | Y | F | Change fly (when reeled in) |
+| L2 (left trigger) | R | Change rod (when reeled in) |
 | A | Space | Set the hook (later: interact / perception check) |
 | B | Backspace | Back / reel in |
 | Menu (Start) | Esc | Pause |
@@ -123,7 +136,9 @@ data/cast_rules/*.tres      Casting rule sets and their numbers (Classic, Count 
 scripts/fishing/            Drift and mending (drift_model.gd), fish behaviour (fish.gd),
                             fight (fight_model.gd), stick gestures, and the scene glue
                             (fishing_controller.gd)
-data/flies/*.tres           Fly patterns (FlyPattern)
+scripts/tackle/             Flies (fly_pattern.gd), rods (fly_rod.gd) and what's rigged (tackle.gd)
+data/tackle/flies/*.tres    Fly patterns (FlyPattern)
+data/tackle/rods/*.tres     Fly rods (FlyRod): fly types, longest line, forgiveness, fish rating
 data/fish/*.tres            Trout species: habitat, bite odds, hook-set window, fight
 scripts/debug_overlay.gd    Bumper timeline, stick readouts, rumble test
 tools/setup_input_map.gd    Source of truth for the input map (regenerates project.godot)

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="FlyRod" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/tackle/fly_rod.gd" id="1_rod"]
+
+[resource]
+script = ExtResource("1_rod")
+id = &"graphite_5wt"
+display_name = "Graphite 5-weight"
+description = "The all-round trout rod. Throws dries and nymphs to the far seam with an honest, steady stroke."
+weight = 5
+fly_types = 3
+max_line_m = 12.5
+forgiveness = 1.0
+rated_length_in = 20.0

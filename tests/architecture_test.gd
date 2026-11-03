@@ -57,7 +57,7 @@ const UNSEEDED := "(^|[^.\\w])(randi|randf|randf_range|randi_range|randfn|random
 
 ## R4: shared data is read-only at runtime. A text check for assigning to a
 ## field of a variable named like a data resource.
-const DATA_WRITE := "\\b(species|sp|pattern|tuning|stretch|take_rules|insect)\\.[a-z_]+\\s*[-+*/]?=(?!=)"
+const DATA_WRITE := "\\b(species|sp|pattern|tuning|stretch|take_rules|insect|rod)\\.[a-z_]+\\s*[-+*/]?=(?!=)"
 
 ## R5: links between data files are typed resource references, not untyped
 ## Dictionary or Array exports full of ids.
@@ -66,7 +66,7 @@ const LOOSE_EXPORT := "@export.*\\bvar\\s+\\w+\\s*(:\\s*(Dictionary|Array)\\s*(=
 ## R5: content is found through the catalog (data/catalog.tres), never named
 ## in code, so a new file joins the game by itself (REQ-0004). Fish join this
 ## list when the spawn tables land (C2).
-const CONTENT_PATH := "res://data/(flies|insects)/"
+const CONTENT_PATH := "res://data/(tackle/flies|tackle/rods|insects)/"
 
 # --- Ledger ---------------------------------------------------------------
 
@@ -76,7 +76,7 @@ const ALLOWED_PURE := {
 }
 ## R1 debt: pure scripts that still break a rule. [labels]
 const DEBT_PURE := {
-	"res://scripts/fishing/fly_pattern.gd": ["drawing"],  # F10: draw_at() until fly art (a FlyView)
+	"res://scripts/tackle/fly_pattern.gd": ["drawing"],  # F10 (moved from scripts/fishing/ by REQ-0005): draw_at() until fly art (a FlyView)
 }
 ## R3 debt: REACH matches per file. Step B (FishingSession) empties this.
 const DEBT_REACH := {

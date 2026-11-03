@@ -18,10 +18,10 @@ extends Node2D
 
 enum Phase { NONE, DRIFT, FIGHT, REEL }
 
-## The fly box: every fly in the catalog (data/catalog.tres), in its order.
-## Y (F on keyboard) cycles through it while the line is reeled in. The first
-## is tied on at the start.
-var flies: Array[FlyPattern] = Catalog.shared().flies
+## The rod and fly rigged up (REQ-0005), from every rod and fly in the catalog
+## (data/catalog.tres), in its order. Y (F) cycles the flies this rod throws and
+## L2 (R) the rods, while the line is reeled in. The first of each starts on.
+var tackle := Tackle.new(Catalog.shared().rods, Catalog.shared().flies)
 ## One fish is stocked for each entry. Starts with one trout in the pool; more
 ## species are waiting in data/fish/.
 @export var stocking: Array[FishSpecies] = [
@@ -64,7 +64,6 @@ var fight: FightModel
 ## those edges and when drawing.
 var fish: Array[Fish] = []
 var hooked: Fish
-var fly_index := 0
 ## Every fish landed this session: {species, length_in, fly}.
 var catches: Array[Dictionary] = []
 
@@ -93,6 +92,7 @@ func _ready() -> void:
 	_stream = get_parent() as Node2D
 	_cast = _stream.get_node(^"Cast")
 	_cast.model.landed.connect(_on_landed)
+	_cast.model.rod = tackle.rod()
 	_river = _stream.get(&"river")
 	# A stretch brings its own trout, spread over the whole river.
 	var stretch: Stretch = _stream.get(&"stretch")
@@ -113,12 +113,18 @@ func _lies_except(me: Fish) -> PackedVector2Array:
 	return out
 
 
+## The tied-on fly, or null when the rod throws none in the box.
 func current_fly() -> FlyPattern:
-	return flies[fly_index]
+	return tackle.fly()
 
 
 func can_pick_up() -> bool:
 	return phase != Phase.FIGHT
+
+
+## False while fishing with no fly this rod can throw. Practice casts anyway.
+func can_cast() -> bool:
+	return not enabled or current_fly() != null
 
 
 ## Where the line ends, in screen pixels: the fish while fighting, otherwise the fly.
@@ -157,7 +163,11 @@ func _process(delta: float) -> void:
 	_gestures.update(_time, stick)
 
 	if Input.is_action_just_pressed(Controls.CHANGE_FLY):
-		_change_fly()
+		_change_tackle(false)
+	if Input.is_action_just_pressed(Controls.CHANGE_ROD):
+		_change_tackle(true)
+	if Input.is_action_just_pressed(Controls.CAST_BACK) and not can_cast():
+		_cast.show_message("No fly in the box suits the %s. Change rod (L2)." % tackle.rod().display_name, 0.3)
 
 	match phase:
 		Phase.DRIFT:
@@ -177,17 +187,14 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 
-func _change_fly() -> void:
-	if flies.size() < 2:
-		_cast.show_message("Just the one fly in Dad's box for now.", 0.5)
-		return
+## Y cycles flies and L2 rods (Tackle), only while the line is reeled in.
+func _change_tackle(rod: bool) -> void:
 	if _cast.model.state != CastModel.State.IDLE:
-		_cast.show_message("Reel in first (B) to change flies.", 0.5)
+		_cast.show_message("Reel in first (B) to change %s." % ("rods" if rod else "flies"), 0.5)
 		return
-	fly_index = (fly_index + 1) % flies.size()
-	var fly := current_fly()
-	var kinds := fly.kinds_text()
-	_cast.show_message("Tied on a %s%s." % [fly.display_name, " (%s)" % kinds if kinds != "" else ""], 1.0)
+	var text := tackle.cycle_rod() if rod else tackle.cycle_fly()
+	_cast.model.rod = tackle.rod()
+	_cast.show_message(text, 1.0 if current_fly() != null else 0.3)
 
 
 # --- Drift -----------------------------------------------------------------
@@ -240,7 +247,7 @@ func _update_drift(delta: float) -> void:
 			_cast.show_message("Mend. No more line to feed.", 1.0)
 	drift.update(delta, _river.flow_at)
 	_cast.fly_pos = WorldScale.vec_to_px(drift.fly)
-	_cast.model.line_out = clampf(drift.tip.distance_to(drift.fly), _cast.tuning.line_start, _cast.tuning.line_max)
+	_cast.model.line_out = clampf(drift.tip.distance_to(drift.fly), _cast.tuning.line_start, _cast.model.max_line(_cast.tuning.line_max))
 	_watch_passes(delta)
 
 	if _gestures.flicked or Input.is_action_just_pressed(Controls.INTERACT):
@@ -333,8 +340,12 @@ func _start_fight(f: Fish) -> void:
 	phase = Phase.FIGHT
 	hooked = f
 	var tip := _tip_m()
-	fight = FightModel.new(f.species, tip.distance_to(drift.fly), (drift.fly - tip).angle(), _rng)
-	_cast.show_message("Fish on! Hold Space or push the stick to pull.", 1.0)
+	var rod_load := FightModel.load_for(tackle.rod(), f.length_in)
+	fight = FightModel.new(f.species, tip.distance_to(drift.fly), (drift.fly - tip).angle(), _rng, rod_load)
+	if rod_load > 1.0:
+		_cast.show_message("Fish on! A lot of fish for a %d-weight. Go easy." % tackle.rod().weight, 0.3)
+	else:
+		_cast.show_message("Fish on! Hold Space or push the stick to pull.", 1.0)
 	Controls.rumble(0.3, 0.8, 0.25)
 
 
@@ -432,11 +443,11 @@ func _draw() -> void:
 		Phase.REEL:
 			var fly_px := WorldScale.vec_to_px(drift.fly)
 			draw_line(tip.floor() + Vector2(0.5, 0.5), fly_px.floor() + Vector2(0.5, 0.5), COL_LINE, 1.0)
-			current_fly().draw_at(self, fly_px)
+			_draw_fly(fly_px)
 		Phase.NONE:
 			if _cast.model.state == CastModel.State.LANDED:
 				_draw_line(tip, (tip + _cast.fly_pos) * 0.5, _cast.fly_pos, COL_LINE)
-				current_fly().draw_at(self, _cast.fly_pos)
+				_draw_fly(_cast.fly_pos)
 	_draw_rings()
 	draw_set_transform(_stream.screen_origin())  # HUD: fixed on screen
 	_draw_hud()
@@ -484,7 +495,12 @@ func _draw_drift(tip: Vector2) -> void:
 		var col := Color(COL_WAKE, a)
 		draw_line(back + Vector2(-1, -1), back + Vector2(-4, -3), col, 1.0)
 		draw_line(back + Vector2(-1, 2), back + Vector2(-4, 4), col, 1.0)
-	current_fly().draw_at(self, fly_px)
+	_draw_fly(fly_px)
+
+
+func _draw_fly(p: Vector2) -> void:
+	if current_fly() != null:
+		current_fly().draw_at(self, p)
 
 
 func _draw_fight(tip: Vector2) -> void:
@@ -528,14 +544,16 @@ func _draw_rings() -> void:
 func _draw_hud() -> void:
 	var font := ThemeDB.fallback_font
 	var view: Vector2 = _stream.VIEW
-	# Fly box, bottom left.
+	# Fly box, bottom left, with the rod above it.
 	var fly := current_fly()
-	var box := Rect2(4, view.y - 17, font.get_string_size(fly.display_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x + 20, 13)
+	var fly_name := fly.display_name if fly != null else "No fly for this rod"
+	var box := Rect2(4, view.y - 17, font.get_string_size(fly_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x + 20, 13)
 	draw_rect(box, COL_PANEL)
-	fly.draw_at(self, box.position + Vector2(5, 5), 2.0)
-	draw_string(font, box.position + Vector2(14, 10), fly.display_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, COL_TEXT)
-	if flies.size() > 1:
-		draw_string(font, box.position + Vector2(0, -3), "Y: fly box", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, COL_DIM)
+	if fly != null:
+		fly.draw_at(self, box.position + Vector2(5, 5), 2.0)
+	draw_string(font, box.position + Vector2(14, 10), fly_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, COL_TEXT)
+	if tackle.rod() != null:
+		draw_string(font, box.position + Vector2(0, -3), "%s  (Y fly, L2 rod)" % tackle.rod().display_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, COL_DIM)
 	# Catch log, bottom right.
 	var log_text := "%d caught" % catches.size()
 	if _unique_species() > 1:

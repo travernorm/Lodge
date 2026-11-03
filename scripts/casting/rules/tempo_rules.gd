@@ -64,7 +64,7 @@ func score_stroke(model: CastModel, elapsed: float, stroke_name: String) -> Arra
 
 
 func after_false_cast(model: CastModel, q: float) -> String:
-	model.line_out = minf(model.line_out + line_gain * q * q, line_max)
+	model.line_out = minf(model.line_out + line_gain * q * q, model.max_line(line_max))
 	return "In rhythm" if q >= 0.95 else ""
 
 

@@ -24,6 +24,7 @@ func _initialize() -> void:
 		"mend": [_button(JOY_BUTTON_X), _key(KEY_M)],
 		"interact": [_button(JOY_BUTTON_A), _key(KEY_SPACE)],
 		"change_fly": [_button(JOY_BUTTON_Y), _key(KEY_F)],
+		"change_rod": [_axis(JOY_AXIS_TRIGGER_LEFT, 1.0), _key(KEY_R)],
 		"back": [_button(JOY_BUTTON_B), _key(KEY_BACKSPACE)],
 		"pause": [_button(JOY_BUTTON_START), _key(KEY_ESCAPE)],
 		"toggle_debug": [_button(JOY_BUTTON_BACK), _key(KEY_F1)],

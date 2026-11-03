@@ -8,7 +8,7 @@
 
 - [ ] Casting (cast model, rule sets, `data/cast_rules/`, `data/cast_tuning.tres`)
 - [ ] River (river field, flow, lies)
-- [ ] Fishing (drift, fish, fight, `data/flies/`, `data/fish/`)
+- [ ] Fishing (drift, fish, fight, `data/tackle/flies/`, `data/fish/`)
 - [ ] UI / debug views / practice mode
 - [ ] Input map (`tools/setup_input_map.gd`, `project.godot`)
 - [ ] Save data
