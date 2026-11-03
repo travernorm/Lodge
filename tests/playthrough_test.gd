@@ -115,6 +115,11 @@ func _run() -> void:
 	if not await _mend_button_pass():
 		return
 
+	# 2a'. Square / M while reeled in switches how much each mend feeds out,
+	# and every mend in a drift feeds line under each variant.
+	if not await _mend_feed_pass():
+		return
+
 	# 2b. The fly box: Y / F cycles every fly while reeled in and comes back
 	# round, and the fly tied on reaches the bite rules (a catch on the Caddis).
 	if not await _fly_box_pass():
@@ -176,6 +181,44 @@ func _mend_button_pass() -> bool:
 	_trout.species.bite_chance = chance
 	if ok:
 		print("  ok    Square / M mends a drift")
+	return ok
+
+
+## Feel experiment: each mend feeds out line; Square / M while reeled in
+## switches the variant and comes back round.
+func _mend_feed_pass() -> bool:
+	var chance: float = _trout.species.bite_chance
+	_trout.species.bite_chance = 0.0
+	var count := DriftModel.MendFeed.size()
+	var start: int = _fishing.drift.mend_feed
+	var ok := true
+	for i in count:
+		await _cast_once(0)
+		if _fishing.phase != 1:
+			_fail("Cast for the mend feed pass didn't start a drift")
+			ok = false
+			break
+		var before: float = _fishing.drift.line_length
+		await _tap(&"mend")
+		await _tap(&"mend")
+		if _fishing.drift.mends != 2 or _fishing.drift.line_length <= before:
+			_fail("Mends didn't feed line (%s: %.2f m -> %.2f m)" % [
+				DriftModel.MEND_FEED_NAMES[_fishing.drift.mend_feed], before, _fishing.drift.line_length])
+			ok = false
+			break
+		await _tap(&"back")
+		var mode: int = _fishing.drift.mend_feed
+		await _tap(&"mend")
+		if _fishing.drift.mend_feed != (mode + 1) % count:
+			_fail("Square / M while reeled in didn't switch the mend feed")
+			ok = false
+			break
+	if ok and _fishing.drift.mend_feed != start:
+		_fail("Mend feed didn't come back round to the first variant")
+		ok = false
+	_trout.species.bite_chance = chance
+	if ok:
+		print("  ok    every mend feeds line under %d variants; Square / M switches them while reeled in" % count)
 	return ok
 
 

@@ -79,7 +79,7 @@ The bite numbers live in `data/take_rules/drift_past.tres`.
 | R bumper (R1) | E | Forward cast (overlap with L) |
 | Right stick | I J K L | Rod tip: mend, set the hook, strip |
 | Left stick / D-pad | W A S D | Walk the bank (the camera follows) |
-| X (Square on DualSense) or right stick loop | M | Mend the line |
+| X (Square on DualSense) or right stick loop | M | Mend the line (each mend feeds out line); when reeled in, switch how much |
 | A or right stick flick up | Space | Set the hook |
 | Right stick hold | Space or I J K L | Pressure while fighting |
 | Y | F | Change fly (when reeled in) |

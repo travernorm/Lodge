@@ -9,6 +9,8 @@ extends Node2D
 ##   push and hold           rod pressure while fighting a fish
 ##
 ## Shortcuts: X / Square (M on keyboard) mends, the same as a stick loop.
+## Each mend feeds out line. While reeled in, the same button switches how much
+## (DriftModel.MendFeed, a feel experiment).
 ## A / Cross / Space sets the hook too, and holding it while fighting is full
 ## pressure straight up.
 ##
@@ -149,6 +151,7 @@ func debug_lines() -> PackedStringArray:
 		states.append("%s:%s" % [String(f.species.id).left(3), Fish.State.keys()[f.state].left(4).to_lower()])
 	lines.append(" ".join(states))
 	lines.append("bites  %s" % take_rules.display_name)
+	lines.append("mends feed  %s  line %.1f m" % [DriftModel.MEND_FEED_NAMES[drift.mend_feed], drift.line_length])
 	return lines
 
 
@@ -159,6 +162,9 @@ func _process(delta: float) -> void:
 
 	if Input.is_action_just_pressed(Controls.CHANGE_FLY):
 		_change_fly()
+	if Input.is_action_just_pressed(Controls.MEND) and phase == Phase.NONE \
+			and _cast.model.state == CastModel.State.IDLE:
+		_cycle_mend_feed()
 
 	match phase:
 		Phase.DRIFT:
@@ -189,6 +195,12 @@ func _change_fly() -> void:
 	var fly := current_fly()
 	var kinds := fly.kinds_text()
 	_cast.show_message("Tied on a %s%s." % [fly.display_name, " (%s)" % kinds if kinds != "" else ""], 1.0)
+
+
+## Feel experiment: switch how much line each mend feeds out.
+func _cycle_mend_feed() -> void:
+	drift.mend_feed = ((drift.mend_feed + 1) % DriftModel.MendFeed.size()) as DriftModel.MendFeed
+	_cast.show_message("Mends feed: %s." % DriftModel.MEND_FEED_NAMES[drift.mend_feed], 1.0)
 
 
 # --- Drift -----------------------------------------------------------------
@@ -235,8 +247,10 @@ func _update_drift(delta: float) -> void:
 		drift.mend()
 		if drift.over_mended:
 			_cast.show_message("Mended too soon. The fly skated.", 0.3)
+		elif drift.fed > 0.0:
+			_cast.show_message("Mend +%.1f m (%.1f m out)" % [drift.fed, drift.line_length], 1.0)
 		else:
-			_cast.show_message("Mend", 1.0)
+			_cast.show_message("Mend. No more line to feed.", 1.0)
 	drift.update(delta, _river.flow_at)
 	_cast.fly_pos = WorldScale.vec_to_px(drift.fly)
 	_cast.model.line_out = clampf(drift.tip.distance_to(drift.fly), _cast.tuning.line_start, _cast.tuning.line_max)
