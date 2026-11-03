@@ -1,6 +1,6 @@
 # REQ-0004: Content foundation (add content as data, not code)
 
-Status: approved (Traver, 2026-11-03, with the recommended answers). C1 and C2 built.
+Status: approved (Traver, 2026-11-03, with the recommended answers). C1, C2 and C3 built.
 
 Diagram: [How content flows through Lodge](https://claude.ai/artifact/NcH46fvPgXmHp5k9G48MwN). Roadmap: [Lodge roadmap: scaling up content](https://claude.ai/artifact/L7rZyt2Q5K8m4LpbDp9wXF).
 
@@ -58,6 +58,7 @@ The hatch table and season windows on a spawn entry are **not** in this REQ. Eac
 * **`RiverField` runs the features in order** and no longer knows any feature by name. This moves the feature maths out of `river_field.gd` and pays down its line cap.
 * **Views draw from footprints:** `stream_scene.gd` draws features from their footprints instead of looping over each array, so a new kind needs no view code until it wants its own art.
 * **Content waves later add new kinds:** cut bank, undercut, plunge pool, riffle. This REQ adds none.
+* *As built (C3):* the log class is `FallenLog`. Logs and eddies calm the current through one `calm()` hook (multiplied together), boulders bend it through `shape_flow()`, and eddy swirl is added last; the demo water matches the old field to within 0.00001 (`tests/fixtures/demo_field.txt`). The one-screen test stream still uses the straight-reach builder (now also feature-driven) and is not yet a stretch: removing its branch from `stream_scene.gd` belongs with that file's split (ARCHITECTURE.md step A2), since it touches most of the scene.
 
 ### Not changing
 

@@ -5,6 +5,10 @@
 [ext_resource type="Resource" path="res://data/fish/redband.tres" id="3_ere81"]
 [ext_resource type="Resource" path="res://data/fish/cutthroat.tres" id="4_3jtx1"]
 [ext_resource type="Resource" path="res://data/fish/brook.tres" id="5_uv1mv"]
+[ext_resource type="Script" path="res://scripts/river/features/boulder.gd" id="6_boulder"]
+[ext_resource type="Script" path="res://scripts/river/features/fallen_log.gd" id="7_log"]
+[ext_resource type="Script" path="res://scripts/river/features/eddy.gd" id="8_eddy"]
+[ext_resource type="Script" path="res://scripts/river/river_feature.gd" id="9_feature"]
 
 [sub_resource type="Resource" id="spawn_redband_a"]
 script = ExtResource("2_spawn")
@@ -26,6 +30,42 @@ script = ExtResource("2_spawn")
 species = ExtResource("5_uv1mv")
 count = 1
 
+[sub_resource type="Resource" id="boulder_1"]
+script = ExtResource("6_boulder")
+centre = Vector2(24, 17.25)
+radius = 0.9
+
+[sub_resource type="Resource" id="boulder_2"]
+script = ExtResource("6_boulder")
+centre = Vector2(30, 23.5)
+radius = 0.8
+
+[sub_resource type="Resource" id="boulder_3"]
+script = ExtResource("6_boulder")
+centre = Vector2(36, 21.5)
+radius = 1
+
+[sub_resource type="Resource" id="boulder_4"]
+script = ExtResource("6_boulder")
+centre = Vector2(19.5, 22.25)
+radius = 0.65
+
+[sub_resource type="Resource" id="log_1"]
+script = ExtResource("7_log")
+a = Vector2(61, 56)
+b = Vector2(68, 53.5)
+
+[sub_resource type="Resource" id="log_2"]
+script = ExtResource("7_log")
+a = Vector2(118.5, 53)
+b = Vector2(114, 47.5)
+
+[sub_resource type="Resource" id="eddy_1"]
+script = ExtResource("8_eddy")
+centre = Vector2(52.75, 30.75)
+radius = 3
+strength = 0.45
+
 [resource]
 script = ExtResource("1_7rl41")
 size_m = Vector2(120, 75)
@@ -33,9 +73,6 @@ centreline = PackedVector2Array(-7.5, 18, 21, 19.5, 43.5, 30, 60, 45, 75, 55.5, 
 half_width = 8.0
 depth_keys = PackedVector2Array(0, 0.3, 0.1, 0.4, 0.15, 0.43, 0.2, 0.33, 0.25, 0.4, 0.3, 0.67, 0.35, 0.94, 0.4, 0.81, 0.45, 0.48, 0.5, 0.33, 0.55, 0.32, 0.6, 0.53, 0.65, 1, 0.7, 0.83, 0.75, 0.4, 0.8, 0.3, 1, 0.3)
 bend_shift = 1.0
-rocks = Array[Vector3]([Vector3(24, 17.25, 0.9), Vector3(30, 23.5, 0.8), Vector3(36, 21.5, 1), Vector3(19.5, 22.25, 0.65)])
-logs = Array[Vector4]([Vector4(61, 56, 68, 53.5), Vector4(118.5, 53, 114, 47.5)])
-eddies = Array[Vector4]([Vector4(52.75, 30.75, 3, 0.45)])
-gravel = Array[Vector3]([])
+features = Array[ExtResource("9_feature")]([SubResource("boulder_1"), SubResource("boulder_2"), SubResource("boulder_3"), SubResource("boulder_4"), SubResource("log_1"), SubResource("log_2"), SubResource("eddy_1")])
 angler_start = Vector2(10, 7.5)
 spawn = Array[ExtResource("2_spawn")]([SubResource("spawn_redband_a"), SubResource("spawn_cutthroat"), SubResource("spawn_redband_b"), SubResource("spawn_brook")])

@@ -247,8 +247,8 @@ func _test_input_parity() -> void:
 			_check(InputMap.has_action(controls[c]), "input: Controls.%s (%s) is in the input map" % [c, controls[c]])
 
 
-## Every stretch: a river that crosses the map, the angler on dry land, rocks,
-## logs and eddies in the water, and trout that are real species.
+## Every stretch: a river that crosses the map, the angler on dry land, every
+## feature in the river, and trout that are real species.
 func _test_stretches(fish: Dictionary) -> void:
 	var stretches := _load_dir("res://data/stretches", "Stretch")
 	_check(not stretches.is_empty(), "there is at least one stretch")
@@ -262,12 +262,16 @@ func _test_stretches(fish: Dictionary) -> void:
 		var f := RiverField.new()
 		f.build_stretch(st)
 		_check(not f.is_water(st.angler_start), "stretch %s: the angler starts on dry land" % stem)
-		for r in st.rocks:
-			_check(f.depth_at(Vector2(r.x, r.y) + Vector2(r.z + 0.5, 0)) > 0.0, "stretch %s: rock at (%s, %s) is in the river" % [stem, r.x, r.y])
-		for e in st.eddies:
-			_check(f.is_water(Vector2(e.x, e.y)), "stretch %s: eddy at (%s, %s) is in the river" % [stem, e.x, e.y])
-		for l in st.logs:
-			_check(f.is_water(Vector2(l.x, l.y)) or f.is_water(Vector2(l.z, l.w)), "stretch %s: log reaches the water" % stem)
+		for n in st.features.size():
+			var feat: RiverFeature = st.features[n]
+			_check(feat != null, "stretch %s: feature %d isn't empty" % [stem, n])
+			if feat == null:
+				continue
+			var pts := feat.river_points()
+			var in_river := pts.is_empty()
+			for q in pts:
+				in_river = in_river or f.is_water(q)
+			_check(in_river, "stretch %s: feature %d (%s) is in the river" % [stem, n, feat.get_script().get_global_name()])
 		_check(not st.spawn.is_empty(), "stretch %s: its spawn table stocks fish" % stem)
 		for entry in st.spawn:
 			var sp: FishSpecies = entry.species if entry != null else null

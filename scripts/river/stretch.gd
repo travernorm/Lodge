@@ -21,17 +21,10 @@ extends Resource
 @export var depth_keys := PackedVector2Array([Vector2(0, 0.5), Vector2(1, 0.5)])
 ## How hard bends push the thalweg toward the outside bank. 1 is natural.
 @export var bend_shift := 1.0
-## Boulders: x, y = centre, z = radius (m).
-@export var rocks: Array[Vector3] = []
-## Fallen logs: x, y = one end, z, w = the other end (m). They slow the water
-## beside them.
-@export var logs: Array[Vector4] = []
-## Eddies: x, y = centre, z = radius (m), w = strength (peak swirl speed as a
-## fraction of RiverField.WATER_SPEED). The water in them circulates back
-## upstream along the bank.
-@export var eddies: Array[Vector4] = []
-## Extra gravel on the bank: x, y = centre, z = radius (m).
-@export var gravel: Array[Vector3] = []
+## What's on the bed and banks, in order: boulders, fallen logs, eddies,
+## gravel bars ... (RiverFeature, one script per kind in
+## scripts/river/features/). A new feature here is one more entry.
+@export var features: Array[RiverFeature] = []
 ## Where the angler starts (m), on dry land.
 @export var angler_start := Vector2(10, 5)
 ## The spawn table: which species live here and how many. Each fish takes its

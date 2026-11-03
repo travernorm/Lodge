@@ -95,7 +95,7 @@ const DEBT_LOOSE := {}
 ## R9 debt: line caps above MAX_LINES. Steps A and A2 bring them down.
 const DEBT_LINES := {
 	"res://scripts/fishing/fishing_controller.gd": 621,  # F1: step A (601 lines after REQ-0004 C2)
-	"res://scripts/river/river_field.gd": 660,  # F11: builder and query in one (645)
+	"res://scripts/river/river_field.gd": 623,  # F11: builder and query in one (603 after REQ-0004 C3)
 	"res://scripts/stream_scene.gd": 460,  # F1: step A2 (445)
 }
 
