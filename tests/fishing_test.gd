@@ -23,7 +23,6 @@ func _initialize() -> void:
 	_test_mend_buys_a_drag_free_drift()
 	_test_early_mend_jolts_fly()
 	_test_mend_works_any_way_the_river_runs()
-	_test_bite_chance_by_distance_and_presentation()
 	_test_bite_rate_matches_the_odds()
 	_test_bite_becomes_a_take()
 	_test_picking_up_cancels_a_bite()
@@ -49,7 +48,7 @@ func _test_data_loads() -> void:
 		var fly := load(path) as FlyPattern
 		_check(fly != null and fly.display_name != "", "data: %s loads" % path.get_file())
 	for sp in [_cutthroat, _redband, _brook]:
-		_check(sp != null and sp.bite_chance > 0.0 and sp.bite_range_m > Fish.CLOSE_RANGE, "data: %s has bite odds" % sp.id)
+		_check(sp != null and sp.bite_chance > 0.0, "data: %s has bite odds" % sp.id)
 		_check(sp.set_min < sp.set_max, "data: %s set window is valid" % sp.id)
 
 
@@ -168,24 +167,13 @@ func _test_early_mend_jolts_fly() -> void:
 
 # --- Fish ------------------------------------------------------------------
 
-func _test_bite_chance_by_distance_and_presentation() -> void:
-	var f := Fish.new(_redband, _rng)
-	var close := f.lie + Vector2(-0.625, 0)
-	var delicate := f.bite_chance_for(close, "Delicate")
-	_check(is_equal_approx(delicate, _redband.bite_chance), "odds: delicate cast right by the fish gets the full chance (%.2f)" % delicate)
-	_check(f.bite_chance_for(close, "Fair") < delicate, "odds: a fair landing is less likely")
-	_check(f.bite_chance_for(close, "Splashy") < f.bite_chance_for(close, "Fair"), "odds: a splashy landing is least likely")
-	var mid := f.bite_chance_for(f.lie + Vector2(0, -_redband.bite_range_m * 0.6), "Delicate")
-	_check(mid > 0.0 and mid < delicate, "odds: farther away is less likely (%.2f)" % mid)
-	_check(f.bite_chance_for(f.lie + Vector2(_redband.bite_range_m + 0.125, 0), "Delicate") == 0.0, "odds: out of range never bites")
-
-
 func _test_bite_rate_matches_the_odds() -> void:
 	var f := Fish.new(_redband, _rng)
 	var bites := 0
 	var casts := 2000
 	for i in casts:
-		f.on_landing(f.lie + Vector2(-0.625, 0), "Delicate")
+		f.state = Fish.State.HOLDING
+		f.roll(_redband.bite_chance)
 		if f.state == Fish.State.WAITING:
 			bites += 1
 	var rate := float(bites) / casts
@@ -195,7 +183,7 @@ func _test_bite_rate_matches_the_odds() -> void:
 func _test_bite_becomes_a_take() -> void:
 	var f := Fish.new(_eager(_redband), _rng)
 	var fly := f.lie + Vector2(-0.625, 0)
-	f.on_landing(fly, "Delicate")
+	f.roll(1.0)
 	var events: Array[StringName] = []
 	for i in 180:
 		var e := f.update(DT, fly, true)
@@ -208,7 +196,7 @@ func _test_bite_becomes_a_take() -> void:
 
 func _test_picking_up_cancels_a_bite() -> void:
 	var f := Fish.new(_eager(_redband), _rng)
-	f.on_landing(f.lie, "Delicate")
+	f.roll(1.0)
 	f.update(DT, f.lie, false)
 	_check(f.state == Fish.State.HOLDING, "take: lifting the fly off the water cancels the bite")
 
@@ -308,17 +296,17 @@ func _test_fish_hold_in_good_lies() -> void:
 	var river: RiverField = main.river
 	var worst := 1.0
 	var outside := 0
+	var area := Rect2(18.75, 9.25, 6.25, 3)  # the pool head on the demo stretch
 	for i in 40:
-		var f := Fish.new(_redband, _rng, river)
+		var f := Fish.new(_redband, _rng, river, area)
 		worst = minf(worst, river.lie_at(f.lie))
-		if not _redband.lie_area_m.grow(0.125).has_point(f.lie) or not river.is_water(f.lie):
+		if not area.grow(0.125).has_point(f.lie) or not river.is_water(f.lie):
 			outside += 1
 	_check(worst >= Fish.MIN_LIE_SCORE * 0.8, "lies: the redband only holds in good water (worst lie %.2f)" % worst)
 	_check(outside == 0, "lies: always in its own area and never in the rock (%d strays)" % outside)
-	var nowhere := _redband.duplicate() as FishSpecies
-	nowhere.lie_area_m = Rect2(1.25, 17.5, 2.5, 0.75)  # ankle-deep edge water, no lies
-	var f := Fish.new(nowhere, _rng, river)
-	_check(nowhere.lie_area_m.grow(0.125).has_point(f.lie), "lies: with no good water it still stays in its area")
+	var nowhere := Rect2(1.25, 17.5, 2.5, 0.75)  # ankle-deep edge water, no lies
+	var f := Fish.new(_redband, _rng, river, nowhere)
+	_check(nowhere.grow(0.125).has_point(f.lie), "lies: with no good water it still stays in its area")
 	main.free()
 
 

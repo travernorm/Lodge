@@ -1,6 +1,6 @@
 # REQ-0004: Content foundation (add content as data, not code)
 
-Status: approved (Traver, 2026-11-03, with the recommended answers). C1 built.
+Status: approved (Traver, 2026-11-03, with the recommended answers). C1 and C2 built.
 
 Diagram: [How content flows through Lodge](https://claude.ai/artifact/NcH46fvPgXmHp5k9G48MwN). Roadmap: [Lodge roadmap: scaling up content](https://claude.ai/artifact/L7rZyt2Q5K8m4LpbDp9wXF).
 
@@ -44,7 +44,9 @@ Three parts, each its own PR, in this order. Field names are proposals for revie
 * **`SpawnEntry`** (`Resource`): `species: FishSpecies`, `count: int`. `Stretch.trout` becomes `Stretch.spawn: Array[SpawnEntry]`. Fish take lies from the river field's lie scores over the whole stretch, as the demo already does.
 * **Remove `FishSpecies.lie_area_m` and `bite_range_m`.** Nothing reads `bite_range_m` since the landing roll was dropped. After this, a species carries nothing about any place (R12).
 * **The one-screen test stream becomes a small stretch** (`data/stretches/test_pool.tres`) with its own spawn table, so there is one way to stock water and the "no stretch" branch in `stream_scene.gd` and `fishing_controller.gd` goes away. The `stocking` list leaves `fishing_controller.gd`.
+  * *As built (C2):* the `stocking` list is gone and the only way to stock water is a spawn table; the one-screen stream (used only by `river_test`'s builder fixture) has no fish. Replacing it with `test_pool.tres` moves to C3, which reworks how the field is built from a stretch anyway. Fish made without an area in unit tests hold in `Fish.TEST_AREA`.
 * **`DietEntry`** (`Resource`): `insect: Insect`, `weight: float`. `FishSpecies.diet` becomes `Array[DietEntry]` with typed insect references (R5).
+* The landing roll (`Fish.on_landing()`, `bite_chance_for()`), dropped from play on 2026-11-02, is removed with its odds test; the hook-set tests that used it to start a bite now call `roll()`.
 * Existing fish and stretch files are converted. Nothing is saved yet, so no save migration is needed. Ids don't change.
 
 The hatch table and season windows on a spawn entry are **not** in this REQ. Each field arrives with the system that reads it (the Clock and hatch REQs), so no data sits unused.

@@ -1,6 +1,25 @@
-[gd_resource type="Resource" script_class="FishSpecies" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="FishSpecies" load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1_species"]
+[ext_resource type="Script" path="res://scripts/fishing/diet_entry.gd" id="2_diet"]
+[ext_resource type="Resource" path="res://data/insects/pmd.tres" id="3_pmd"]
+[ext_resource type="Resource" path="res://data/insects/baetis.tres" id="4_baetis"]
+[ext_resource type="Resource" path="res://data/insects/caddis.tres" id="5_caddis"]
+
+[sub_resource type="Resource" id="diet_pmd"]
+script = ExtResource("2_diet")
+insect = ExtResource("3_pmd")
+weight = 1.0
+
+[sub_resource type="Resource" id="diet_baetis"]
+script = ExtResource("2_diet")
+insect = ExtResource("4_baetis")
+weight = 1.0
+
+[sub_resource type="Resource" id="diet_caddis"]
+script = ExtResource("2_diet")
+insect = ExtResource("5_caddis")
+weight = 0.5
 
 [resource]
 script = ExtResource("1_species")
@@ -8,15 +27,9 @@ id = &"redband"
 display_name = "Redband Rainbow"
 description = "The desert-side rainbow of Eastern Oregon. Holds in the slack water behind the boulder at the head of the pool, darting out to sip mayflies drifting down the seams."
 color = Color(0.3, 0.34, 0.3, 1)
-lie_area_m = Rect2(18.75, 9.25, 6.25, 3)
-diet = {
-&"pmd": 1.0,
-&"baetis": 1.0,
-&"caddis": 0.5
-}
-selectivity = 0.5
 bite_chance = 0.6
-bite_range_m = 5.0
+diet = Array[ExtResource("2_diet")]([SubResource("diet_pmd"), SubResource("diet_baetis"), SubResource("diet_caddis")])
+selectivity = 0.5
 set_min = 0.1
 set_max = 1.0
 pull = 0.65

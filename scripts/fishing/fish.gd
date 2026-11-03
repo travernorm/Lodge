@@ -3,12 +3,12 @@ extends RefCounted
 ## One trout holding in the stream.
 ##
 ## It holds where the river field says a trout would: slow, deep-enough water
-## with fast water close by (see RiverField.pick_lie()). Without a river field it
-## picks any spot in its species' lie_area_m. Positions are in metres (REQ-0001).
+## with fast water close by (see RiverField.pick_lie()), inside the area it's
+## given (the whole stretch, in the game). Without a river field it picks any
+## spot in that area. Positions are in metres (REQ-0001).
 ##
 ## When it bites is up to the fishing controller's bite rules (DriftPastRules):
-## one roll per pass as the fly drifts by (watch_pass() and roll()). The older
-## landing roll (on_landing(), bite_chance_for()) is only used by tests now. If the
+## one roll per pass as the fly drifts by (watch_pass() and roll()). If the
 ## roll succeeds, it rises to the fly a moment later. Then you have to set the
 ## hook in its window.
 ##
@@ -21,8 +21,6 @@ extends RefCounted
 enum State { HOLDING, WAITING, RISING, TAKEN, HOOKED, GONE }
 enum SetResult { HOOKED, TOO_EARLY, TOO_LATE, NO_FISH }
 
-const PRESENTATION_FACTOR := {"Delicate": 1.0, "Fair": 0.6, "Splashy": 0.25}
-const CLOSE_RANGE := 1.0  # m: inside this the distance doesn't lower the chance
 const RISE_TIME := 0.35
 const BITE_DELAY := Vector2(0.6, 2.0)  # seconds after landing before it rises
 const DIMPLE_EVERY := Vector2(3.0, 6.0)
@@ -34,6 +32,9 @@ const PASS_MAX_WAIT := 1.0
 
 ## Only lies scoring at least this in the river field are taken.
 const MIN_LIE_SCORE := 0.4
+## Where a fish holds when it's given no area: the water band of the
+## one-screen test stream, for tests.
+const TEST_AREA := Rect2(0, 7.5, 40, 10)
 ## Trout sharing water keep at least this far (m) from each other's lies.
 const LIE_GAP := 3.0
 
@@ -42,7 +43,7 @@ var species: FishSpecies
 var lie := Vector2.ZERO
 ## The river it lives in; optional.
 var river: RiverField
-## Where it may hold (m). Its species' lie_area_m unless the water says otherwise.
+## Where it may hold (m): the stretch it was stocked in (TEST_AREA if none).
 var area := Rect2()
 ## Optional: returns the lies (m) of the other trout in the same water, as a
 ## PackedVector2Array, so this one keeps clear of them. Takes this fish.
@@ -74,7 +75,7 @@ func _init(p_species: FishSpecies, rng: RandomNumberGenerator, p_river: RiverFie
 	species = p_species
 	_rng = rng
 	river = p_river
-	area = p_area if p_area.has_area() else species.lie_area_m
+	area = p_area if p_area.has_area() else TEST_AREA
 	other_lies = p_other_lies
 	respawn()
 
@@ -98,22 +99,6 @@ func respawn() -> void:
 ## Visible in the water (not gone off somewhere).
 func is_present() -> bool:
 	return state != State.GONE
-
-
-## 0..1 chance this fish bites a fly landing at `at` with the given presentation.
-func bite_chance_for(at: Vector2, presentation: String) -> float:
-	var d := at.distance_to(lie)
-	if d > species.bite_range_m:
-		return 0.0
-	var closeness := 1.0 - clampf((d - CLOSE_RANGE) / (species.bite_range_m - CLOSE_RANGE), 0.0, 1.0)
-	return species.bite_chance * closeness * PRESENTATION_FACTOR.get(presentation, 0.5)
-
-
-## A cast landed: roll for a bite. Returns the chance that was rolled.
-func on_landing(at: Vector2, presentation: String) -> float:
-	if state == State.GONE or state == State.HOOKED:
-		return 0.0
-	return roll(bite_chance_for(at, presentation))
 
 
 ## Rolls `chance` for a bite. On a bite it rises after `delay` seconds (a

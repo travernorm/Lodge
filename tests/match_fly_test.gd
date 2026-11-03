@@ -51,7 +51,7 @@ func _test_match_table() -> void:
 func _test_match_rule() -> void:
 	var sp := FishSpecies.new()
 	sp.selectivity = 0.8
-	sp.diet = {&"pmd": 0.25, &"caddis": 0.5}
+	sp.diet = [_entry("pmd", 0.25), _entry("caddis", 0.5)]
 	var both := FlyPattern.new()
 	both.imitates = [load("res://data/insects/pmd.tres"), load("res://data/insects/caddis.tres")]
 	_check(is_equal_approx(sp.appetite_for(both).appetite, 0.5), "match: appetite is the best diet weight among the fly's bugs")
@@ -75,7 +75,7 @@ func _test_no_fly_is_a_match() -> void:
 func _test_perfect_pass_odds() -> void:
 	for sp in [_redband, _cutthroat, _brook]:
 		var f := Fish.new(sp, _rng)
-		var right: FlyPattern = _caddis if sp.diet.has(&"caddis") and float(sp.diet[&"caddis"]) >= 1.0 else _adams
+		var right: FlyPattern = _caddis if sp.wants(load("res://data/insects/caddis.tres")) >= 1.0 else _adams
 		var good: float = _match.pass_odds(f, f.lie, "Delicate", 0.0, right).chance
 		_check(is_equal_approx(good, sp.bite_chance), "odds: %s, right fly, perfect pass gets bite_chance (%.2f)" % [sp.id, good])
 	var c := Fish.new(_cutthroat, _rng)
@@ -126,6 +126,13 @@ func _test_same_inputs_same_odds() -> void:
 			_check(false, "determinism: the same pass gave different odds")
 			return
 	_check(true, "determinism: the same pass gives the same odds")
+
+
+func _entry(insect_id: String, weight: float) -> DietEntry:
+	var e := DietEntry.new()
+	e.insect = load("res://data/insects/%s.tres" % insect_id)
+	e.weight = weight
+	return e
 
 
 func _check(ok: bool, label: String) -> void:
