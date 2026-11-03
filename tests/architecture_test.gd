@@ -63,6 +63,11 @@ const DATA_WRITE := "\\b(species|sp|pattern|tuning|stretch|take_rules|insect)\\.
 ## Dictionary or Array exports full of ids.
 const LOOSE_EXPORT := "@export.*\\bvar\\s+\\w+\\s*(:\\s*(Dictionary|Array)\\s*(=|$)|:=\\s*(\\{|\\[))"
 
+## R5: content is found through the catalog (data/catalog.tres), never named
+## in code, so a new file joins the game by itself (REQ-0004). Fish join this
+## list when the spawn tables land (C2).
+const CONTENT_PATH := "res://data/(flies|insects)/"
+
 # --- Ledger ---------------------------------------------------------------
 
 ## By design, not debt.
@@ -111,6 +116,7 @@ func _initialize() -> void:
 	_test_unseeded(sources)
 	_test_data_writes(sources)
 	_test_loose_exports(sources, bases)
+	_test_content_from_catalog(sources)
 	_test_sizes(scripts)
 	_test_autoloads()
 	_test_documented(scripts)
@@ -180,6 +186,13 @@ func _test_loose_exports(sources: Dictionary, bases: Dictionary) -> void:
 			continue
 		_ratchet("R5", path, _count(sources[path], LOOSE_EXPORT), DEBT_LOOSE, "untyped Dictionary/Array export(s)")
 	_check(true, "R5 no new untyped data exports")
+
+
+## R5: no script names a content file; it asks the catalog.
+func _test_content_from_catalog(sources: Dictionary) -> void:
+	for path in sources:
+		var hits := _count(sources[path], CONTENT_PATH)
+		_check(hits == 0, "R5 %s names %d content file(s); look them up in the Catalog instead" % [_short(path), hits])
 
 
 ## R9: scripts stay small enough to read in one sitting.

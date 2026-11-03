@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="Catalog" load_steps=20 format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1_xwmb1"]
+[ext_resource type="Resource" path="res://data/fish/brook.tres" id="2_6t2fd"]
+[ext_resource type="Resource" path="res://data/fish/cutthroat.tres" id="3_ts8xo"]
+[ext_resource type="Resource" path="res://data/fish/redband.tres" id="4_t8m7x"]
+[ext_resource type="Script" path="res://scripts/fishing/fly_pattern.gd" id="5_mxdi8"]
+[ext_resource type="Resource" path="res://data/flies/parachute_adams.tres" id="6_fw5h5"]
+[ext_resource type="Resource" path="res://data/flies/elk_hair_caddis.tres" id="7_rrt8q"]
+[ext_resource type="Resource" path="res://data/flies/royal_wulff.tres" id="8_w0rqa"]
+[ext_resource type="Script" path="res://scripts/fishing/insect.gd" id="9_tc8lr"]
+[ext_resource type="Resource" path="res://data/insects/attractor.tres" id="10_x6y88"]
+[ext_resource type="Resource" path="res://data/insects/baetis.tres" id="11_6owjl"]
+[ext_resource type="Resource" path="res://data/insects/caddis.tres" id="12_ubycw"]
+[ext_resource type="Resource" path="res://data/insects/callibaetis.tres" id="13_w775j"]
+[ext_resource type="Resource" path="res://data/insects/mahogany.tres" id="14_4scp2"]
+[ext_resource type="Resource" path="res://data/insects/march_brown.tres" id="15_cgf5s"]
+[ext_resource type="Resource" path="res://data/insects/pmd.tres" id="16_k8ulg"]
+[ext_resource type="Script" path="res://scripts/data/catalog.gd" id="17_s6rw5"]
+[ext_resource type="Script" path="res://scripts/river/stretch.gd" id="18_obux8"]
+[ext_resource type="Resource" path="res://data/stretches/demo_freestone.tres" id="19_ctokm"]
+
+[resource]
+script = ExtResource("17_s6rw5")
+flies = Array[ExtResource("5_mxdi8")]([ExtResource("6_fw5h5"), ExtResource("7_rrt8q"), ExtResource("8_w0rqa")])
+fish = Array[ExtResource("1_xwmb1")]([ExtResource("2_6t2fd"), ExtResource("3_ts8xo"), ExtResource("4_t8m7x")])
+insects = Array[ExtResource("9_tc8lr")]([ExtResource("10_x6y88"), ExtResource("11_6owjl"), ExtResource("12_ubycw"), ExtResource("13_w775j"), ExtResource("14_4scp2"), ExtResource("15_cgf5s"), ExtResource("16_k8ulg")])
+stretches = Array[ExtResource("18_obux8")]([ExtResource("19_ctokm")])
