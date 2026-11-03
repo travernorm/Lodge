@@ -74,6 +74,10 @@ const COL_ROD := Color("e8d8a8")
 const COL_CUT_BANK := Color("5b3e26")
 const COL_LOG := Color("5a442c")
 const COL_LOG_LIGHT := Color("7a5e3e")
+## The old flat water: a colour per depth band, where each band starts, and a 2x2 dither.
+const BANDS: Array[Color] = [COL_SHALLOW, COL_RIFFLE, COL_WATER, COL_POOL, COL_DEEP]
+const CUTS: Array[float] = [0.1, 0.38, 0.62, 0.86]
+const DITHER: Array[float] = [-0.03, 0.01, 0.03, -0.01]
 
 var angler_pos := Vector2(160, BANK_BOTTOM + 16)
 var river := _make_river()
@@ -293,17 +297,14 @@ func _random_water_point() -> Vector2:
 func _make_water_texture() -> ImageTexture:
 	var h := int(BANK_BOTTOM - BANK_TOP)
 	var img := Image.create(int(VIEW.x), h, false, Image.FORMAT_RGBA8)
-	var bands: Array[Color] = [COL_SHALLOW, COL_RIFFLE, COL_WATER, COL_POOL, COL_DEEP]
-	var cuts: Array[float] = [0.1, 0.38, 0.62, 0.86]
-	var dither: Array[float] = [-0.03, 0.01, 0.03, -0.01]
 	for y in h:
 		for x in int(VIEW.x):
 			var p := WorldScale.vec_to_m(Vector2(x + 0.5, BANK_TOP + y + 0.5))
-			var d := river.depth_at(p) + dither[(y % 2) * 2 + (x % 2)]
+			var d := river.depth_at(p) + DITHER[(y % 2) * 2 + (x % 2)]
 			var band := 0
-			while band < cuts.size() and d > cuts[band]:
+			while band < CUTS.size() and d > CUTS[band]:
 				band += 1
-			img.set_pixel(x, y, bands[band])
+			img.set_pixel(x, y, BANDS[band])
 	return ImageTexture.create_from_image(img)
 
 
@@ -317,9 +318,6 @@ func _make_stretch_texture() -> ImageTexture:
 	var wet_px := _layer_to_pixels(_wet_floats(), size, 1.0)
 	var shore_px := _layer_to_pixels(river.shore, size, 20.0)
 	var bend_px := _layer_to_pixels(river.bend, size, 1.0)
-	var bands: Array[Color] = [COL_SHALLOW, COL_RIFFLE, COL_WATER, COL_POOL, COL_DEEP]
-	var cuts: Array[float] = [0.1, 0.38, 0.62, 0.86]
-	var dither: Array[float] = [-0.03, 0.01, 0.03, -0.01]
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1979
 	var clear_water := _water != null and _water.is_active()
@@ -332,11 +330,11 @@ func _make_stretch_texture() -> ImageTexture:
 			if wet_px[idx] >= 0.5 and clear_water:
 				col = Color.TRANSPARENT  # the WaterView paints it, underneath
 			elif wet_px[idx] >= 0.5:
-				var d := depth_px[idx] + dither[(y % 2) * 2 + (x % 2)]
+				var d := depth_px[idx] + DITHER[(y % 2) * 2 + (x % 2)]
 				var band := 0
-				while band < cuts.size() and d > cuts[band]:
+				while band < CUTS.size() and d > CUTS[band]:
 					band += 1
-				col = bands[band]
+				col = BANDS[band]
 			else:
 				var shore := shore_px[idx]
 				var b := bend_px[idx]
