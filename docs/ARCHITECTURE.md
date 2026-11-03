@@ -88,6 +88,7 @@ The data folders today, each covered by `tests/data_test.gd`:
 * `data/take_rules/`: the bite rules (`DriftPastRules`).
 * `data/stretches/`: `Stretch`, one per river location (today the demo freestone).
 * `data/cast_tuning.tres`: casting numbers shared by every rule set.
+* `data/catalog.tres`: the index of every fish, fly, insect and stretch (generated, see below).
 
 ### References and ids
 
@@ -95,9 +96,9 @@ The data folders today, each covered by `tests/data_test.gd`:
 * **Ids:** every archetype has an `id` that matches its file name (`data_test` checks). Ids are never renamed or reused, because saves will store them.
 * **At the save boundary:** saved state stores ids only, never resources or nodes. Loading looks the id up in the catalog.
 
-### The catalog (planned, step D)
+### The catalog (REQ-0004)
 
-One `data/catalog.tres` lists every archetype by kind. Code that needs "all flies" or "the fly with this id" asks the catalog. It replaces listing folders at runtime, which breaks in exported builds (Godot renames files to `.remap`). `data_test` checks the catalog and the folders agree, so a new file can't be forgotten.
+`data/catalog.tres` (`Catalog`) lists every fish, fly, insect and stretch by kind. Code that needs "all flies" or "the fly with this id" asks `Catalog.shared()`, and no script names a content file (`architecture_test`, R5). It's written by `tools/build_catalog.gd` from the `data/<kind>/` folders rather than scanned at runtime, because exported builds rename files to `.remap`. The tool keeps the current order and adds new files at the end, and the fly box shows flies in catalog order. `data_test` fails if the catalog and the folders disagree, so a new file can't be forgotten: **add a file, run the tool, commit both.** Rule sets (`data/cast_rules/`, `data/take_rules/`) aren't in it; they're picked by hand.
 
 ### Game state and saves (planned, step D)
 
@@ -328,7 +329,7 @@ Small steps, each its own REQ and PR, each leaving the game playing the same unl
 | **A2** | Split `stream_scene.gd`: `RiverView`, `Angler`, camera owner. Agree with the river thread; pairs with REQ-0002's camera work. | R9 | River thread |
 | **B** | `FishingSession` owns the phase and wires Cast, Fishing and the views. Practice becomes a session mode. `FlyState` with the line model its only writer; world positions in metres. | R2, R3, R11 | A; casting thread agrees the wiring |
 | **C** | Enums for presentation and fish events; `HookSetModel`. | R6 | B, casting thread (changes `landed`'s argument type) |
-| **D** | `data/catalog.tres`; `GameState` with `CatchJournal` (ids) and `FlyBox`. | R5 | A |
+| **D** | ~~`data/catalog.tres`~~ (done in REQ-0004 C1); `GameState` with `CatchJournal` (ids) and `FlyBox`. | R5 | A |
 | **E** | Data hygiene: a spawn table on `Stretch` replaces `lie_area_m`; `DietEntry` replaces the `diet` dictionary; remove `bite_range_m` and the landing roll. | R5, R12 | Data class changes need a REQ |
 | **F** | Folders by layer (`scripts/<system>/models`, `views`, ...), done in the Godot editor so references follow. Optional, after B. | — | B |
 | **G** | `Clock` and `Conditions`; one seed per day split into RNG streams (generation, mood, take, cast) and shown in the debug overlay; then `MoodRules` and `Population`. | R8 | E |
@@ -354,6 +355,7 @@ Every script, its layer and its system. `architecture_test.gd` fails if a script
 | `scripts/casting/rules/tempo_rules.gd` | `TempoCastRules` | Rule set (data) | Casting |
 | `scripts/casting/rules/tiered_rules.gd` | `TieredCastRules` | Rule set (data) | Casting |
 | `scripts/controls.gd` | `Controls` (autoload) | Service | Input |
+| `scripts/data/catalog.gd` | `Catalog` | Data (index) | All content |
 | `scripts/debug_overlay.gd` | (node) | View | UI and modes |
 | `scripts/fishing/drift_model.gd` | `DriftModel` | Model | Fishing (line) |
 | `scripts/fishing/fight_model.gd` | `FightModel` | Model | Fishing (fight) |
@@ -387,6 +389,7 @@ Newest last. Read these before changing something that looks odd.
 | 2026-11-02 | Drift past is the one bite rules, with fly match | Traver's pick after playing the variants (REQ-0003). |
 | 2026-11-03 | Numbered rules, enforced by `architecture_test.gd` with a debt ledger that only shrinks | Audit (ARCHITECTURE_AUDIT.md): the draft's rules weren't enforced and the code was drifting from them. |
 | 2026-11-03 | Typed references between data, ids only in saves; a catalog; kinds separate from places | Audit: matches how larger data-driven games stay consistent as content grows. |
+| 2026-11-03 | Adding content means adding a data file, never editing code (REQ-0004: catalog, spawn tables, river feature kit) | Traver: the architecture should make content cheap to add at scale. |
 
 ## 13. Open questions for Traver
 

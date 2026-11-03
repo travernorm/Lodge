@@ -5,7 +5,8 @@ extends SceneTree
 ##   godot --headless --path . --script res://tests/data_test.gd
 ##
 ## Every file in data/insects, data/flies, data/fish, data/cast_rules and data/take_rules is checked, so new
-## data is covered without touching this file.
+## data is covered without touching this file. data/catalog.tres must list
+## exactly the fish, fly, insect and stretch files on disk.
 
 const VIEW := Rect2(0, 0, 320, 200)
 
@@ -28,6 +29,7 @@ func _initialize() -> void:
 	_test_input_parity()
 	_test_stretches(fish)
 	_test_take_rules()
+	_test_catalog(flies, fish, insects, _load_dir("res://data/stretches", "Stretch"))
 	_main.free()
 	if _failures == 0:
 		print("Data tests passed.")
@@ -266,6 +268,27 @@ func _test_stretches(fish: Dictionary) -> void:
 		_check(not st.trout.is_empty(), "stretch %s: has trout" % stem)
 		for sp in st.trout:
 			_check(sp != null and fish.has(sp.resource_path), "stretch %s: trout %s is in data/fish" % [stem, sp.id if sp != null else "?"])
+
+
+## data/catalog.tres lists every fish, fly, insect and stretch file exactly
+## once, and nothing else, so the game sees all the content (REQ-0004 C1).
+func _test_catalog(flies: Dictionary, fish: Dictionary, insects: Dictionary, stretches: Dictionary) -> void:
+	var cat := load(Catalog.PATH) as Catalog
+	_check(cat != null, "catalog: %s loads as a Catalog" % Catalog.PATH)
+	if cat == null:
+		return
+	var fix := "Run tools/build_catalog.gd and commit data/catalog.tres."
+	for pair in [["flies", flies], ["fish", fish], ["insects", insects], ["stretches", stretches]]:
+		var listed := {}
+		for res in cat.get(pair[0]):
+			_check(res != null, "catalog: no empty %s entries" % pair[0])
+			if res == null:
+				continue
+			_check(not listed.has(res.resource_path), "catalog: %s is listed once" % _path(res))
+			listed[res.resource_path] = true
+			_check(pair[1].has(res.resource_path), "catalog: %s is a file in its data folder. %s" % [_path(res), fix])
+		for path in pair[1]:
+			_check(listed.has(path), "catalog: lists %s. %s" % [path.trim_prefix("res://"), fix])
 
 
 func _path(res: Resource) -> String:

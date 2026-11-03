@@ -18,13 +18,10 @@ extends Node2D
 
 enum Phase { NONE, DRIFT, FIGHT, REEL }
 
-## The fly box. Y (F on keyboard) cycles through it while the line is reeled in.
-## The first is tied on at the start.
-@export var flies: Array[FlyPattern] = [
-	preload("res://data/flies/parachute_adams.tres"),
-	preload("res://data/flies/elk_hair_caddis.tres"),
-	preload("res://data/flies/royal_wulff.tres"),
-]
+## The fly box: every fly in the catalog (data/catalog.tres), in its order.
+## Y (F on keyboard) cycles through it while the line is reeled in. The first
+## is tied on at the start.
+var flies: Array[FlyPattern] = Catalog.shared().flies
 ## One fish is stocked for each entry. Starts with one trout in the pool; more
 ## species are waiting in data/fish/.
 @export var stocking: Array[FishSpecies] = [

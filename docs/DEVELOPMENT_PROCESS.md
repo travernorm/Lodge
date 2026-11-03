@@ -53,7 +53,8 @@ This is the part of the process that matters most. Lodge's systems are tightly l
 | **Fishing** | `scripts/fishing/`, `data/insects/`, `data/flies/`, `data/fish/`, `data/take_rules/` | Casting (`line_target`, `can_pick_up` for the rod and pick-ups), debug overlay, Practice (turns `enabled` off). Bite rules (`DriftPastRules`, the only set) read the drift (`DriftModel.slip`), the cast's presentation and the tied-on fly (fly box → `FishSpecies.diet` through `data/insects/`) | `fishing_test`, `mend_feed_test`, `take_rules_test`, `match_fly_test`, `data_test`, `smoke_test`, `playthrough_test` |
 | **UI and modes** | `scripts/casting/cast_practice.gd`, `scripts/debug_overlay.gd`, on-screen messages | Uses all of the above | `smoke_test`, `playthrough_test` |
 | **Input** | `tools/setup_input_map.gd`, `project.godot`, `scripts/controls.gd` | Everything | `data_test` (parity, every `Controls` action exists), CI input-map check, every test that plays through input |
-| **Scene wiring** | `scenes/main.tscn` (fly box, stocking, rule set chassis) | Everything | `data_test` (every list points at real data, every rule set is reachable), `smoke_test` |
+| **Content catalog** | `data/catalog.tres`, `scripts/data/catalog.gd`, `tools/build_catalog.gd` | Fishing (the fly box is the catalog's fly list), later spawn tables, the journal and saves | `catalog_test`, `data_test` (catalog matches the folders), `architecture_test` (no script names a content file) |
+| **Scene wiring** | `scenes/main.tscn`, `fishing_controller.gd` (stocking), `cast_practice.gd` (rule set chassis) | Everything | `data_test` (every list points at real data, every rule set is reachable), `smoke_test` |
 
 Keep this table current. A PR that adds a system, or a new dependency between two systems (a signal, or one system calling into another), adds a row or a column entry here and a test that fails if that link breaks.
 
