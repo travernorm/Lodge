@@ -73,7 +73,7 @@ The rules marked "Review" can't be checked from the text reliably. The PR templa
 
 | Kind | Example | Lives in | Changes at runtime? |
 |---|---|---|---|
-| **Archetype** (what a kind of thing is) | `FishSpecies`, `FlyPattern`, `Insect` | `data/<kind>/<id>.tres` | Never (R4) |
+| **Archetype** (what a kind of thing is) | `FishSpecies`, `FlyPattern`, `FlyRod`, `Insect` | `data/<kind>/<id>.tres` | Never (R4) |
 | **Rule set** (swappable logic and its numbers) | `CastRules` and subclasses, `DriftPastRules`, `CastTuning` | `data/cast_rules/`, `data/take_rules/`, `data/cast_tuning.tres` | Never |
 | **Place** (a location and what's in it) | `Stretch`: shape, features, which species live there | `data/stretches/` | Never |
 | **Runtime state** (this fish, this drift) | `Fish`, `DriftModel`, `FightModel` | Models, created by the session | Every frame |
@@ -82,7 +82,9 @@ The rules marked "Review" can't be checked from the text reliably. The PR templa
 The data folders today, each covered by `tests/data_test.gd`:
 
 * `data/insects/`: `Insect`, the shared key between flies, diets and (later) hatches.
-* `data/flies/`: `FlyPattern`, each pointing at the insects it imitates.
+* `data/tackle/`: tackle, the things you fish with (REQ-0005).
+  * `data/tackle/flies/`: `FlyPattern`, each pointing at the insects it imitates, with a fly type (dry, nymph, streamer).
+  * `data/tackle/rods/`: `FlyRod`: which fly types it throws, its longest line, timing forgiveness and the fish length it's rated for.
 * `data/fish/`: `FishSpecies`, with diet, selectivity, hook-set window, fight stats, sizes.
 * `data/cast_rules/`: the casting rule sets (one `CastRules` per file).
 * `data/take_rules/`: the bite rules (`DriftPastRules`).
@@ -98,7 +100,7 @@ The data folders today, each covered by `tests/data_test.gd`:
 
 ### The catalog (REQ-0004)
 
-`data/catalog.tres` (`Catalog`) lists every fish, fly, insect and stretch by kind. Code that needs "all flies" or "the fly with this id" asks `Catalog.shared()`, and no script names a content file (`architecture_test`, R5). It's written by `tools/build_catalog.gd` from the `data/<kind>/` folders rather than scanned at runtime, because exported builds rename files to `.remap`. The tool keeps the current order and adds new files at the end, and the fly box shows flies in catalog order. `data_test` fails if the catalog and the folders disagree, so a new file can't be forgotten: **add a file, run the tool, commit both.** Rule sets (`data/cast_rules/`, `data/take_rules/`) aren't in it; they're picked by hand.
+`data/catalog.tres` (`Catalog`) lists every fish, fly, rod, insect and stretch by kind. Code that needs "all flies" or "the fly with this id" asks `Catalog.shared()`, and no script names a content file (`architecture_test`, R5). It's written by `tools/build_catalog.gd` from the `data/<kind>/` folders rather than scanned at runtime, because exported builds rename files to `.remap`. The tool keeps the current order and adds new files at the end, and the fly box and rod rack use catalog order. `data_test` fails if the catalog and the folders disagree, so a new file can't be forgotten: **add a file, run the tool, commit both.** Rule sets (`data/cast_rules/`, `data/take_rules/`) aren't in it; they're picked by hand.
 
 ### Game state and saves (planned, step D)
 
@@ -154,9 +156,9 @@ var on_water: bool
 *Owned by the casting thread. This covers boundaries, not the rhythm.*
 
 * **Owns:** the bumper stroke state machine, line out, false-cast count, aim, delivery offset, landing quality.
-* **Reads:** bumper states and aim (passed in), `CastTuning`, the active `CastRules`.
+* **Reads:** bumper states and aim (passed in), `CastTuning`, the active `CastRules`, and the rigged `FlyRod` (`CastModel.rod`, set by Fishing's `Tackle`): `max_line()` replaces the rule set's longest line and `forgiveness()` scales the timing windows and overlap band (REQ-0005).
 * **Emits:** `landed(presentation, quality)`, `collapsed(reason)`, feedback text.
-* **Today:** `CastModel` and the `CastRules` chassis fit (the chassis is the template for any swappable rules). `cast_controller.gd` asks Fishing `can_pick_up()` and `line_target()`, owns the coaching text everyone writes to, and writes `fly_pos`, which Fishing also writes (R2, R3). `CastModel` calls `randomize()` when no RNG is passed (R8). **Target:** a `CastView`; the session feeds the model and decides when casting is allowed.
+* **Today:** `CastModel` and the `CastRules` chassis fit (the chassis is the template for any swappable rules). `cast_controller.gd` asks Fishing `can_pick_up()`, `can_cast()` and `line_target()`, owns the coaching text everyone writes to, and writes `fly_pos`, which Fishing also writes (R2, R3). `CastModel` calls `randomize()` when no RNG is passed (R8). **Target:** a `CastView`; the session feeds the model and decides when casting is allowed.
 
 ### 3.3 Line and fly on the water
 
@@ -175,9 +177,10 @@ var on_water: bool
 
 ### 3.5 Flies and the fly box
 
-* **Data:** `FlyPattern` (id, name, colours, `imitates: Array[Insect]`). Later fields (style, size, sink rate) each need a REQ.
+* **Data:** `FlyPattern` (id, name, colours, `imitates: Array[Insect]`, `fly_type`) and `FlyRod` (REQ-0005), both in `data/tackle/` and `scripts/tackle/`. Later fly fields (size, sink rate) each need a REQ.
+* **Model:** `Tackle` (`scripts/tackle/tackle.gd`) is the one writer of which rod and fly are rigged. The fly box offers only flies the rod throws (`FlyRod.throws()`); changing rods keeps the fly if it fits.
 * **Model (planned, step D):** `FlyBox`: which patterns you have, how many, which is tied on. Emits `fly_changed`.
-* **Today:** an exported array plus an index in `fishing_controller.gd`. `FlyPattern.draw_at()` draws inside data (R1 debt, fine until real fly art).
+* **Today:** `fishing_controller.gd` owns one `Tackle`, built from the catalog, and hands its rod to the cast and the fight. Owned gear (how many of each) comes with `FlyBox` in step D. `FlyPattern.draw_at()` draws inside data (R1 debt, fine until real fly art).
 
 ### 3.6 Fish
 
@@ -196,7 +199,7 @@ The design is in [FISH_LOGIC.md](FISH_LOGIC.md): generation (per season or visit
 ### 3.7 Hook set and fight
 
 * **Hook set (planned, step C):** `HookSetModel`, tiny and pure: opens a window on a take, returns `HOOKED`, `TOO_EARLY` or `TOO_LATE`.
-* **Fight:** `FightModel` fits. Its glue (fish position, rumble, bursts, the meter) is in `fishing_controller.gd`; it moves to the session and views in steps A and B.
+* **Fight:** `FightModel` fits. A fish longer than the rod's `rated_length_in` multiplies the fight's tension (`FightModel.load_for()`, REQ-0005). Its glue (fish position, rumble, bursts, the meter) is in `fishing_controller.gd`; it moves to the session and views in steps A and B.
 
 ### 3.8 Catch journal
 
@@ -303,7 +306,7 @@ The rules marked "Review" (R2, R6, R12) are checked by the PR template's Archite
 
 | Rule | File | Cap today | Paid back by |
 |---|---|---|---|
-| R1 | `scripts/fishing/fly_pattern.gd` | `draw_at()` only | A `FlyView` when fly art arrives |
+| R1 | `scripts/tackle/fly_pattern.gd` | `draw_at()` only | A `FlyView` when fly art arrives |
 | R3 | `scripts/fishing/fishing_controller.gd` | 4 reaches | Step B |
 | R3 | `scripts/casting/cast_controller.gd` | 2 reaches | Step B |
 | R3 | `scripts/casting/cast_practice.gd` | 3 reaches | Step B |
@@ -362,7 +365,6 @@ Every script, its layer and its system. `architecture_test.gd` fails if a script
 | `scripts/fishing/fish.gd` | `Fish` | Model | Fishing (fish) |
 | `scripts/fishing/fish_species.gd` | `FishSpecies` | Data | Fishing (fish) |
 | `scripts/fishing/fishing_controller.gd` | (node) | Session + views, to split | Fishing |
-| `scripts/fishing/fly_pattern.gd` | `FlyPattern` | Data | Fishing (flies) |
 | `scripts/fishing/insect.gd` | `Insect` | Data | Fishing (flies, diets) |
 | `scripts/fishing/rules/drift_past_rules.gd` | `DriftPastRules` | Rule set (data) | Fishing (take) |
 | `scripts/fishing/stick_gestures.gd` | `StickGestures` | Model | Fishing (line) |
@@ -370,6 +372,9 @@ Every script, its layer and its system. `architecture_test.gd` fails if a script
 | `scripts/river/spawn_entry.gd` | `SpawnEntry` | Data (place) | River, fish |
 | `scripts/river/stretch.gd` | `Stretch` | Data | River |
 | `scripts/stream_scene.gd` | (node) | Scene root + views, to split | River, scene wiring |
+| `scripts/tackle/fly_pattern.gd` | `FlyPattern` | Data | Tackle (flies) |
+| `scripts/tackle/fly_rod.gd` | `FlyRod` | Data | Tackle (rods) |
+| `scripts/tackle/tackle.gd` | `Tackle` | Model | Tackle (what's rigged) |
 | `scripts/world_scale.gd` | `WorldScale` | Model (static helper) | Units |
 
 ---
@@ -391,6 +396,7 @@ Newest last. Read these before changing something that looks odd.
 | 2026-11-03 | Numbered rules, enforced by `architecture_test.gd` with a debt ledger that only shrinks | Audit (ARCHITECTURE_AUDIT.md): the draft's rules weren't enforced and the code was drifting from them. |
 | 2026-11-03 | Typed references between data, ids only in saves; a catalog; kinds separate from places | Audit: matches how larger data-driven games stay consistent as content grows. |
 | 2026-11-03 | Adding content means adding a data file, never editing code (REQ-0004: catalog, spawn tables, river feature kit) | Traver: the architecture should make content cheap to add at scale. |
+| 2026-11-03 | Flies and rods are "tackle" (`data/tackle/`, `scripts/tackle/`); a rod sets fly types, longest line, forgiveness and fish rating (REQ-0005) | Traver asked for rods grouped with flies; "tackle" avoids clashing with the repo's `tools/`. |
 
 ## 13. Open questions for Traver
 

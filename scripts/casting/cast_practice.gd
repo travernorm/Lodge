@@ -17,7 +17,8 @@ const TARGETS := ["Short", "Middle", "Long"]
 ## Target ring distances (px from the rod tip), one per entry in TARGETS.
 ## Target distances (m from the rod tip) for Short, Middle and Long.
 const TARGET_REACH := [4.0, 8.125, 12.5]
-## How far up (m) the distance ruler runs: the longest line you can carry.
+## How far up (m) the distance ruler runs with no rod. With one, it runs to
+## the rod's longest line (REQ-0005).
 const LONG_RULER_M := 14.75
 const AUTO_REEL_DELAY := 1.2
 const LOG_ROWS := 8
@@ -164,13 +165,16 @@ func _draw_ruler() -> void:
 	var x := tip.x + 26.0
 	var font := ThemeDB.fallback_font
 	var col := Color(1, 1, 1, 0.35)
-	var top := WorldScale.to_px(LONG_RULER_M)
+	var top_m: float = _cast.model.max_line(LONG_RULER_M)
+	var top := WorldScale.to_px(top_m)
 	draw_line(Vector2(x, tip.y), Vector2(x, tip.y - top), col, 1.0)
 	for mark in [0.0, CastRules.SHORT_MAX, CastRules.MIDDLE_MAX]:
 		var my := tip.y - WorldScale.to_px(mark)
 		draw_line(Vector2(x - 2, my), Vector2(x + 2, my), col, 1.0)
-	var bands := [["S", 0.0, CastRules.SHORT_MAX], ["M", CastRules.SHORT_MAX, CastRules.MIDDLE_MAX], ["L", CastRules.MIDDLE_MAX, LONG_RULER_M]]
+	var bands := [["S", 0.0, CastRules.SHORT_MAX], ["M", CastRules.SHORT_MAX, minf(CastRules.MIDDLE_MAX, top_m)], ["L", CastRules.MIDDLE_MAX, top_m]]
 	for b in bands:
+		if b[2] <= b[1]:
+			continue
 		var y: float = tip.y - WorldScale.to_px((b[1] + b[2]) * 0.5)
 		draw_string(font, Vector2(x + 4, y + 3), b[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 8, col)
 	draw_set_transform(Vector2.ZERO)

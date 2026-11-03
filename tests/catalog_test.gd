@@ -30,7 +30,9 @@ func _test_lookups() -> void:
 	_check(cat.insect(&"caddis") != null, "insect(id) finds the caddis")
 	_check(cat.fly(&"no_such_fly") == null, "an unknown id gives null")
 	_check(cat.flies.size() > 0 and cat.flies[0] == adams, "the Parachute Adams is first, so it's tied on at the start")
-	for kind in [&"fly", &"fish", &"insect", &"stretch"]:
+	var dads := cat.rod(&"dads_glass_4wt")
+	_check(dads != null and cat.rods.size() > 0 and cat.rods[0] == dads, "rod(id) finds Dad's glass 4-weight, first in the rack (REQ-0005)")
+	for kind in [&"fly", &"rod", &"fish", &"insect", &"stretch"]:
 		_check(cat.of_kind(kind).size() > 0, "of_kind(%s) isn't empty" % kind)
 
 
@@ -63,7 +65,8 @@ func _test_new_fly_reaches_fly_box() -> void:
 	_check(cat.fly(&"test_hopper") == fly, "a new fly is found by its id")
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	var fishing := main.get_node(^"Fishing")
-	_check(fishing.flies == Catalog.shared().flies, "the fly box is the catalog's fly list")
+	_check(fishing.tackle.flies == Catalog.shared().flies, "the fly box is the catalog's fly list")
+	_check(fishing.tackle.rods == Catalog.shared().rods, "the rod rack is the catalog's rod list")
 	main.free()
 
 

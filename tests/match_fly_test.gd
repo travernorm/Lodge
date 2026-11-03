@@ -6,9 +6,9 @@ extends SceneTree
 var _failures := 0
 var _rng := RandomNumberGenerator.new()
 var _match: DriftPastRules = load("res://data/take_rules/drift_past.tres")
-var _caddis: FlyPattern = load("res://data/flies/elk_hair_caddis.tres")
-var _adams: FlyPattern = load("res://data/flies/parachute_adams.tres")
-var _wulff: FlyPattern = load("res://data/flies/royal_wulff.tres")
+var _caddis: FlyPattern = load("res://data/tackle/flies/elk_hair_caddis.tres")
+var _adams: FlyPattern = load("res://data/tackle/flies/parachute_adams.tres")
+var _wulff: FlyPattern = load("res://data/tackle/flies/royal_wulff.tres")
 var _redband: FishSpecies = load("res://data/fish/redband.tres")
 var _cutthroat: FishSpecies = load("res://data/fish/cutthroat.tres")
 var _brook: FishSpecies = load("res://data/fish/brook.tres")

@@ -8,11 +8,13 @@ extends Resource
 ## change. It's a list rather than a folder scan because exported builds rename
 ## data files to .remap. tests/data_test.gd fails if it and the folders
 ## disagree. The order is kept between rebuilds (new files go at the end), and
-## the fly box shows flies in this order, so the first fly is tied on first.
+## the fly box and rod rack use this order, so the first fly and rod are tied
+## on first.
 
 const PATH := "res://data/catalog.tres"
 
 @export var flies: Array[FlyPattern] = []
+@export var rods: Array[FlyRod] = []
 @export var fish: Array[FishSpecies] = []
 @export var insects: Array[Insect] = []
 @export var stretches: Array[Stretch] = []
@@ -32,6 +34,10 @@ func fly(p_id: StringName) -> FlyPattern:
 	return _find(&"fly", p_id) as FlyPattern
 
 
+func rod(p_id: StringName) -> FlyRod:
+	return _find(&"rod", p_id) as FlyRod
+
+
 func species(p_id: StringName) -> FishSpecies:
 	return _find(&"fish", p_id) as FishSpecies
 
@@ -44,6 +50,7 @@ func insect(p_id: StringName) -> Insect:
 func of_kind(kind: StringName) -> Array:
 	match kind:
 		&"fly": return flies
+		&"rod": return rods
 		&"fish": return fish
 		&"insect": return insects
 		&"stretch": return stretches
@@ -52,7 +59,7 @@ func of_kind(kind: StringName) -> Array:
 
 func _find(kind: StringName, p_id: StringName) -> Resource:
 	if _index.is_empty():
-		for k in [&"fly", &"fish", &"insect"]:
+		for k in [&"fly", &"rod", &"fish", &"insect"]:
 			var by_id := {}
 			for res in of_kind(k):
 				if res != null:

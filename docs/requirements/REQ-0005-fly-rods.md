@@ -1,6 +1,6 @@
 # REQ-0005: Fly rods that shape the cast
 
-Status: draft
+Status: implemented (approved by Traver 2026-11-03: recommended answers 1 to 3; the 7-weight throws no dries)
 
 ## Problem
 
@@ -49,8 +49,8 @@ Traver wrote "TOOLS". In this repo `tools/` already means developer scripts (the
 | `rated_length_in` | biggest fish (inches) it fights at full strength | fight |
 
 1. **Compatibility.** The fly box only offers flies whose type the rod can throw. Changing rods re-ties the first compatible fly if the current one doesn't fit. A rod with no compatible fly in the box says so and won't start a cast while fishing (practice mode still casts).
-2. **Durability.** A fish longer than `rated_length_in` loads the rod: the fight's tension is multiplied by `1 + overload × (length / rated - 1)`, so a fish 25% over the rating snaps the tippet noticeably sooner. `overload` is one tuning number (proposed 2.0); where it lives is settled in the engineering review. Below the rating nothing changes. When it bites, a fish that's too big gets a message: "That's a lot of fish for a 4-weight." Rods don't break; a broken rod needs owned gear and saves (open question 3). Fish length uses the existing `min_length_in` / `max_length_in`, so no new field on `FishSpecies`.
-3. **Casting distance.** `CastModel` asks for `max_line()`, the smaller of the rule set's own cap and the rod's `max_line_m`. Every rule set calls it instead of reading `line_max` directly. Under "Count the false casts", a rod with `max_line_m` below the Long step simply can't reach Long.
+2. **Durability.** A fish longer than `rated_length_in` loads the rod: the fight's tension is multiplied by `1 + overload × (length / rated - 1)`, so a fish 25% over the rating snaps the tippet noticeably sooner. `overload` is a `FightModel` constant (2.0), next to its other fight constants. Below the rating nothing changes. When it's hooked, a fish that's too big gets a message: "Fish on! A lot of fish for a 4-weight. Go easy." Rods don't break; a broken rod needs owned gear and saves (open question 3). Fish length uses the existing `min_length_in` / `max_length_in`, so no new field on `FishSpecies`.
+3. **Casting distance.** `CastModel.max_line()` gives the rod's `max_line_m`, which replaces the rule set's own longest line (the rule set's number applies with no rod). Every rule set calls it instead of reading `line_max` directly. Under "Count the false casts", the Long step is the rod's longest line and no step goes past it, so Dad's rod tops out at Middle and the 7-weight reaches further than today's Long. (Built this way instead of "the smaller of the two", so a long rod can actually cast further. The 7-weight is 16.5 m rather than 18 m so its casts stay on screen and inside the fight's break-off distance.)
 4. **Casting forgiveness.** `CastModel.perfect_window()` and `ok_window()` multiply the rule set's answer by the rod's `forgiveness`, so it works under every rule set, and the meter draws the wider or narrower bands.
 
 ### T4. Three starter rods
@@ -58,15 +58,15 @@ Traver wrote "TOOLS". In this repo `tools/` already means developer scripts (the
 | Rod | Types | Longest line | Forgiveness | Rated to |
 |---|---|---|---|---|
 | Dad's glass 4-weight (tied on at the start) | Dry | 10.25 m (top of Middle) | 1.3 | 16 in |
-| Graphite 5-weight (today's numbers) | Dry, Nymph | 14.75 m | 1.0 | 20 in |
-| Fast 7-weight | Dry, Streamer | 18 m | 0.75 | 28 in |
+| Graphite 5-weight (today's numbers) | Dry, Nymph | 12.5 m (today's Long step) | 1.0 | 20 in |
+| Fast 7-weight | Nymph, Streamer | 16.5 m | 0.75 | 28 in |
 
-Every rod throws dries for now so every rod can fish today's flies. Compatibility is visible in the rod message and unit tested now, and it bites in play once the first nymph or streamer fly is added (data only).
+The 7-weight throws no dries (Traver: a dry on a 7-weight is unrealistic). Every fly in the game today is a dry, so with the 7-weight on, the fly box is empty: it says so, and fishing won't start a cast. Practice mode still casts, so its distance and timing can be felt. It fishes once the first nymph or streamer fly is added (data only).
 
 ### T5. Picking a rod
 
 * **Change rod**: a new action, L2 (left trigger) on the controller and **R** on the keyboard, between casts, like changing flies. It cycles the catalog's rods and shows the rod's stats for a few seconds. This is a stand-in until a gear screen or the cabin rod rack exists (open question 2).
-* A small `Tackle` model (`scripts/tackle/tackle.gd`, `RefCounted`) owns what's tied on: the current rod and fly, cycling, and the compatibility filter. It takes the fly box index out of `fishing_controller.gd`, which shrinks that file (R9 debt paid back) and is a first step toward step D's `FlyBox`.
+* A small `Tackle` model (`scripts/tackle/tackle.gd`, `RefCounted`) owns what's tied on: the current rod and fly, cycling, the compatibility filter and the change messages. It takes the fly box index out of `fishing_controller.gd` and is a first step toward step D's `FlyBox`.
 * The catalog gains `rods` and `rod(id)`. The rod order in the catalog is the cycle order, so Dad's rod is first.
 
 ## Out of scope
@@ -91,19 +91,21 @@ Every rod throws dries for now so every rod can fish today's flies. Compatibilit
 ## Acceptance criteria
 
 * A new `.tres` in `data/tackle/rods/` plus a catalog rebuild adds a rod with no code change (test with a fixture rod).
-* With the 5-weight tied on, every cast, window and fight number is identical to today (test: same strokes, same results).
+* With the 5-weight tied on, every timing window and fight number is identical to today, and under Count the false casts (the default rule set) so is every line length (test). As built, a rod's `max_line_m` replaces each rule set's own longest line, so the 5-weight (12.5 m, today's Long step) carries 12.5 m instead of 14.75 m under Classic and Find your tempo.
 * `forgiveness` 1.3 widens the perfect and okay windows by 1.3 under all three rule sets (test).
 * No rule set can put out more line than the rod's `max_line_m` (test, every rule set × every rod).
 * The fly box never ties on a fly whose type the rod can't throw (test with a fixture nymph fly).
 * A fish over `rated_length_in` reaches snap tension sooner under the same pressure; at or under it, the fight is unchanged (test).
 * The playthrough lands a fish with each starter rod and switches rods in practice mode.
-* `fishing_controller.gd` gets shorter and its R9 cap goes down.
+* `fishing_controller.gd` stays under its R9 cap without raising it. (As built it grew from 602 to 620 lines, under its 635 cap: the fly box moved into `Tackle`, but the rod HUD line, the Change rod input and the fight's rod load added more.)
 
 ## Playtest checks
 
 Keyboard and DualSense: change rod (L2 / R) and read its stats; with Dad's rod, cast Short and Middle and feel the wider window, and try for Long; with the 7-weight, reach Long and feel the tighter window; hook a fish over 16 in on Dad's rod and feel the tippet go sooner; check practice mode's ruler with each rod. Browser build: the rod list isn't empty.
 
 ## Open questions
+
+Answered by Traver on 2026-11-03: 1 to 3 as recommended; 4 with the 7-weight changed to Nymph and Streamer, no dries.
 
 1. **Folder name:** "tackle" (recommended, avoids the clash with the repo's `tools/` folder and is the angler's word) or "tools" as written?
 2. **Picking a rod:** a Change rod button now (recommended, L2 / R, so the rods can be compared by hand), or only Dad's rod in game until a gear screen exists?

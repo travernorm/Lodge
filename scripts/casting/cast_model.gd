@@ -37,6 +37,10 @@ var tuning: CastTuning
 ## The chassis: how strokes become line and distance. Swap it any time the line
 ## is reeled in.
 var rules: CastRules
+## The rod (REQ-0005): it caps the line (max_line()) and widens or narrows the
+## timing windows (forgiveness()). Null plays like the rule set alone. Set by
+## its owner (the fishing node's Tackle) while the line is reeled in.
+var rod: FlyRod
 ## Every stroke and overlap of the current cast, oldest first, for practice mode:
 ## {kind: "back" | "forward" | "overlap", seconds, ideal, quality}
 var strokes: Array[Dictionary] = []
@@ -93,13 +97,25 @@ func ideal_stroke_time() -> float:
 	return rules.stroke_ideal(self)
 
 
-## +/- seconds counted as perfect / okay for the stroke being held now.
+## +/- seconds counted as perfect / okay for the stroke being held now: the
+## rule set's window, times the rod's forgiveness.
 func perfect_window() -> float:
-	return rules.perfect_window(self)
+	return rules.perfect_window(self) * forgiveness()
 
 
 func ok_window() -> float:
-	return rules.ok_window(self)
+	return rules.ok_window(self) * forgiveness()
+
+
+## The rod's forgiveness, or 1 with no rod.
+func forgiveness() -> float:
+	return rod.forgiveness if rod != null else 1.0
+
+
+## The most line (m) that can be out: the rod's, or `rule_max` (the rule set's
+## own longest line) with no rod.
+func max_line(rule_max: float) -> float:
+	return rod.max_line_m if rod != null else rule_max
 
 
 ## 0 at the start of a stroke, 1 at its ideal moment, above 1 when late.
@@ -225,9 +241,10 @@ func timing_quality(error: float) -> float:
 func overlap_quality(overlap: float) -> float:
 	if overlap < tuning.overlap_good_min:
 		return 0.7
-	if overlap <= tuning.overlap_good_max:
+	var good_max := _overlap_good_max()
+	if overlap <= good_max:
 		return 1.0
-	var t := (overlap - tuning.overlap_good_max) / (tuning.tailing_overlap - tuning.overlap_good_max)
+	var t := (overlap - good_max) / (tuning.tailing_overlap - good_max)
 	return clampf(lerpf(1.0, 0.4, t), 0.2, 1.0)
 
 
@@ -261,8 +278,14 @@ func _score_overlap(overlap: float) -> void:
 		msg = "Tailing loop. Let go of the first bumper sooner."
 	elif q < 1.0:
 		msg = "Overlap ran a little long"
-	strokes.append({"kind": "overlap", "seconds": overlap, "ideal": tuning.overlap_good_max * 0.5, "quality": q})
+	strokes.append({"kind": "overlap", "seconds": overlap, "ideal": _overlap_good_max() * 0.5, "quality": q})
 	_push(q, msg, 0.5 if q >= 0.7 else 1.0)
+
+
+## The longest overlap that still counts as clean, widened by the rod's
+## forgiveness but always short of a tailing loop.
+func _overlap_good_max() -> float:
+	return minf(tuning.overlap_good_max * forgiveness(), tuning.tailing_overlap * 0.9)
 
 
 func _push(q: float, msg: String, weight := 1.0) -> void:

@@ -56,7 +56,8 @@ The **Cast** node's `rules` property picks the rule set the game starts with.
 
 Flies and fish are data files, so adding one doesn't need code.
 
-- **New fly:** in Godot's FileSystem panel, duplicate a file in `data/flies/`, give it a new `id`, `display_name` and colours, and add it to the `flies` list on the **Fishing** node in `scenes/main.tscn`.
+- **New fly:** in Godot's FileSystem panel, duplicate a file in `data/tackle/flies/`, give it a new `id` (the file name), `display_name`, colours and `fly_type` (Dry, Nymph or Streamer), then run `tools/build_catalog.gd` so the fly box picks it up.
+- **New rod:** duplicate a file in `data/tackle/rods/`, give it a new `id` (the file name) and `display_name`, tick the fly types it throws, and set `max_line_m` (its longest line), `forgiveness` (1 is the baseline timing windows) and `rated_length_in` (fish longer than this snap the tippet sooner). Run `tools/build_catalog.gd`; L2 / R cycles rods in catalog order.
 - **New fish:** duplicate a file in `data/fish/`. Set `lie_area_m` (the rectangle of the stream where it holds, in metres from the screen's top-left; 8 px is 1 m), `bite_chance` and `bite_range_m`, the hook-set window (`set_min`/`set_max`), `pull` (around 1.0 snaps the tippet under full pressure) and size range. Then add it to `stocking` on the Fishing node.
 - **Bite odds:** `bite_chance` is the chance for a delicate cast right by the fish. Fair landings get 60% of it and splashy ones 25% (`PRESENTATION_FACTOR` in `scripts/fishing/fish.gd`), falling off to zero at `bite_range_m` metres away.
 
