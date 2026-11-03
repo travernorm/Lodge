@@ -1,0 +1,4 @@
+id,display_name,description,weight,fly_types,max_line_m,forgiveness,rated_length_in
+dads_glass_4wt,Dad's glass 4-weight,"Soft, slow fibreglass from the back of Dad's closet. It forgives a lazy stroke, but it won't throw a long line or stop a big fish.",4,Dry,10.25,1.3,16
+graphite_5wt,Graphite 5-weight,"The all-round trout rod. Throws dries and nymphs to the far seam with an honest, steady stroke.",5,Dry;Nymph,12.5,1,20
+fast_7wt,Fast 7-weight,"A stiff rod for heavy flies and heavy fish. It throws a mile of line if your timing is crisp, and it punishes sloppy strokes.",7,Nymph;Streamer,16.5,0.75,28

@@ -140,6 +140,8 @@ scripts/tackle/             Flies (fly_pattern.gd), rods (fly_rod.gd) and what's
 data/tackle/flies/*.tres    Fly patterns (FlyPattern)
 data/tackle/rods/*.tres     Fly rods (FlyRod): fly types, longest line, forgiveness, fish rating
 data/fish/*.tres            Trout species: habitat, bite odds, hook-set window, fight
+content/*.csv               Content sheets: insects, flies, rods and fish as spreadsheet rows
+tools/import_content.gd     Checks the sheets and writes them into data/ (see TOOLING.md)
 scripts/debug_overlay.gd    Bumper timeline, stick readouts, rumble test
 tools/setup_input_map.gd    Source of truth for the input map (regenerates project.godot)
 tools/capture_screenshot.gd Plays a scripted catch and saves screenshots
