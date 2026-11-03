@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/stream_scene.gd" id="1_stream"]
 [ext_resource type="Script" path="res://scripts/debug_overlay.gd" id="2_debug"]
@@ -6,10 +6,18 @@
 [ext_resource type="Script" path="res://scripts/fishing/fishing_controller.gd" id="4_fishing"]
 [ext_resource type="Script" path="res://scripts/casting/cast_practice.gd" id="9_practice"]
 [ext_resource type="Resource" path="res://data/stretches/demo_freestone.tres" id="10_stretch"]
+[ext_resource type="Script" path="res://scripts/river/water_view.gd" id="11_water"]
+[ext_resource type="Resource" path="res://data/looks/water_spring.tres" id="12_look"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_stream")
 stretch = ExtResource("10_stretch")
+
+[node name="Water" type="Node2D" parent="."]
+show_behind_parent = true
+script = ExtResource("11_water")
+look = ExtResource("12_look")
+preview_stretch = ExtResource("10_stretch")
 
 [node name="Cast" type="Node2D" parent="."]
 script = ExtResource("3_cast")
