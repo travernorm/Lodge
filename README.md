@@ -4,7 +4,7 @@ A cabin-core fly fishing game. A laid-off father inherits his late dad's cabin, 
 
 | Fly on the water, 46% bite chance | Fish on | Landed |
 |---|---|---|
-| ![Fly on the pool with the trout's shadow nearby](docs/screenshots/drift.png) | ![Fighting a fish with the tension meter](docs/screenshots/fight.png) | ![Catch card for a redband rainbow](docs/screenshots/caught.png) |
+| ![Fly drifting on the pool](docs/screenshots/drift.png) | ![Fighting a fish with the tension meter](docs/screenshots/fight.png) | ![Catch card for a redband rainbow](docs/screenshots/caught.png) |
 
 ## Current milestone: dry fly minigame
 
