@@ -14,6 +14,16 @@
 - [ ] Save data
 - [ ] Build / CI / export presets
 
+## Architecture
+
+<!-- Rules are in docs/ARCHITECTURE.md section 1. Skip for docs-only PRs. -->
+
+- [ ] New scripts are in the right layer and listed in ARCHITECTURE.md's class index (R1, R10)
+- [ ] Every new piece of state has one writer; no node reaches into a parent or sibling (R2, R3)
+- [ ] Data stays read-only, linked by typed references; kinds don't carry place data (R4, R5, R12)
+- [ ] No new strings as types, autoloads, unseeded randomness or pixels in models (R6, R7, R8, R11)
+- [ ] Debt ledger: unchanged / lowered (which caps) / raised with Traver's OK (why)
+
 ## How it was tested
 
 - [ ] `tools/run_tests.sh` passes locally (all suites, including the playthrough)
