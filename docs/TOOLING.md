@@ -18,6 +18,21 @@ Later, worth adding when sound comes in: [Bfxr](https://www.bfxr.net/) or [ChipT
 - Textures use nearest-neighbour filtering, and 2D transforms snap to whole pixels.
 - The renderer is **GL Compatibility**, which is light on the Deck's battery and is also the path that ports most easily to Switch.
 
+## Changing how the water looks
+
+The water is painted by `WaterView` (`scripts/river/water_view.gd`) from a **water look**, `data/looks/water_spring.tres`. The river's shape lives in the stretch (`data/stretches/`), and the look only decides how that shape is painted, so the dark texture always sits on the real deep water and the white water on the real fast water.
+
+1. Open `scenes/main.tscn`. The water shows in the editor viewport (the `Water` node builds its own copy of the river from `preview_stretch`).
+2. Double-click `data/looks/water_spring.tres` (or click the `Water` node and open its `look`). Everything in the Inspector updates the viewport live:
+   - **Deep, Mid, White**: drag a PNG from the FileSystem dock into a slot. Use seamless tiles, about 64x64, made in PixelLab and cleaned up in Aseprite. The starting tiles are in `assets/water/`.
+   - **Tints**: multiply each texture by a colour. White leaves it as drawn.
+   - **Where each texture shows**: `deep_start` is the depth where deep water takes over (0 = dry, 1 = deepest), `white_start` is the speed where white water takes over (1 = the fastest water), and each has a softness. `shallow_depth` and `shallow_amount` add the tint along the edges.
+   - **Edges**: `edge_noise` makes the borders wobble, and `dither` switches between smooth blends and a crisp pixel checkerboard.
+   - **Motion**: `motion` is how fast the textures travel with the current (0 = still), and `motion_cycle` is how often the moving texture quietly resets.
+3. Save, and press Cmd+B to see it in the game.
+
+To go back to the old flat colours, clear the `look` slot on the `Water` node. A new season or river can have its own look: duplicate the file in `data/looks/` and point the `Water` node at it.
+
 ## Controls are defined in code
 
 `tools/setup_input_map.gd` is the source of truth for the input map. To change a binding, edit that file and run:

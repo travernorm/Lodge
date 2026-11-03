@@ -1,3 +1,4 @@
+@tool
 class_name Stretch
 extends Resource
 ## One stretch of river, as data (ARCHITECTURE.md step F, REQ-0002).

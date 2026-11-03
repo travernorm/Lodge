@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="WaterLook" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/river/water_look.gd" id="1_look"]
+[ext_resource type="Texture2D" path="res://assets/water/deep.png" id="2_deep"]
+[ext_resource type="Texture2D" path="res://assets/water/mid.png" id="3_mid"]
+[ext_resource type="Texture2D" path="res://assets/water/white.png" id="4_white"]
+
+[resource]
+script = ExtResource("1_look")
+deep = ExtResource("2_deep")
+mid = ExtResource("3_mid")
+white = ExtResource("4_white")

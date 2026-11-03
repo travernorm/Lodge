@@ -89,6 +89,7 @@ The data folders today, each covered by `tests/data_test.gd`:
 * `data/cast_rules/`: the casting rule sets (one `CastRules` per file).
 * `data/take_rules/`: the bite rules (`DriftPastRules`).
 * `data/stretches/`: `Stretch`, one per river location (today the demo freestone).
+* `data/looks/`: `WaterLook`, how the water is painted: the deep, mid and white water textures (in `assets/water/`), tints, and where each one shows by depth and speed. `WaterView` paints it from the river field.
 * `data/cast_tuning.tres`: casting numbers shared by every rule set.
 * `data/catalog.tres`: the index of every fish, fly, insect and stretch (generated, see below).
 
@@ -373,6 +374,8 @@ Every script, its layer and its system. `architecture_test.gd` fails if a script
 | `scripts/river/river_field.gd` | `RiverField` | Model | River |
 | `scripts/river/spawn_entry.gd` | `SpawnEntry` | Data (place) | River, fish |
 | `scripts/river/stretch.gd` | `Stretch` | Data | River |
+| `scripts/river/water_look.gd` | `WaterLook` | Data (look) | River (drawing) |
+| `scripts/river/water_view.gd` | `WaterView` | View | River (drawing) |
 | `scripts/stream_scene.gd` | (node) | Scene root + views, to split | River, scene wiring |
 | `scripts/tackle/fly_pattern.gd` | `FlyPattern` | Data | Tackle (flies) |
 | `scripts/tackle/fly_rod.gd` | `FlyRod` | Data | Tackle (rods) |
