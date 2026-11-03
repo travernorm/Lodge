@@ -39,7 +39,6 @@ const RING_SECONDS := 0.9
 const COL_LINE := Color("d8cfa6")
 const COL_LINE_TIGHT := Color("f2a65a")
 const COL_LINE_DANGER := Color("e8553a")
-const COL_FISH_SHADOW := Color(0.05, 0.12, 0.14, 0.55)
 const COL_WAKE := Color(1, 1, 1, 0.6)
 const COL_RING := Color(1, 1, 1, 0.85)
 const COL_PANEL := Color(0, 0, 0, 0.55)
@@ -457,13 +456,14 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO)
 
 
+## Fish under the surface are hidden: the only sign of one is its rise rings,
+## and the fish itself shows only while it has the fly at the surface.
+## (The read-the-water debug view still marks every lie.)
 func _draw_fish(f: Fish) -> void:
-	if not f.is_present():
+	if f.state != Fish.State.TAKEN:
 		return
 	var p := WorldScale.vec_to_px(f.pos).floor()
-	var col := COL_FISH_SHADOW
-	if f.state == Fish.State.RISING or f.state == Fish.State.TAKEN:
-		col = f.species.color
+	var col: Color = f.species.color
 	# Trout hold facing into the current, so the tail trails downstream. In an
 	# eddy the current runs back upstream, so they face downstream there.
 	draw_set_transform(p, _facing_into_current(f.lie))
