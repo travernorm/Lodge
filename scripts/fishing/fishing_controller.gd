@@ -9,8 +9,7 @@ extends Node2D
 ##   push and hold           rod pressure while fighting a fish
 ##
 ## Shortcuts: X / Square (M on keyboard) mends, the same as a stick loop.
-## Each mend feeds out line. While reeled in, the same button switches how much
-## (DriftModel.MendFeed, a feel experiment).
+## Each mend feeds out line, as much as the belly had bowed.
 ## A / Cross / Space sets the hook too, and holding it while fighting is full
 ## pressure straight up.
 ##
@@ -151,7 +150,7 @@ func debug_lines() -> PackedStringArray:
 		states.append("%s:%s" % [String(f.species.id).left(3), Fish.State.keys()[f.state].left(4).to_lower()])
 	lines.append(" ".join(states))
 	lines.append("bites  %s" % take_rules.display_name)
-	lines.append("mends feed  %s  line %.1f m" % [DriftModel.MEND_FEED_NAMES[drift.mend_feed], drift.line_length])
+	lines.append("line out  %.1f m" % drift.line_length)
 	return lines
 
 
@@ -162,9 +161,6 @@ func _process(delta: float) -> void:
 
 	if Input.is_action_just_pressed(Controls.CHANGE_FLY):
 		_change_fly()
-	if Input.is_action_just_pressed(Controls.MEND) and phase == Phase.NONE \
-			and _cast.model.state == CastModel.State.IDLE:
-		_cycle_mend_feed()
 
 	match phase:
 		Phase.DRIFT:
@@ -195,12 +191,6 @@ func _change_fly() -> void:
 	var fly := current_fly()
 	var kinds := fly.kinds_text()
 	_cast.show_message("Tied on a %s%s." % [fly.display_name, " (%s)" % kinds if kinds != "" else ""], 1.0)
-
-
-## Feel experiment: switch how much line each mend feeds out.
-func _cycle_mend_feed() -> void:
-	drift.mend_feed = ((drift.mend_feed + 1) % DriftModel.MendFeed.size()) as DriftModel.MendFeed
-	_cast.show_message("Mends feed: %s." % DriftModel.MEND_FEED_NAMES[drift.mend_feed], 1.0)
 
 
 # --- Drift -----------------------------------------------------------------
