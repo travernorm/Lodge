@@ -27,9 +27,11 @@ As a player, I want to find fish all along the river, including under the cut ba
 2. **The generator uses both scores.** A cell's lie score is the higher of its feeding and resting scores. `FishPlan` says which kind of lie the fish is on.
 3. **Fish along the whole river (spread by reach).** The river is cut into reaches of about one screen (40 m along the centreline). Each reach gets its share of `fish_count()` by length, rounded so the total stays the same. A reach with no lie scoring 0.4 or more passes its share to the nearest reach that has one. Within a reach, fish pick lies as today, with better lies more likely and 3 m apart. The biggest fish still go to the best lies across the whole stretch.
 4. **The read-the-water view** draws resting lies in a second colour next to today's feeding lies.
+5. **Resting fish are slow to come up for a dry (Traver, 2026-11-04).** A fish on a resting lie takes a dry fly at a discount, and a nymph or streamer at full odds. The discount is a new field on the bite rules, `DriftPastRules.resting_dry_factor` (0.5 to start, tunable in `data/take_rules/drift_past.tres`). The fish knows which kind of lie it's on from its plan (`Fish.resting`). The odds line shows the factor, for example "Resting lie ×0.5", so the player can read why. Today every rod in the starter set throws dries, so the discount is what you'll feel; nymphs and streamers get full odds once they can be fished.
 
 ## Out of scope
 
+* Any other change to bite odds.
 * Fish moving between a resting and a feeding lie with the time of day or the hatch (that comes with mood, FISH_LOGIC.md).
 * Water types per lie and species habitat (REQ-0010, river features thread). REQ-0010 builds on this REQ's scores.
 * New features in the lower section (river features thread, small track).
@@ -41,7 +43,7 @@ As a player, I want to find fish all along the river, including under the cut ba
 |---|---|---|---|
 | Casting | No | No | `cast_test`, `playthrough_test` |
 | River | New `RestingLies` (reads the field); read-the-water view draws it | Fishing | New `resting_lies_test`; `river_test` and the water fixture unchanged |
-| Fishing | `FishGenerator` takes candidates from max(feed, rest), by reach | Debug overlay | `fish_generator_test` (new spread and resting checks), `smoke_test`, `playthrough_test` |
+| Fishing | `FishGenerator` takes candidates from max(feed, rest), by reach; `Fish.resting`; `DriftPastRules.resting_dry_factor` | Debug overlay, the odds line | `fish_generator_test` (new spread and resting checks), `take_rules_test` (new resting checks), `match_fly_test`, `smoke_test`, `playthrough_test` |
 | UI and modes | Read-the-water view | No | `playthrough_test` (debug views cycled) |
 | Input | No | No | `data_test` |
 | Saves | No | No | n/a |
@@ -54,9 +56,12 @@ As a player, I want to find fish all along the river, including under the cut ba
 4. The total number of fish is still `fish_count()` (5 on the demo), 3 m apart, and the biggest fish still sits on at least the median lie in 80% of days. *(test, existing)*
 5. The water fixture and `river_test` are unchanged. *(test)*
 6. Fish on resting lies can be hooked and landed like any other. *(playthrough)*
+7. On a resting lie, a dry fly's odds are the feeding-lie odds × `resting_dry_factor`. A nymph or streamer gets the same odds as on a feeding lie, and a fish on a feeding lie is unchanged for every fly type. *(test)*
+8. The odds line names the resting-lie factor when it applies. *(test)*
 
 ## Playtest checks
 
+* Drift a dry over a cut-bank fish: the odds line shows the resting-lie factor.
 * Walk the whole stretch on a few loads. There are rises in the lower pools and along the cut bank, not just at the top.
 * Open the read-the-water view at the bend. The resting lies show along the cut bank.
 * Keyboard and DualSense. Watch the load time in the browser build (one more pass over the field at load).
@@ -64,7 +69,8 @@ As a player, I want to find fish all along the river, including under the cut ba
 ## Open questions
 
 1. **Reach length:** one screen (40 m, recommended), or two?
-2. **Feeding versus resting.** Should a resting lie count the same as a feeding lie (recommended for now), or a little less, so the very best fish still favour feeding water until mood arrives?
+2. **Feeding versus resting, for placement.** Should a resting lie count the same as a feeding lie when placing fish (recommended for now)? Traver answered the bite side on 2026-11-04: resting fish get a discount on dry flies, and full odds on nymphs and streamers.
+3. **The dry fly discount:** ×0.5 to start (recommended), tuned in the bite rules file?
 
 ## Architecture
 
@@ -76,5 +82,7 @@ As a player, I want to find fish all along the river, including under the cut ba
 * **R4, R5, R6, R8, R11:** no data is written, nothing new is linked, and there are no strings as types. The reach split uses the generator's existing seeded lie stream. Everything is in metres.
 * **R9:** `river_field.gd` is at 617 of 623 lines, so the score goes in its own script, and neither `river_field.gd` nor `stream_scene.gd` grows. The overlay change is a few lines in `debug_overlay.gd`.
 * **R10:** the new script goes in the class index, and the system map's River row gains `RestingLies`.
-* **R12:** no kind of thing gains place data.
+* **R12:** no kind of thing gains place data. Whether a fish is resting is runtime state on `Fish`, set from its plan, not part of the species.
+* **Data fields:** `DriftPastRules.resting_dry_factor` is the one new data field, on a rule set, not on a content archetype, so no content sheet changes.
+* **R6:** the fly type check uses `FlyPattern.Type.DRY`, and resting is a bool, not a string.
 * **Coordination:** the river features thread (REQ-0010, PR #51) agreed that this REQ owns lie scoring. It will read `RestingLies.rest` and weight species by water type on top of these candidates. Names agreed: their `WaterTypes` and `WaterTypeRules`, and this REQ's `RestingLies`.
