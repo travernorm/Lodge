@@ -6,7 +6,7 @@ Status: draft
 
 The river field scores every cell as a lie, but it can't say what *kind* of water a lie is. So every species goes anywhere: a brook trout is as likely in the fast seam as in a slow pocket. FISH_LOGIC.md promises that reading the water tells you who lives there ("browns in pools, redbands in seams"), and REQ-0007 left it for the river thread. Without it, new river features change where fish sit but never *which* fish sit there.
 
-It also leaves half the demo stretch empty. Lie scoring rewards slow water next to fast water, so the riffles and pockets up top score near 1 while the bend, the cut-bank pool and the tail-out peak at 0.44, just over the 0.4 cutoff. In 300 generated days, 1,496 of 1,500 fish landed in the upper river.
+It also leaves half the demo stretch empty, because lie scoring only rewards feeding water. REQ-0011 (fish generator thread) fixes that with a resting score for deep, slow, covered water like the cut-bank pool. This REQ builds on it and doesn't change lie scores.
 
 ## Player story
 
@@ -50,9 +50,8 @@ Starting habitats for today's three species (tunable):
 
 ### 3. Generation
 
-The fish generator (REQ-0007) changes its lie, species and size steps:
+The fish generator (REQ-0007) changes its species and size steps (it takes lies from REQ-0011):
 
-* **Which lies.** A lie is judged against its own kind of water. Each type has its own holding cutoff in `water_types.tres` (pools and tail-outs lower than riffles), and a lie's pick weight is its score relative to the best lie of that type in the stretch. So the best spot in the pool is as good a lie as the best spot in the riffle, and the lower river holds fish again.
 
 * **Which species.** Each lie picks its species weighted by *abundance × habitat for that lie's water type*, instead of abundance alone.
 * **Size and lie.** Sizes are still rolled leaning small and the biggest go to the best lies. Each fish rolls a size *rank* (0 to 1), the best lies get the highest ranks, and a fish's length is that rank within its own species' range. So "big fish in the best water" still holds across species.
@@ -83,7 +82,7 @@ Fish count, season, temperature, hatch and activity don't change. Bite odds don'
 1. Every wet cell of the demo stretch has exactly one water type, and every type except Tail-out appears at least once. *(test)*
 2. Hand-picked spots on the demo stretch get the right type: the head riffle, the boulder pockets, the eddy, the bend pool. *(test)*
 3. The classifier is deterministic and the river fixture (`demo_field.txt`) doesn't change. *(test)*
-4. On the demo stretch over 300 days, at least 25% of fish sit in the lower half (bend, pool, tail-out). Today it's under 1%. *(test)*
+4. Once REQ-0011 has merged, brook trout (pocket, pool) show up in the cut-bank pool, and redbands (seam, riffle) mostly upstream. *(test)*
 5. On a test stretch with two equally common species, one liking only pools and one only riffles, at least 70% of each species' fish over 200 runs sit in its water. *(test)*
 6. A species with no habitat list behaves exactly as today (all types weight 1). *(test)*
 7. REQ-0007's "biggest fish on a better lie than the median" still holds in 80% of runs. *(existing test)*
@@ -100,8 +99,7 @@ Fish count, season, temperature, hatch and activity don't change. Bite odds don'
 
 1. **The seven types.** Riffle, Run, Pool, Tail-out, Pocket, Seam, Eddy now, and Undercut with cover features later. (Recommended.)
 2. **Fish off their water.** Unlisted types get 0.2, so strays happen. Or 0, so a species never leaves its listed water. (Recommended: 0.2.)
-3. **Empty lower river.** Fix it here by judging each lie against its own water type (recommended), or separately by retuning lie scores now. Retuning alone changes the river fixture and every fish placement, and this REQ would retune them again.
-4. **One type per cell.** A seam through a pool counts as Seam, not both. (Recommended: one type, simplest to read and to tune.)
+3. **One type per cell.** A seam through a pool counts as Seam, not both. (Recommended: one type, simplest to read and to tune.)
 
 ## Architecture
 
@@ -130,7 +128,7 @@ Fish count, season, temperature, hatch and activity don't change. Bite odds don'
 
 **5. Risks.**
 
-* **Lower-river fix overlap.** If the fish generator thread fixes the empty lower river first, this REQ drops its lie step and keeps the rest.
+* **Order.** REQ-0011 (resting lies) lands first. This REQ reads its lie layers and never writes them.
 * **Wrong-looking types.** Thresholds tuned on one stretch may misread others. That's why they're data and the F1 view shows them.
 * **Tail-out may not show** on the demo stretch if the pool shallows too gently; criterion 1 allows that rather than forcing the river to change.
 * **Hot files.** No edit to `main.tscn`, `project.godot` or `fishing_controller.gd` is planned. `smoke_test` and `playthrough_test` get new functions only.
