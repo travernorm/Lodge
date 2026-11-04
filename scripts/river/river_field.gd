@@ -251,6 +251,20 @@ func pick_lie(area: Rect2, rng: RandomNumberGenerator, min_score := 0.4,
 
 
 ## Stretch only: the index of the centreline point nearest p (m), or -1.
+## Which way the water runs at `p` (m), for the drift's bow and mends: the
+## local current, so a fly in an eddy mends against the eddy's reversed
+## current, or the centreline where the water is slack. The test screen's
+## straight reach runs +x.
+func downstream_at(p: Vector2) -> Vector2:
+	if stretch == null:
+		return Vector2.RIGHT
+	var v := flow_at(p)
+	if v.length() > 0.05:
+		return v.normalized()
+	var k := nearest_centre(p)
+	return centre_dir[k] if k >= 0 else Vector2.RIGHT
+
+
 func nearest_centre(p: Vector2) -> int:
 	var best := -1
 	var best_d := INF

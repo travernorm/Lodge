@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="Climate" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/conditions/climate.gd" id="1_climate"]
+
+[resource]
+script = ExtResource("1_climate")
+high_min_f = PackedInt32Array(40, 70, 50, 30)
+high_max_f = PackedInt32Array(60, 90, 70, 40)
+swing_bands = 1
+weather_drop = PackedInt32Array(0, 1, 1, 0, 1)
+weather_spring = PackedFloat32Array(0.35, 0.3, 0.25, 0.05, 0.05)
+weather_summer = PackedFloat32Array(0.65, 0.15, 0.05, 0, 0.15)
+weather_fall = PackedFloat32Array(0.4, 0.35, 0.2, 0.05, 0)
+weather_winter = PackedFloat32Array(0.3, 0.35, 0.05, 0.3, 0)
+persistence = PackedFloat32Array(0.5, 0.5, 0.5, 0.5)
+storm_slots = 24
+before_storm = 0
+intensity_min = PackedFloat32Array(0, 0, 0.2, 0.2, 0.5)
+intensity_max = PackedFloat32Array(0, 0, 1, 1, 1)

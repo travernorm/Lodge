@@ -2,8 +2,9 @@ class_name Calendar
 extends Resource
 ## The game year's rules, as data (REQ-0007, docs/SPECIES_AND_CONDITIONS.md):
 ## four 30-day seasons, six time slots, five weathers, and temperature in 10°F
-## bands. Its one file is data/calendar.tres. Conditions rolls a day from it,
-## and the fish generator reads its activity factors.
+## bands. Its one file is data/calendar.tres. A region's weather is its
+## Climate (REQ-0008); the calendar keeps how slots cool the air, how the water
+## follows it, and the fish generator's activity factors.
 ##
 ## Temperatures are the lower °F of a band: 50 means "the 50s".
 
@@ -20,25 +21,10 @@ const WATER_RANGE_F := Vector2i(30, 70)
 const SPRING_FED_RANGE_F := Vector2i(40, 50)
 
 @export_group("Temperature")
-## The day's air high, lowest and highest band, per season (Spring, Summer,
-## Fall, Winter).
-@export var high_min_f := PackedInt32Array([40, 70, 50, 30])
-@export var high_max_f := PackedInt32Array([60, 90, 70, 40])
 ## Bands below the day's high, per slot (Dawn ... Night).
 @export var slot_drop := PackedInt32Array([2, 1, 0, 0, 1, 2])
 ## Water is the day's high minus this many bands, kept in WATER_RANGE_F.
 @export var water_drop := 2
-
-@export_group("Weather")
-## Chance of each weather (Sunny, Overcast, Rain, Snow, Storm), per season.
-## Each season's five numbers add up to 1.
-@export var weather_spring := PackedFloat32Array([0.35, 0.30, 0.25, 0.05, 0.05])
-@export var weather_summer := PackedFloat32Array([0.65, 0.15, 0.05, 0.0, 0.15])
-@export var weather_fall := PackedFloat32Array([0.40, 0.35, 0.20, 0.05, 0.0])
-@export var weather_winter := PackedFloat32Array([0.30, 0.35, 0.05, 0.30, 0.0])
-## Bands the weather takes off the day's high (Sunny ... Storm). Snow also
-## keeps the high in the 30s.
-@export var weather_drop := PackedInt32Array([0, 1, 1, 0, 1])
 
 @export_group("Fish activity")
 ## How keen fish are to rise in each slot (Dawn ... Night), 0 to 1.
@@ -50,15 +36,6 @@ const SPRING_FED_RANGE_F := Vector2i(40, 50)
 @export_range(0.0, 1.0) var base_appetite := 0.3
 ## Activity never drops below this, so every fish rises now and then.
 @export_range(0.0, 1.0) var min_activity := 0.1
-
-
-## The weather odds for one season.
-func weather_odds(season: Season) -> PackedFloat32Array:
-	match season:
-		Season.SUMMER: return weather_summer
-		Season.FALL: return weather_fall
-		Season.WINTER: return weather_winter
-	return weather_spring
 
 
 ## The day of the year, 0 (Spring 1) to 119 (Winter 30).

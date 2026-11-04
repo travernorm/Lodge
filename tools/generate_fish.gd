@@ -15,6 +15,7 @@ extends SceneTree
 ## --high is the day's air high before the weather, as a band's lower °F.
 
 const CALENDAR := "res://data/calendar.tres"
+const CLIMATE := "res://data/climates/central_oregon.tres"
 
 
 func _initialize() -> void:
@@ -86,19 +87,22 @@ static func _summary(generator: FishGenerator, calendar: Calendar, opts: Diction
 	return lines
 
 
-## The day from the options: each one given is pinned, the rest rolled in
-## the same order as Conditions.roll(), so with none pinned a seed gives the
-## same day as in the game. Then it skips the game's take-roll seed, so the
-## fish match too.
+## The day from the options, the way the game picks it: a year of weather
+## from the seed (REQ-0008), then a season, day and slot in the same order as
+## WeatherYear.roll(), so with none pinned a seed gives the same day as in the
+## game. Each option given is pinned instead; --weather and --high override
+## the year's. Then it skips the game's take-roll seed, so the fish match too.
 static func _day(calendar: Calendar, opts: Dictionary, rng: RandomNumberGenerator, spring_fed: bool) -> Conditions:
+	var climate := load(CLIMATE) as Climate
+	var year := WeatherGenerator.year(climate, calendar, rng.randi())
 	var season: int = opts.get("season", rng.randi_range(0, 3))
 	var day := int(opts.get("day", rng.randi_range(1, Calendar.DAYS_PER_SEASON)))
 	var slot: int = opts.get("slot", rng.randi_range(0, Calendar.Slot.size() - 1))
-	var weather: int = opts.get("weather", Conditions.pick_weather(calendar.weather_odds(season), rng))
-	var bands := (calendar.high_max_f[season] - calendar.high_min_f[season]) / Calendar.BAND
-	var high := int(opts.get("high", calendar.high_min_f[season] + rng.randi_range(0, bands) * Calendar.BAND))
+	var d := year.day(season, day)
+	var weather: int = opts.get("weather", d.weather_in(slot))
+	var high := int(opts.get("high", d.high_f))
 	rng.randi()
-	return Conditions.at(calendar, season, day, slot, weather, high, spring_fed)
+	return Conditions.at(calendar, climate, season, day, slot, weather, high, spring_fed, d.intensity)
 
 
 ## "--key value" pairs. Season, slot and weather names become their enums.

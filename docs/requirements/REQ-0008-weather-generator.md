@@ -1,6 +1,6 @@
 # REQ-0008: Weather generator
 
-Status: draft
+Status: implemented
 
 ## Problem
 
@@ -101,10 +101,19 @@ The fishing node still picks the day per load. It builds the year from the load 
 
 ## Open questions
 
-1. **Spells.** How long should a typical spell be? Recommended: persistence about 0.5 (2 to 3 days on average), tuned in the climate file.
-2. **Climate per region.** Move the weather numbers out of `Calendar` into `data/climates/` now, so Alaska or the Keys is one new file later? Recommended: yes.
-3. **Weather within a day.** Only storms change during a day (sunny morning, afternoon storm), or should rain also clear or set in partway? Recommended: storms only for now.
-4. **Intensity.** Add `intensity` to `Conditions` for the weather visuals (drizzle vs downpour)? Recommended: yes.
+Answered by Traver on 2026-11-04 (all as recommended):
+
+1. **Spells.** Persistence about 0.5 (2 to 3 days on average), tuned in the climate file.
+2. **Climate per region.** Yes: the weather numbers move out of `Calendar` into `data/climates/`.
+3. **Weather within a day.** Only storms change during a day, for now.
+4. **Intensity.** Yes, on `Conditions`, for the weather overlays.
+
+Also from Traver (2026-11-04): when the weather changes, the insects re-roll but the fish stay; fish restock only when the location changes.
+
+## Build notes
+
+* `drift.downstream` moved from `fishing_controller.gd` into `RiverField.downstream_at()` (unchanged behaviour), so the fishing node stays inside its R9 cap with the new signal and `set_conditions()`.
+* `Conditions.roll()` and `Conditions.pick_weather()` are gone: days come from a `WeatherYear`, and `pick_weather()` lives in `WeatherGenerator`. `Conditions.at()` now takes the climate too.
 
 ## Architecture
 
