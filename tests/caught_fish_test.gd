@@ -53,7 +53,8 @@ func _test_broken_off_fish_comes_back() -> void:
 	_check(f.state == Fish.State.HOLDING and f.is_present(), "broke off: a trout takes the lie again")
 
 
-## The fishing controller doesn't keep other trout off a caught fish's lie.
+## The generated fish (REQ-0007) each hold their own lie, and one that breaks
+## off comes back to that same lie with the same length.
 func _test_caught_fish_frees_its_lie() -> void:
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	root.add_child(main)
@@ -64,9 +65,14 @@ func _test_caught_fish_frees_its_lie() -> void:
 	if fishing.fish.size() >= 2:
 		var a: Fish = fishing.fish[0]
 		var b: Fish = fishing.fish[1]
-		_check(a.lie in fishing._lies_except(b), "lies: a trout in the water keeps its lie")
-		a.leave(true)
-		_check(not a.lie in fishing._lies_except(b), "lies: a caught trout's lie is free")
+		_check(a.lie.distance_to(b.lie) >= FishGenerator.LIE_GAP, "lies: two trout hold their own lies")
+		var lie := a.lie
+		var length := a.length_in
+		a.leave()
+		for i in roundi((Fish.GONE_TIME + 0.5) / DT):
+			a.update(DT, Vector2(-100, -100), false)
+		_check(a.state == Fish.State.HOLDING and a.lie == lie and a.length_in == length,
+			"lies: a broken-off trout comes back to its own lie, the same size")
 	main.free()
 
 

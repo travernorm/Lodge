@@ -23,6 +23,13 @@ extends Resource
 ## (1 - selectivity) of the odds under the bite rules.
 @export_range(0.0, 1.0) var selectivity := 0.5
 
+@export_group("Water")
+## The water it can live in, as the lower °F of a 10°F band (40 means the
+## 40s), from the coldest to the warmest. The fish generator leaves it out of
+## water outside this range (REQ-0007).
+@export_range(30, 70, 10) var water_min_f := 30
+@export_range(30, 70, 10) var water_max_f := 70
+
 @export_group("Hook set")
 ## Seconds after the take. Set sooner and you pull the fly away; later and it spits the fly.
 @export var set_min := 0.15
@@ -59,6 +66,11 @@ func wants(insect: Insect) -> float:
 		if entry != null and entry.insect == insect:
 			best = maxf(best, clampf(entry.weight, 0.0, 1.0))
 	return best
+
+
+## True when it can live in water of `water_f` (a band's lower °F).
+func suits_water(water_f: int) -> bool:
+	return water_f >= water_min_f and water_f <= water_max_f
 
 
 ## The fly match factor: 1 - selectivity x (1 - appetite). The right bug is x1,

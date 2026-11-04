@@ -91,6 +91,7 @@ The data folders today, each covered by `tests/data_test.gd`:
 * `data/stretches/`: `Stretch`, one per river location (today the demo freestone).
 * `data/looks/`: `WaterLook`, how the water is painted: the deep, mid and white water textures (in `assets/water/`), tints, and where each one shows by depth and speed. `WaterView` paints it from the river field.
 * `data/cast_tuning.tres`: casting numbers shared by every rule set.
+* `data/calendar.tres`: `Calendar`, the year's rules (REQ-0007): season temperature ranges, weather odds, how slots and weather lower the temperature, and how keen fish are in each slot and weather. Not in the catalog; the fishing node takes it as an export.
 * `data/catalog.tres`: the index of every fish, fly, insect and stretch (generated, see below).
 
 The content sheets in `content/` (`insects.csv`, `flies.csv`, `rods.csv`, `fish.csv`) are the spreadsheet view of the archetype folders: one row per file, one column per exported field. `tools/import_content.gd` checks every cell and writes the `.tres` files; the game never reads the sheets (the folder has a `.gdignore`), and `tests/content_test.gd` keeps them in step with `data/`. See TOOLING.md, "Content sheets".
@@ -175,7 +176,7 @@ var on_water: bool
 *Owned by the river hydraulics thread.*
 
 * **Owns:** one `RiverField` per stretch: velocity, depth, seams, lie scores, water and rock masks. Read-only to everyone else: `flow_at`, `depth_at`, `lie_at`, `is_water`, `pick_lie`.
-* **Data:** `Stretch`: shape, a spawn table (`SpawnEntry`) and a list of features (`RiverFeature`, one script per kind in `scripts/river/features/`: `Boulder`, `FallenLog`, `Eddy`, `GravelBar`). The field runs the features through hooks (`blocks`, `shape_flow`, `calm`, `swirl`, `prepare`) and names no kind, so a new kind is one new script and a new feature in a river is one entry (REQ-0004 C3). Views draw boulders and logs with their own art and outline any other kind from its `footprint()`. Built at load today; baked offline later (backlog). `tests/fixtures/demo_field.txt` records the demo stretch's water so `river_test` catches any unintended change; re-record it with `tools/record_field_fixture.gd` only when a change to the water is intended.
+* **Data:** `Stretch`: shape, a spawn table (`SpawnEntry`: species, abundance, season window), how rich it is (`fish_per_100m`), a hatch table (`HatchEntry`: insect, season window, slots, weathers, strength), `spring_fed`, and a list of features (`RiverFeature`, one script per kind in `scripts/river/features/`: `Boulder`, `FallenLog`, `Eddy`, `GravelBar`). The field runs the features through hooks (`blocks`, `shape_flow`, `calm`, `swirl`, `prepare`) and names no kind, so a new kind is one new script and a new feature in a river is one entry (REQ-0004 C3). Views draw boulders and logs with their own art and outline any other kind from its `footprint()`. Built at load today; baked offline later (backlog). `tests/fixtures/demo_field.txt` records the demo stretch's water so `river_test` catches any unintended change; re-record it with `tools/record_field_fixture.gd` only when a change to the water is intended.
 * **Today:** `stream_scene.gd` (451 lines) builds the field, walks the angler, runs the camera, generates textures and draws the water (R9). `AnglerView` (`scripts/angler_view.gd`) draws the angler from Traver's sprite (`assets/angler/idle.png`, 8 views in a row in the fly sheets' order) and the rod; the stream scene owns it and tells it where the angler stands and faces. Fishing reads `river` and `stretch` from it by name (R3). **Target:** a `RiverView`, an `Angler` node and a camera owner, with the field and stretch handed to the session (step A2, agreed with the river thread).
 
 ### 3.5 Flies and the fly box
@@ -195,10 +196,12 @@ The design is in [FISH_LOGIC.md](FISH_LOGIC.md): generation (per season or visit
 | `FishSpecies` | Data | What's true of every fish of the kind: diet, selectivity, hook-set window, fight stats, sizes. Later habitat preference, temperature range, light preference. Not where it lives (R12). |
 | `Fish` | Model | This fish: length, lie, state; later mood, hunger, wariness, refusals. |
 | `DriftPastRules` | Rule set | The bite roll: lane, landing and drift shares × fly match. The only bite rules since 2026-11-02. |
-| `Population` (planned) | Model | The fish in one stretch, generated from the stretch's spawn table and the river's lies, kept between visits. |
+| `FishGenerator` | Model | Stocks a stretch for one day from its spawn and hatch tables, the `Conditions` and the river's lies (REQ-0007). |
+| `FishPlan` | Model (value) | One generated fish: species, length, lie, lie score, activity. |
+| `Population` (planned) | Model | The generated fish, kept between visits (needs saves). |
 | `MoodRules` (planned) | Rule set | `Conditions` plus a fish's own state into mood and feeding depth. |
 
-* **Today:** each stretch's spawn table (`Stretch.spawn`, `SpawnEntry`: species and count) stocks it, and each fish takes a lie from `RiverField.pick_lie()` over the whole stretch (REQ-0004 C2). A species carries nothing about any place, and its diet is typed `DietEntry`s. Presentation arrives as a string and fish events are `StringName`s (R6, step C). The hook-set window check lives in `Fish.try_set()` (step C).
+* **Today:** `FishGenerator` (REQ-0007) stocks a stretch for one day. It reads the stretch's spawn table (`SpawnEntry`: abundance and season window), `fish_per_100m`, the hatch table, the day's `Conditions` and the river's lies (scanned once). It returns `FishPlan`s: species, length leaning small, the biggest fish on the best lies, and an activity that scales how often each fish rises. A fish built from a plan returns to its own lie after a break-off. `tools/generate_fish.gd` runs it on any stretch from the command line. A species carries nothing about any place, and its diet is typed `DietEntry`s. Presentation arrives as a string and fish events are `StringName`s (R6, step C). The hook-set window check lives in `Fish.try_set()` (step C).
 
 ### 3.7 Hook set and fight
 
@@ -214,8 +217,9 @@ The design is in [FISH_LOGIC.md](FISH_LOGIC.md): generation (per season or visit
 
 Design target in [SPECIES_AND_CONDITIONS.md](SPECIES_AND_CONDITIONS.md): four 30-day seasons, six day slots, 10°F temperature bands, five weathers, hatches.
 
-* `Clock` autoload: day, slot, season. The only global time; models get it passed in (R8).
-* `Conditions` value, rebuilt about once per game hour: season, slot, weather, water temperature and level, the active hatch. Fish, mood rules and views read it, never the clock.
+* `Calendar` (data, `data/calendar.tres`): the `Season`, `Slot` and `Weather` enums and the year's numbers. `SeasonWindow` (data): a span of the year, used by spawn and hatch entries.
+* `Conditions` (REQ-0007): season, day, slot, weather, air and water bands. *Today* the fishing node owns it: it rolls one per load from its seed (`stock(conditions, seed)`, or an exported fixed day), and the debug overlay shows it with the hatch and the seed. One seed splits into the day, the generator's streams and the take rolls (R8).
+* `Clock` autoload (planned): day, slot, season. The only global time; it will build the same `Conditions`, about once per game hour, and nothing that reads them changes.
 
 ### 3.10 Modes and later systems
 
@@ -289,7 +293,7 @@ Autoloads: Controls, Clock, SaveGame
 | Presentation strings, fish event `StringName`s | **Drifts** (R6, step C) |
 | Catches as dictionaries of resources; no catalog or game state | **Drifts** (R5, step D) |
 | Spawn table on `Stretch`; typed `DietEntry` diets | **Fits** (R5, R12, REQ-0004 C2) |
-| `randomize()` in two places; a `_time` per controller | **Minor** (R8, step G) |
+| One seed per load for the day, the fish and the take rolls (REQ-0007); `randomize()` left in `cast_model.gd`; a `_time` per controller | **Minor** (R8, step G) |
 | `FlyPattern.draw_at()` | **Minor** (R1 debt until fly art) |
 
 ---
@@ -313,9 +317,8 @@ The rules marked "Review" (R2, R6, R12) are checked by the PR template's Archite
 | R3 | `scripts/fishing/fishing_controller.gd` | 4 reaches | Step B |
 | R3 | `scripts/casting/cast_controller.gd` | 2 reaches | Step B |
 | R3 | `scripts/casting/cast_practice.gd` | 3 reaches | Step B |
-| R8 | `scripts/fishing/fishing_controller.gd` (`randomize`) | 1 | Step G |
 | R8 | `scripts/casting/cast_model.gd` (`randomize`) | 1 | Step G |
-| R9 | `scripts/fishing/fishing_controller.gd` | 615 lines | Step A |
+| R9 | `scripts/fishing/fishing_controller.gd` | 614 lines | Step A |
 | R9 | `scripts/stream_scene.gd` | 451 lines | Step A2 |
 | R9 | `scripts/river/river_field.gd` | 623 lines | Split builder from queries (river thread) |
 
@@ -337,7 +340,7 @@ Small steps, each its own REQ and PR, each leaving the game playing the same unl
 | **D** | ~~`data/catalog.tres`~~ (done in REQ-0004 C1); `GameState` with `CatchJournal` (ids) and `FlyBox`. | R5 | A |
 | **E** | ~~Data hygiene: spawn table, `DietEntry`, remove `bite_range_m` and the landing roll~~ (done in REQ-0004 C2). | R5, R12 | — |
 | **F** | Folders by layer (`scripts/<system>/models`, `views`, ...), done in the Godot editor so references follow. Optional, after B. | — | B |
-| **G** | `Clock` and `Conditions`; one seed per day split into RNG streams (generation, mood, take, cast) and shown in the debug overlay; then `MoodRules` and `Population`. | R8 | E |
+| **G** | `Clock` and `Conditions`; one seed per day split into RNG streams (generation, mood, take, cast) and shown in the debug overlay; then `MoodRules` and `Population`. *`Conditions`, the seed streams for generation and take, and `FishGenerator` were done in REQ-0007; `Clock`, the cast stream, `MoodRules` and `Population` remain.* | R8 | E |
 | **Later** | Nymph (`DepthDriftModel`), streamer (`RetrieveModel`), hatches, tying, saves. Each adds a model and data, not edits to existing models. | — | The above |
 
 Every step is a refactor of game code, so each needs Traver's go-ahead like any feature. Only step G and later change what a player sees.
@@ -360,6 +363,9 @@ Every script, its layer and its system. `architecture_test.gd` fails if a script
 | `scripts/casting/cast_tuning.gd` | `CastTuning` | Data | Casting |
 | `scripts/casting/rules/tempo_rules.gd` | `TempoCastRules` | Rule set (data) | Casting |
 | `scripts/casting/rules/tiered_rules.gd` | `TieredCastRules` | Rule set (data) | Casting |
+| `scripts/conditions/calendar.gd` | `Calendar` | Data | Conditions |
+| `scripts/conditions/conditions.gd` | `Conditions` | Model (value; a `Resource` so a fixed day can be set in the inspector) | Conditions |
+| `scripts/conditions/season_window.gd` | `SeasonWindow` | Data | Conditions |
 | `scripts/controls.gd` | `Controls` (autoload) | Service | Input |
 | `scripts/data/catalog.gd` | `Catalog` | Data (index) | All content |
 | `scripts/debug_overlay.gd` | (node) | View | UI and modes |
@@ -367,6 +373,8 @@ Every script, its layer and its system. `architecture_test.gd` fails if a script
 | `scripts/fishing/drift_model.gd` | `DriftModel` | Model | Fishing (line) |
 | `scripts/fishing/fight_model.gd` | `FightModel` | Model | Fishing (fight) |
 | `scripts/fishing/fish.gd` | `Fish` | Model | Fishing (fish) |
+| `scripts/fishing/fish_generator.gd` | `FishGenerator` | Model | Fishing (fish) |
+| `scripts/fishing/fish_plan.gd` | `FishPlan` | Model (value) | Fishing (fish) |
 | `scripts/fishing/fish_species.gd` | `FishSpecies` | Data | Fishing (fish) |
 | `scripts/fishing/fishing_controller.gd` | (node) | Session + views, to split | Fishing |
 | `scripts/fishing/insect.gd` | `Insect` | Data | Fishing (flies, diets) |
@@ -376,6 +384,7 @@ Every script, its layer and its system. `architecture_test.gd` fails if a script
 | `scripts/river/features/eddy.gd` | `Eddy` | Data (river feature) | River |
 | `scripts/river/features/fallen_log.gd` | `FallenLog` | Data (river feature) | River |
 | `scripts/river/features/gravel_bar.gd` | `GravelBar` | Data (river feature) | River |
+| `scripts/river/hatch_entry.gd` | `HatchEntry` | Data (place) | River, fish |
 | `scripts/river/river_feature.gd` | `RiverFeature` | Data (base for river features) | River |
 | `scripts/river/river_field.gd` | `RiverField` | Model | River |
 | `scripts/river/spawn_entry.gd` | `SpawnEntry` | Data (place) | River, fish |
@@ -410,6 +419,7 @@ Newest last. Read these before changing something that looks odd.
 | 2026-11-03 | Typed references between data, ids only in saves; a catalog; kinds separate from places | Audit: matches how larger data-driven games stay consistent as content grows. |
 | 2026-11-03 | Adding content means adding a data file, never editing code (REQ-0004: catalog, spawn tables, river feature kit) | Traver: the architecture should make content cheap to add at scale. |
 | 2026-11-03 | Flies and rods are "tackle" (`data/tackle/`, `scripts/tackle/`); a rod sets fly types, longest line, forgiveness and fish rating (REQ-0005) | Traver asked for rods grouped with flies; "tackle" avoids clashing with the repo's `tools/`. |
+| 2026-11-04 | A seeded fish generator stocks any stretch from its spawn and hatch tables and the day's conditions; conditions are rolled per load until the clock exists (REQ-0007) | Traver: a repeatable generator for any stretch, driven by the river and the weather and date. |
 
 ## 13. Open questions for Traver
 

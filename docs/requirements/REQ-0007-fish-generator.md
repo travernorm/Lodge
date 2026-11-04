@@ -1,6 +1,6 @@
 # REQ-0007: Fish generator
 
-Status: review
+Status: implemented
 
 ## Problem
 

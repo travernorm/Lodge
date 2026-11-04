@@ -30,7 +30,8 @@ func _initialize() -> void:
 	_test_cast_rules(rules)
 	_test_scene_wiring(flies, fish, rules)
 	_test_input_parity()
-	_test_stretches(fish)
+	_test_stretches(fish, insects)
+	_test_calendar(fish)
 	_test_take_rules()
 	_test_water_looks()
 	_test_catalog(flies, fish, insects, _load_dir("res://data/stretches", "Stretch"), rods)
@@ -206,8 +207,9 @@ func _test_scene_wiring(flies: Dictionary, fish: Dictionary, rules: Dictionary) 
 	for fly in fishing.tackle.flies:
 		_check(fly != null and flies.has(fly.resource_path), "scene: fly box entry %s is a data/tackle/flies file" % _path(fly))
 	var stretch: Stretch = _main.stretch
-	_check(stretch != null and stretch.stocked().size() > 0, "scene: the stretch's spawn table stocks the stream")
-	for sp in (stretch.stocked() if stretch != null else []):
+	_check(stretch != null and stretch.fish_count() > 0 and not stretch.spawn.is_empty(), "scene: the stretch's spawn table stocks the stream")
+	for entry in (stretch.spawn if stretch != null else []):
+		var sp: FishSpecies = entry.species if entry != null else null
 		_check(sp != null and fish.has(sp.resource_path), "scene: spawn table species %s is a data/fish file" % _path(sp))
 	var in_chassis := {}
 	for r in practice.chassis:
@@ -281,7 +283,7 @@ func _test_input_parity() -> void:
 
 ## Every stretch: a river that crosses the map, the angler on dry land, every
 ## feature in the river, and trout that are real species.
-func _test_stretches(fish: Dictionary) -> void:
+func _test_stretches(fish: Dictionary, insects: Dictionary) -> void:
 	var stretches := _load_dir("res://data/stretches", "Stretch")
 	_check(not stretches.is_empty(), "there is at least one stretch")
 	for path in stretches:
@@ -308,7 +310,55 @@ func _test_stretches(fish: Dictionary) -> void:
 		for entry in st.spawn:
 			var sp: FishSpecies = entry.species if entry != null else null
 			_check(sp != null and fish.has(sp.resource_path), "stretch %s: spawn entry %s is in data/fish" % [stem, sp.id if sp != null else "?"])
-			_check(entry != null and entry.count >= 1, "stretch %s: spawn entry %s stocks at least one fish" % [stem, sp.id if sp != null else "?"])
+			_check(entry != null and entry.abundance > 0.0 and entry.abundance <= 1.0, "stretch %s: spawn entry %s has an abundance in (0, 1]" % [stem, sp.id if sp != null else "?"])
+			_check(entry == null or _window_ok(entry.window), "stretch %s: spawn entry %s has a valid season window" % [stem, sp.id if sp != null else "?"])
+		var seen := {}
+		for entry in st.spawn:
+			if entry != null and entry.species != null:
+				_check(not seen.has(entry.species), "stretch %s: %s appears once in the spawn table" % [stem, entry.species.id])
+				seen[entry.species] = true
+		_check(st.fish_per_100m > 0.0 and st.fish_count() > 0, "stretch %s: fish_per_100m stocks at least one fish" % stem)
+		for n in st.hatches.size():
+			var h: HatchEntry = st.hatches[n]
+			_check(h != null and h.insect != null and insects.has(h.insect.resource_path),
+				"stretch %s: hatch %d is a bug in data/insects" % [stem, n])
+			_check(h == null or (_window_ok(h.window) and h.slots != 0 and h.weathers != 0),
+				"stretch %s: hatch %d has a valid window, slots and weathers" % [stem, n])
+
+
+## A season window, if there is one, has days 1 to 30.
+func _window_ok(w: SeasonWindow) -> bool:
+	return w == null or (w.from_day >= 1 and w.from_day <= 30 and w.to_day >= 1 and w.to_day <= 30)
+
+
+## The calendar (REQ-0007): one number per season, slot and weather in each
+## list, and each season's weather odds add up to 1. The hatch flags name the
+## slots and weathers in the calendar's order.
+func _test_calendar(fish: Dictionary) -> void:
+	var cal := load("res://data/calendar.tres") as Calendar
+	_check(cal != null, "data/calendar.tres loads as a Calendar")
+	if cal == null:
+		return
+	var seasons := Calendar.Season.size()
+	_check(cal.high_min_f.size() == seasons and cal.high_max_f.size() == seasons, "calendar: a temperature range per season")
+	for i in seasons:
+		_check(cal.high_min_f[i] <= cal.high_max_f[i] and cal.high_min_f[i] % 10 == 0 and cal.high_max_f[i] % 10 == 0,
+			"calendar: season %d's highs are whole bands, low to high" % i)
+		var odds := cal.weather_odds(i)
+		var total := 0.0
+		for p in odds:
+			total += p
+		_check(odds.size() == Calendar.Weather.size() and absf(total - 1.0) < 0.001, "calendar: season %d's weather odds add up to 1" % i)
+	_check(cal.slot_drop.size() == Calendar.Slot.size() and cal.slot_activity.size() == Calendar.Slot.size(), "calendar: a number per slot")
+	_check(cal.weather_drop.size() == Calendar.Weather.size() and cal.weather_activity.size() == Calendar.Weather.size(), "calendar: a number per weather")
+	for prop in HatchEntry.new().get_property_list():
+		if prop.name == "slots":
+			_check(prop.hint_string.split(",").size() == Calendar.Slot.size(), "hatch slots: one flag per calendar slot")
+		elif prop.name == "weathers":
+			_check(prop.hint_string.split(",").size() == Calendar.Weather.size(), "hatch weathers: one flag per calendar weather")
+	for path in fish:
+		var sp: FishSpecies = fish[path]
+		_check(sp.water_min_f <= sp.water_max_f, "fish %s: water range runs cold to warm" % sp.id)
 
 
 ## Every water look has all three textures, and they're square, so they tile.

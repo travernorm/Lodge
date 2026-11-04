@@ -50,11 +50,13 @@ func _run() -> void:
 			_fail("A node in main.tscn is missing or its script didn't load (%s)" % pair[1])
 			return
 
-	# Same rolls every run, and a trout that always bites a fly put on its nose.
-	_fishing._rng.seed = 7
+	# Same day, fish and rolls every run (REQ-0007), and a trout that always
+	# bites a fly put on its nose.
+	_fishing.stock(null, int(OS.get_environment("LODGE_SEED")) if OS.has_environment("LODGE_SEED") else 7)
 	_trout = _fishing.fish[0]
 	_trout.species = _trout.species.duplicate()
 	_trout.species.bite_chance = 1.0
+	_trout.species.selectivity = 0.0  # whatever species it is, it takes the tied-on fly
 	# Put the trout wherever the fly is about to land, whatever the rule set.
 	_cast.model.delivered.connect(func(_offset: Vector2, _q: float):
 		if _trout.state == Fish.State.HOLDING:

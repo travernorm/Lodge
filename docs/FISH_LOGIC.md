@@ -172,7 +172,7 @@ Each layer is tried as a bite rules variant, with its factors on screen. Traver 
 4. **Fly match:** built 2026-11-02 (REQ-0003) as the "Match the fly" bite rules, then folded into Drift past when the other rules were dropped. Drift past × fly match, where fly match = 1 − selectivity × (1 − appetite), and appetite is the fish's highest `diet` weight among the bugs the fly imitates. Diets are fixed per species for now.
 5. **One hatch:** a fixed caddis hatch that raises the diet weight of what's coming off, and selectivity when it's thick.
 6. **Mood from time of day:** the hatch comes and goes over a day, and mood follows it.
-7. **Generation from lies:** several fish placed from the river field's lie scores, biggest in the best lies.
+7. **Generation from lies:** several fish placed from the river field's lie scores, biggest in the best lies. Built 2026-11-04 (REQ-0007) as `FishGenerator`, with the season window, water temperature and abundance from step 8, and the hatch lifting how often fish rise. Resting and feeding lies, water types and persistence are still to come.
 8. **Seasons and weather:** the full conditions snapshot.
 
 Steps 1 to 3 need nothing new from other systems. Step 4 is built. Step 7 needs the river thread's lie work (PR #7, then resting and feeding scores). Step 8 needs the `Clock`.

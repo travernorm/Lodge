@@ -28,21 +28,37 @@ extends Resource
 @export var features: Array[RiverFeature] = []
 ## Where the angler starts (m), on dry land.
 @export var angler_start := Vector2(10, 5)
-## The spawn table: which species live here and how many. Each fish takes its
-## own lie from the river field.
+## The spawn table (REQ-0007): which species live here, how common each is,
+## and when. FishGenerator picks each fish from it.
 @export var spawn: Array[SpawnEntry] = []
+## How rich the water is: fish per 100 m of river, measured along the
+## centreline inside the map.
+@export_range(0.1, 20.0) var fish_per_100m := 2.7
+## The insects in this water, and when each one hatches.
+@export var hatches: Array[HatchEntry] = []
+## Spring-fed water stays in the 40s and 50s all year instead of following
+## the air (REQ-0007).
+@export var spring_fed := false
 
 
-## One species per fish, in spawn-table order: each entry repeated `count`
-## times.
-func stocked() -> Array[FishSpecies]:
-	var out: Array[FishSpecies] = []
-	for entry in spawn:
-		if entry == null or entry.species == null:
-			continue
-		for i in entry.count:
-			out.append(entry.species)
-	return out
+## How many fish the stretch holds: fish_per_100m over the river's length.
+func fish_count() -> int:
+	return roundi(fish_per_100m * river_length_m() / 100.0)
+
+
+## Length (m) of the centreline inside the map.
+func river_length_m() -> float:
+	var bounds := Rect2(Vector2.ZERO, size_m)
+	var total := 0.0
+	for i in range(1, centreline.size()):
+		var a := centreline[i - 1]
+		var b := centreline[i]
+		var steps := maxi(ceili(a.distance_to(b) / 0.5), 1)
+		for k in steps:
+			var mid := a.lerp(b, (k + 0.5) / steps)
+			if bounds.has_point(mid):
+				total += a.distance_to(b) / steps
+	return total
 
 
 ## Thalweg depth (0..1) at fraction `u` along the river.
