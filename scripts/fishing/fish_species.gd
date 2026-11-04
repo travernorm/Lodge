@@ -29,6 +29,10 @@ extends Resource
 ## water outside this range (REQ-0007).
 @export_range(30, 70, 10) var water_min_f := 30
 @export_range(30, 70, 10) var water_max_f := 70
+## The kinds of water it likes (riffle, pool, seam...), each 0 to 1 (REQ-0010).
+## The fish generator stocks a lie with species weighted by this. Types it
+## doesn't list get the rules' stray weight; an empty list likes all water.
+@export var habitat: Array[HabitatEntry] = []
 
 @export_group("Hook set")
 ## Seconds after the take. Set sooner and you pull the fly away; later and it spits the fly.
@@ -66,6 +70,18 @@ func wants(insect: Insect) -> float:
 		if entry != null and entry.insect == insect:
 			best = maxf(best, clampf(entry.weight, 0.0, 1.0))
 	return best
+
+
+## How much it likes water of `type` (a WaterTypeRules.WaterType), 0 to 1:
+## its habitat weight, `stray` when the list leaves the type out, and 1 for
+## every type when it has no habitat list.
+func habitat_for(type: int, stray: float) -> float:
+	if habitat.is_empty():
+		return 1.0
+	for entry in habitat:
+		if entry != null and entry.type == type:
+			return clampf(entry.weight, 0.0, 1.0)
+	return stray
 
 
 ## True when it can live in water of `water_f` (a band's lower °F).

@@ -1,6 +1,6 @@
 # REQ-0010: Water types per lie
 
-Status: draft
+Status: implemented
 
 ## Problem
 
@@ -100,6 +100,17 @@ Fish count, season, temperature, hatch and activity don't change. Bite odds don'
 1. **The seven types.** Riffle, Run, Pool, Tail-out, Pocket, Seam, Eddy now, and Undercut with cover features later. (Recommended.)
 2. **Fish off their water.** Unlisted types get 0.2, so strays happen. Or 0, so a species never leaves its listed water. (Recommended: 0.2.)
 3. **One type per cell.** A seam through a pool counts as Seam, not both. (Recommended: one type, simplest to read and to tune.)
+
+## As built
+
+Approved by Traver 2026-11-04 with the recommended answers (seven types, stray weight 0.2, one type per cell). Changes from the draft:
+
+* **Redband habitat** is Seam 1, Pocket 0.8, Riffle 0.6. Most of today's lies are pockets behind the boulders, and the draft's redband (no Pocket) would have made brook trout the commonest fish.
+* **Stray weight** lives in `water_types.tres`, not on each species.
+* **The generator** sorts only its candidate lies (`WaterTypes.at`), so stocking stays fast. The full map is built by the debug overlay the first time its view opens (about half a second, debug only).
+* **The debug view** is a new fourth view (F1 / Create cycles controller, read the water, water types), not a tint on the read-the-water view, which was already busy. It labels each trout's lie with its water.
+* **Acceptance 4** is checked on today's lies (seams and pockets) until REQ-0011 puts fish in the pool.
+* `fishing_controller.gd` and `river_field.gd` are untouched; the overlay finds the rules through `WaterTypeRules.shared()`.
 
 ## Architecture
 

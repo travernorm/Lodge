@@ -32,6 +32,7 @@ func _initialize() -> void:
 	_test_input_parity()
 	_test_stretches(fish, insects)
 	_test_calendar(fish)
+	_test_water_types(fish)
 	_test_climates(_load_dir("res://data/climates", "Climate"))
 	_test_take_rules()
 	_test_water_looks()
@@ -331,6 +332,26 @@ func _test_stretches(fish: Dictionary, insects: Dictionary) -> void:
 ## A season window, if there is one, has days 1 to 30.
 func _window_ok(w: SeasonWindow) -> bool:
 	return w == null or (w.from_day >= 1 and w.from_day <= 30 and w.to_day >= 1 and w.to_day <= 30)
+
+
+## Water types (REQ-0010): the rules file loads with sane thresholds, and every
+## habitat line names a real type, once per species, with a weight in 0..1.
+func _test_water_types(fish: Dictionary) -> void:
+	var r := load(WaterTypeRules.PATH) as WaterTypeRules
+	_check(r != null, "data/water_types.tres loads as WaterTypeRules")
+	if r == null:
+		return
+	_check(r.riffle_depth < r.pool_depth and r.tail_min_depth < r.pool_depth,
+		"water types: riffles and tail-outs are shallower than pools")
+	_check(r.pocket_reach > 0.0 and r.tail_look > 0.0 and r.tail_reach > 0.0, "water types: reaches are positive")
+	for id in fish:
+		var seen := {}
+		for e in fish[id].habitat:
+			_check(e != null and e.type >= 0 and e.type < WaterTypeRules.WaterType.size(), "%s: habitat names a water type" % id)
+			_check(e == null or not seen.has(e.type), "%s: each water type once in its habitat" % id)
+			_check(e == null or (e.weight >= 0.0 and e.weight <= 1.0), "%s: habitat weight in 0..1" % id)
+			if e != null:
+				seen[e.type] = true
 
 
 ## The calendar (REQ-0007): one number per season, slot and weather in each

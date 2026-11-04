@@ -1,13 +1,29 @@
-[gd_resource type="Resource" script_class="FishSpecies" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="FishSpecies" load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1_species"]
 [ext_resource type="Script" path="res://scripts/fishing/diet_entry.gd" id="2_diet"]
 [ext_resource type="Resource" path="res://data/insects/caddis.tres" id="3_caddis"]
+[ext_resource type="Script" path="res://scripts/fishing/habitat_entry.gd" id="3_q3eww"]
 
 [sub_resource type="Resource" id="diet_caddis"]
 script = ExtResource("2_diet")
 insect = ExtResource("3_caddis")
 weight = 1.0
+
+[sub_resource type="Resource" id="Resource_e5wma"]
+script = ExtResource("3_q3eww")
+type = 0
+weight = 1.0
+
+[sub_resource type="Resource" id="Resource_16qr3"]
+script = ExtResource("3_q3eww")
+type = 1
+weight = 0.8
+
+[sub_resource type="Resource" id="Resource_kymnj"]
+script = ExtResource("3_q3eww")
+type = 3
+weight = 0.6
 
 [resource]
 script = ExtResource("1_species")
@@ -20,6 +36,7 @@ diet = Array[ExtResource("2_diet")]([SubResource("diet_caddis")])
 selectivity = 0.6
 water_min_f = 30
 water_max_f = 60
+habitat = Array[ExtResource("3_q3eww")]([SubResource("Resource_e5wma"), SubResource("Resource_16qr3"), SubResource("Resource_kymnj")])
 set_min = 0.25
 set_max = 0.85
 pull = 0.75

@@ -1,6 +1,7 @@
 extends Control
 ## Debug overlays. Select/View (Create on a PS5 pad, F1 on keyboard) cycles:
-## hidden -> controller view -> read-the-water view -> hidden. Starts hidden.
+## hidden -> controller view -> read-the-water view -> water types view ->
+## hidden. Starts hidden.
 ##
 ## Controller view:
 ## The top strip is a 2 second timeline of the L and R bumpers, which is how
@@ -12,6 +13,10 @@ extends Control
 ## (longer and whiter is faster), the thalweg (deepest, fastest line), seams
 ## (where the speed changes sharply), green cells where a trout would hold, and
 ## a white ring where each trout is actually holding.
+##
+## Water types view tints the water by the kind an angler would name it
+## (REQ-0010: riffle, run, pool, tail-out, pocket, seam, eddy), with a key, and
+## labels each trout's lie with its water.
 
 const HISTORY_SECONDS := 2.0
 const FONT_SIZE := 8
@@ -27,8 +32,13 @@ const COL_THALWEG := Color("f2c35a")
 const COL_SEAM := Color("f2a65a")
 const COL_LIE := Color("8fd16a")
 const ARROW_GRID := 12.0
+## Water types view: a colour per WaterTypeRules.WaterType, in enum order.
+const COL_TYPES: Array[Color] = [
+	Color("e8d36a"), Color("6f9fd8"), Color("2a3f9a"), Color("3fa7a0"),
+	Color("f2a65a"), Color("d86ad0"), Color("e0503c"),
+]
 
-enum View { HIDDEN, CONTROLS, WATER }
+enum View { HIDDEN, CONTROLS, WATER, TYPES }
 
 ## The view changed. main.tscn tells the weather view, whose debug key steps
 ## through its versions while any view is open.
@@ -44,6 +54,10 @@ var _overlap_start := -1.0
 var _last_r_ms := 0
 var _last_l_ms := 0
 var _last_overlap_ms := 0
+## The water types view's map, sorted the first time the view opens, and the
+## field it was sorted from.
+var _types: WaterTypes
+var _types_of: RiverField
 
 
 func _ready() -> void:
@@ -94,6 +108,9 @@ func _track(r: bool, l: bool) -> void:
 func _draw() -> void:
 	if view == View.WATER:
 		_draw_water()
+		return
+	if view == View.TYPES:
+		_draw_types()
 		return
 	var font := ThemeDB.fallback_font
 	var w := size.x
@@ -232,3 +249,47 @@ func _draw_water() -> void:
 	draw_string(font, Vector2(126, 21), "trout lies", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_LIE)
 	if not fly_line.is_empty():
 		draw_string(font, Vector2(8, 30), fly_line, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_TEXT)
+
+
+func _draw_types() -> void:
+	var stream := get_tree().get_first_node_in_group(&"stream")
+	if stream == null:
+		return
+	var river: RiverField = stream.river
+	if _types_of != river:
+		_types = WaterTypes.classify(river, WaterTypeRules.shared())
+		_types_of = river
+	var origin: Vector2 = stream.screen_origin() if stream.has_method(&"screen_origin") else Vector2.ZERO
+	var view_m := Rect2(WorldScale.vec_to_m(origin), WorldScale.vec_to_m(size))
+	# Every other cell is plenty to read the water and keeps the view cheap.
+	var step := 2
+	var block := Vector2.ONE * WorldScale.to_px(RiverField.CELL * step)
+	var i0 := maxi(0, floori(view_m.position.x / RiverField.CELL))
+	var i1 := mini(river.cols - 1, ceili(view_m.end.x / RiverField.CELL))
+	var j0 := maxi(0, floori((view_m.position.y - river.top) / RiverField.CELL))
+	var j1 := mini(river.rows - 1, ceili((view_m.end.y - river.top) / RiverField.CELL))
+	draw_set_transform(-origin)
+	for j in range(j0 - j0 % step, j1 + 1, step):
+		for i in range(i0 - i0 % step, i1 + 1, step):
+			var t := _types.cells[j * river.cols + i]
+			if t != 255:
+				var c := WorldScale.vec_to_px(river.cell_pos(i, j))
+				draw_rect(Rect2(c - block * 0.5, block), Color(COL_TYPES[t], 0.55))
+	var font := ThemeDB.fallback_font
+	var fishing := get_tree().get_first_node_in_group(&"fishing")
+	if fishing != null:
+		for f in fishing.fish:
+			if f.state != Fish.State.CAUGHT:
+				var at := WorldScale.vec_to_px(f.lie)
+				draw_arc(at, 3.5, 0.0, TAU, 12, COL_FAST, 1.0)
+				draw_string(font, at + Vector2(5, 3), WaterTypeRules.label(_types.type_at(f.lie)),
+					HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_FAST)
+	draw_set_transform(Vector2.ZERO)
+	draw_rect(Rect2(4, 4, 250, 22), COL_PANEL)
+	draw_string(font, Vector2(8, 12), "WATER TYPES", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_TEXT)
+	draw_string(font, Vector2(174, 12), "F1 / View: hide", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, Color(COL_TEXT, 0.6))
+	var x := 8.0
+	for t in WaterTypeRules.LABELS.size():
+		var name := WaterTypeRules.LABELS[t]
+		draw_string(font, Vector2(x, 21), name, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_TYPES[t].lightened(0.2))
+		x += font.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x + 6.0
