@@ -49,6 +49,8 @@ A new `Climate` resource holds a region's weather. `data/climates/central_oregon
 
 Whoever owns the current `Conditions` emits `conditions_changed(conditions)` whenever it changes, so views repaint without polling. Today that's the fishing node, once per `stock()`; later it's the `Clock`, once per slot, with the same signal.
 
+When the conditions change (a new slot, or the weather turning), the fish stay where they are and only what depends on the day is worked out again: the active hatch and each fish's activity. Fish are restocked only when the location changes (Traver, 2026-11-04). The fishing node gets a small `set_conditions(c)` for this, beside `stock()`.
+
 ### 4. Before the clock
 
 The fishing node still picks the day per load. It builds the year from the load seed, picks a season, day and slot from it, and asks the year for that slot's `Conditions`. The debug overlay adds the spell ("rain, day 2 of 3") and the intensity. When `Clock` arrives it holds the year and walks it, and nothing that reads `Conditions` changes.
