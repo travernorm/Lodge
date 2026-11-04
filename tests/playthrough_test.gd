@@ -60,6 +60,7 @@ func _run() -> void:
 	_trout.species = _trout.species.duplicate()
 	_trout.species.bite_chance = 1.0
 	_trout.species.selectivity = 0.0  # whatever species it is, it takes the tied-on fly
+	_trout.resting = false  # and isn't slow to come up for a dry (REQ-0011)
 	# Put the trout wherever the fly is about to land, whatever the rule set.
 	_cast.model.delivered.connect(func(_offset: Vector2, _q: float):
 		if _trout.state == Fish.State.HOLDING:

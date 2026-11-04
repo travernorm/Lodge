@@ -31,6 +31,7 @@ const COL_FAST := Color("f4efe0")
 const COL_THALWEG := Color("f2c35a")
 const COL_SEAM := Color("f2a65a")
 const COL_LIE := Color("8fd16a")
+const COL_REST := Color("6ec3e0")
 const ARROW_GRID := 12.0
 ## Water types view: a colour per WaterTypeRules.WaterType, in enum order.
 const COL_TYPES: Array[Color] = [
@@ -47,6 +48,7 @@ signal view_changed(view: int)
 var view := View.HIDDEN
 
 var _time := 0.0
+var _resting: RestingLies  # scored once for the read-the-water view
 var _history: Array[Vector3] = []  # x = time, y = R held, z = L held
 var _r_down_at := -1.0
 var _l_down_at := -1.0
@@ -193,6 +195,16 @@ func _draw_water() -> void:
 				var c := WorldScale.vec_to_px(river.cell_pos(i, j))
 				draw_rect(Rect2(c - Vector2.ONE * cell_px * 0.5, Vector2.ONE * cell_px), Color(COL_LIE, 0.2 + 0.6 * score))
 
+	# Resting lies (REQ-0011): blue, deep slow water with cover.
+	if _resting == null or _resting.field != river:
+		_resting = RestingLies.new(river)
+	for j in range(j0, j1 + 1):
+		for i in range(i0, i1 + 1):
+			var rest := _resting.rest[j * river.cols + i]
+			if rest > 0.15 and rest > river.lie[j * river.cols + i]:
+				var c := WorldScale.vec_to_px(river.cell_pos(i, j))
+				draw_rect(Rect2(c - Vector2.ONE * cell_px * 0.5, Vector2.ONE * cell_px), Color(COL_REST, 0.2 + 0.6 * rest))
+
 	# Seams: orange dots where the speed changes sharply.
 	for j in range(j0 - j0 % 2, j1 + 1, 2):
 		for i in range(i0 - i0 % 2, i1 + 1, 2):
@@ -237,8 +249,9 @@ func _draw_water() -> void:
 	var fly_line := ""
 	if fishing != null and fishing.phase == 1:  # drifting
 		var fly: Vector2 = fishing.drift.fly
-		fly_line = "fly lane %.1f m/s  seam %.1f  lie %.1f" % [
-			river.flow_at(fly).length(), river.seam_at(fly), river.lie_at(fly)]
+		fly_line = "fly lane %.1f m/s  seam %.1f  lie %.1f  rest %.1f" % [
+			river.flow_at(fly).length(), river.seam_at(fly), river.lie_at(fly),
+			_resting.rest_at(fly) if _resting != null else 0.0]
 	var panel := Rect2(4, 4, 208, 22 if fly_line.is_empty() else 31)
 	draw_rect(panel, COL_PANEL)
 	draw_string(font, Vector2(8, 12), "READ THE WATER", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_TEXT)
@@ -246,7 +259,8 @@ func _draw_water() -> void:
 	draw_string(font, Vector2(8, 21), "current", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_FAST)
 	draw_string(font, Vector2(48, 21), "thalweg", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_THALWEG)
 	draw_string(font, Vector2(92, 21), "seams", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_SEAM)
-	draw_string(font, Vector2(126, 21), "trout lies", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_LIE)
+	draw_string(font, Vector2(126, 21), "feeding", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_LIE)
+	draw_string(font, Vector2(166, 21), "resting", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_REST)
 	if not fly_line.is_empty():
 		draw_string(font, Vector2(8, 30), fly_line, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, COL_TEXT)
 

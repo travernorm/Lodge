@@ -64,6 +64,7 @@ func _run(main: Node) -> void:
 	trout.species = trout.species.duplicate()
 	trout.species.bite_chance = 1.0
 	trout.species.selectivity = 0.0  # whatever species it is, it takes the tied-on fly
+	trout.resting = false  # and isn't slow to come up for a dry (REQ-0011)
 	# Move it under wherever the cast is headed, as the fly leaves the rod.
 	cast.model.delivered.connect(func(offset: Vector2, _q: float):
 		trout.lie = WorldScale.vec_to_m(main.rod_tip()) + offset

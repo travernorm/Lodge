@@ -178,7 +178,7 @@ var on_water: bool
 
 *Owned by the river hydraulics thread.*
 
-* **Owns:** one `RiverField` per stretch: velocity, depth, seams, lie scores, water and rock masks. Read-only to everyone else: `flow_at`, `depth_at`, `lie_at`, `is_water`, `pick_lie`.
+* **Owns:** one `RiverField` per stretch: velocity, depth, seams, lie scores, water and rock masks. Read-only to everyone else: `flow_at`, `depth_at`, `lie_at`, `is_water`, `pick_lie`. The field's `lie` is a feeding score (slow water with fast water close by). `RestingLies` (REQ-0011) scores resting water from the field's layers: deep, slow and covered, highest on the outside of a bend (the cut bank). It never writes to the field, and `score_at` is the better of the two.
 * **Data:** `Stretch`: shape, a spawn table (`SpawnEntry`: species, abundance, season window), how rich it is (`fish_per_100m`), a hatch table (`HatchEntry`: insect, season window, slots, weathers, strength), `spring_fed`, and a list of features (`RiverFeature`, one script per kind in `scripts/river/features/`: `Boulder`, `FallenLog`, `Eddy`, `GravelBar`). The field runs the features through hooks (`blocks`, `shape_flow`, `calm`, `swirl`, `prepare`) and names no kind, so a new kind is one new script and a new feature in a river is one entry (REQ-0004 C3). Views draw boulders and logs with their own art and outline any other kind from its `footprint()`. Built at load today; baked offline later (backlog). `tests/fixtures/demo_field.txt` records the demo stretch's water so `river_test` catches any unintended change; re-record it with `tools/record_field_fixture.gd` only when a change to the water is intended.
 * **Today:** `stream_scene.gd` (451 lines) builds the field, walks the angler, runs the camera, generates textures and draws the water (R9). `AnglerView` (`scripts/angler_view.gd`) draws the angler from Traver's sprite (`assets/angler/idle.png`, 8 views in a row in the fly sheets' order; `walk.png`, one row of walk frames per view, played while his feet move) and the rod; the stream scene owns it and tells it where the angler stands and faces. Fishing reads `river` and `stretch` from it by name (R3). **Target:** a `RiverView`, an `Angler` node and a camera owner, with the field and stretch handed to the session (step A2, agreed with the river thread).
 
@@ -204,7 +204,7 @@ The design is in [FISH_LOGIC.md](FISH_LOGIC.md): generation (per season or visit
 | `Population` (planned) | Model | The generated fish, kept between visits (needs saves). |
 | `MoodRules` (planned) | Rule set | `Conditions` plus a fish's own state into mood and feeding depth. |
 
-* **Today:** `FishGenerator` (REQ-0007) stocks a stretch for one day. It reads the stretch's spawn table (`SpawnEntry`: abundance and season window), `fish_per_100m`, the hatch table, the day's `Conditions` and the river's lies (scanned once). It returns `FishPlan`s: species, length leaning small, the biggest fish on the best lies, and an activity that scales how often each fish rises. A fish built from a plan returns to its own lie after a break-off. `tools/generate_fish.gd` runs it on any stretch from the command line. A species carries nothing about any place, and its diet is typed `DietEntry`s. Presentation arrives as a string and fish events are `StringName`s (R6, step C). The hook-set window check lives in `Fish.try_set()` (step C).
+* **Today:** `FishGenerator` (REQ-0007) stocks a stretch for one day. It reads the stretch's spawn table (`SpawnEntry`: abundance and season window), `fish_per_100m`, the hatch table, the day's `Conditions` and the river's lies (scanned once). Its lies are the better of feeding and resting (`RestingLies`), and each reach of about 40 m along the river gets its share of fish by length (REQ-0011). It returns `FishPlan`s: species, length leaning small, the biggest fish on the best lies, whether the lie is a resting one (resting fish take a dry fly at `DriftPastRules.resting_dry_factor`), and an activity that scales how often each fish rises. A fish built from a plan returns to its own lie after a break-off. `tools/generate_fish.gd` runs it on any stretch from the command line. A species carries nothing about any place, and its diet is typed `DietEntry`s. Presentation arrives as a string and fish events are `StringName`s (R6, step C). The hook-set window check lives in `Fish.try_set()` (step C).
 
 ### 3.7 Hook set and fight
 
@@ -400,6 +400,7 @@ Every script, its layer and its system. `architecture_test.gd` fails if a script
 | `scripts/river/features/gravel_bar.gd` | `GravelBar` | Data (river feature) | River |
 | `scripts/river/hatch_entry.gd` | `HatchEntry` | Data (place) | River, fish |
 | `scripts/river/river_feature.gd` | `RiverFeature` | Data (base for river features) | River |
+| `scripts/river/resting_lies.gd` | `RestingLies` | Model | River (lies) |
 | `scripts/river/river_field.gd` | `RiverField` | Model | River |
 | `scripts/river/spawn_entry.gd` | `SpawnEntry` | Data (place) | River, fish |
 | `scripts/river/stretch.gd` | `Stretch` | Data | River |

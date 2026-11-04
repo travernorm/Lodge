@@ -60,6 +60,9 @@ var length_in := 0.0
 var activity := 1.0
 ## Built from a FishPlan: it keeps its lie and length when it comes back.
 var planned := false
+## On a resting lie rather than a feeding lie (REQ-0011): slow to come up for
+## a dry fly (DriftPastRules.resting_dry_factor).
+var resting := false
 var state := State.HOLDING
 ## Time since the take, while TAKEN.
 var since_take := 0.0
@@ -96,6 +99,7 @@ static func from_plan(plan: FishPlan, rng: RandomNumberGenerator) -> Fish:
 	f.lie = plan.lie
 	f.length_in = plan.length_in
 	f.activity = plan.activity
+	f.resting = plan.resting
 	f.respawn()
 	return f
 
