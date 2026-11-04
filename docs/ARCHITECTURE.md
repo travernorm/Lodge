@@ -91,7 +91,8 @@ The data folders today, each covered by `tests/data_test.gd`:
 * `data/stretches/`: `Stretch`, one per river location (today the demo freestone).
 * `data/looks/`: `WaterLook`, how the water is painted: the deep, mid and white water textures (in `assets/water/`), tints, and where each one shows by depth and speed. `WaterView` paints it from the river field.
 * `data/cast_tuning.tres`: casting numbers shared by every rule set.
-* `data/calendar.tres`: `Calendar`, the year's rules (REQ-0007): season temperature ranges, weather odds, how slots and weather lower the temperature, and how keen fish are in each slot and weather. Not in the catalog; the fishing node takes it as an export.
+* `data/calendar.tres`: `Calendar`, the year's rules (REQ-0007): how each slot lowers the air, how the water follows it, and how keen fish are in each slot and weather. Not in the catalog; the fishing node takes it as an export.
+* `data/climates/`: `Climate`, one per region (REQ-0008; today `central_oregon.tres`): each season's highs, weather odds and persistence (how long spells last), how far the high wanders a day, how each weather lowers it, when storms hit, and how hard rain, snow and storms fall. A new region is a new file. Not in the catalog; the fishing node takes one as an export until regions exist.
 * `data/catalog.tres`: the index of every fish, fly, insect and stretch (generated, see below).
 
 The content sheets in `content/` (`insects.csv`, `flies.csv`, `rods.csv`, `fish.csv`) are the spreadsheet view of the archetype folders: one row per file, one column per exported field. `tools/import_content.gd` checks every cell and writes the `.tres` files; the game never reads the sheets (the folder has a `.gdignore`), and `tests/content_test.gd` keeps them in step with `data/`. See TOOLING.md, "Content sheets".
@@ -218,8 +219,9 @@ The design is in [FISH_LOGIC.md](FISH_LOGIC.md): generation (per season or visit
 Design target in [SPECIES_AND_CONDITIONS.md](SPECIES_AND_CONDITIONS.md): four 30-day seasons, six day slots, 10°F temperature bands, five weathers, hatches.
 
 * `Calendar` (data, `data/calendar.tres`): the `Season`, `Slot` and `Weather` enums and the year's numbers. `SeasonWindow` (data): a span of the year, used by spawn and hatch entries.
-* `Conditions` (REQ-0007): season, day, slot, weather, air and water bands. *Today* the fishing node owns it: it rolls one per load from its seed (`stock(conditions, seed)`, or an exported fixed day), and the debug overlay shows it with the hatch and the seed. One seed splits into the day, the generator's streams and the take rolls (R8).
-* `Clock` autoload (planned): day, slot, season. The only global time; it will build the same `Conditions`, about once per game hour, and nothing that reads them changes.
+* `Conditions` (REQ-0007): season, day, slot, weather, `intensity` (REQ-0008), air and water bands. It's the one value fish, the fish generator and the weather views read. *Today* the fishing node owns it: each load it builds a year from its seed and picks a day from it (`stock(conditions, seed)`, or an exported fixed day), and the debug overlay shows it with the spell, the hatch and the seed. One seed splits into the year, the day, the generator's streams and the take rolls (R8). The owner emits `conditions_changed(conditions)` whenever it changes. `set_conditions(c)` changes the slot or weather on the same water: the fish stay and only the hatch and their activity change; fish restock only for a new place.
+* `WeatherGenerator` (REQ-0008): `year(climate, calendar, seed)` gives a `WeatherYear` of 120 `WeatherDay`s: spells from the climate's persistence, highs on a seasonal curve with a slow daily wander, storms only in the climate's storm slots, and a daily intensity. `WeatherYear.conditions(season, day, slot, spring_fed)` hands out `Conditions`. `tools/weather_year.gd` prints a year and a summary.
+* `Clock` autoload (planned): day, slot, season. The only global time; it will hold the `WeatherYear`, walk it a slot at a time and emit the same `conditions_changed`, and nothing that reads them changes.
 
 ### 3.10 Modes and later systems
 
@@ -364,8 +366,12 @@ Every script, its layer and its system. `architecture_test.gd` fails if a script
 | `scripts/casting/rules/tempo_rules.gd` | `TempoCastRules` | Rule set (data) | Casting |
 | `scripts/casting/rules/tiered_rules.gd` | `TieredCastRules` | Rule set (data) | Casting |
 | `scripts/conditions/calendar.gd` | `Calendar` | Data | Conditions |
+| `scripts/conditions/climate.gd` | `Climate` | Data (place: a region) | Conditions (weather) |
 | `scripts/conditions/conditions.gd` | `Conditions` | Model (value; a `Resource` so a fixed day can be set in the inspector) | Conditions |
 | `scripts/conditions/season_window.gd` | `SeasonWindow` | Data | Conditions |
+| `scripts/conditions/weather_day.gd` | `WeatherDay` | Model (value) | Conditions (weather) |
+| `scripts/conditions/weather_generator.gd` | `WeatherGenerator` | Model | Conditions (weather) |
+| `scripts/conditions/weather_year.gd` | `WeatherYear` | Model (value) | Conditions (weather) |
 | `scripts/controls.gd` | `Controls` (autoload) | Service | Input |
 | `scripts/data/catalog.gd` | `Catalog` | Data (index) | All content |
 | `scripts/debug_overlay.gd` | (node) | View | UI and modes |
@@ -419,6 +425,7 @@ Newest last. Read these before changing something that looks odd.
 | 2026-11-03 | Typed references between data, ids only in saves; a catalog; kinds separate from places | Audit: matches how larger data-driven games stay consistent as content grows. |
 | 2026-11-03 | Adding content means adding a data file, never editing code (REQ-0004: catalog, spawn tables, river feature kit) | Traver: the architecture should make content cheap to add at scale. |
 | 2026-11-03 | Flies and rods are "tackle" (`data/tackle/`, `scripts/tackle/`); a rod sets fly types, longest line, forgiveness and fish rating (REQ-0005) | Traver asked for rods grouped with flies; "tackle" avoids clashing with the repo's `tools/`. |
+| 2026-11-04 | Weather comes from a seeded year per region's `Climate`: spells, a seasonal curve for highs, afternoon storms and an intensity; a weather change keeps the fish and re-rolls only the hatch (REQ-0008) | Traver: build out the weather generator; insects follow the weather, fish restock only for a new place. |
 | 2026-11-04 | A seeded fish generator stocks any stretch from its spawn and hatch tables and the day's conditions; conditions are rolled per load until the clock exists (REQ-0007) | Traver: a repeatable generator for any stretch, driven by the river and the weather and date. |
 
 ## 13. Open questions for Traver

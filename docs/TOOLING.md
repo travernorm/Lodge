@@ -85,7 +85,7 @@ Each load, the fish generator (REQ-0007) stocks the stretch for one day: it roll
 - `hatches`: a `HatchEntry` per insect, with its season `window`, the `slots` and `weathers` it comes off in, and its `strength`. Fish that eat a hatch that's on rise more often.
 - `spring_fed`: water that stays in the 40s and 50s all year.
 
-The year's own numbers (each season's temperatures and weather odds, and how keen fish are in each slot and weather) are in `data/calendar.tres`.
+How keen fish are in each slot and weather is in `data/calendar.tres`. The weather itself (each season's temperatures, weather odds and spells) is a region's climate in `data/climates/` (REQ-0008); the tool uses `central_oregon`.
 
 Try a stretch from the command line before playing it:
 
@@ -95,6 +95,17 @@ godot --headless --path . --script res://tools/generate_fish.gd -- --stretch dem
 ```
 
 The first prints the day, the hatch and every fish (species, length, lie, lie score, activity). The second prints each species' share, average and biggest length over 200 days. Leave out any day option to roll it. A seed with no day options gives the same day and fish as the game with that seed, which the debug overlay (View / F1) shows. In the game, set `fixed_seed` or `fixed_conditions` on the Fishing node to pin a day.
+
+## Weather years
+
+`tools/weather_year.gd` prints a year of weather from a climate in `data/climates/` (REQ-0008), so a climate can be tuned before playing it:
+
+```
+godot --headless --path . --script res://tools/weather_year.gd -- --climate central_oregon --seed 42
+godot --headless --path . --script res://tools/weather_year.gd -- --years 100
+```
+
+The first prints one row per day (weather, intensity, high, where it sits in its spell, and when a storm hits) and a summary. The second prints only the summary over 100 years: each weather's share of each season, the average spell in days, and the average high early (days 1 to 10) and late (21 to 30) in the season. To make spells longer or shorter, change the climate's `persistence`.
 
 ## Content sheets
 

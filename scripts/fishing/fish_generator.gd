@@ -165,10 +165,20 @@ static func _clear(cell: Vector3, taken: PackedVector3Array) -> bool:
 	return true
 
 
-## The debug overlay's lines for a day: the conditions, the hatch and the
-## seed. `generator` may be null (no stretch, so no hatch).
-static func describe_day(generator: FishGenerator, c: Conditions, p_seed: int) -> PackedStringArray:
+## Sets each fish's activity for new conditions on the same water (REQ-0008),
+## for the hatch that's on now. `generator` may be null (no stretch, no fish).
+static func refresh_activity(generator: FishGenerator, fish: Array[Fish], c: Conditions) -> void:
+	for f in (fish if generator != null else []):
+		f.activity = generator.activity(f.species, c)
+
+
+## The debug overlay's lines for a day: the conditions, the spell, the hatch
+## and the seed. `generator` may be null (no stretch, so no hatch), and so
+## may `year` (a pinned day in a test).
+static func describe_day(generator: FishGenerator, c: Conditions, p_seed: int, year: WeatherYear = null) -> PackedStringArray:
 	var lines := c.describe()
+	if year != null:
+		lines[0] += "  (%s)" % year.describe(c)
 	var names := PackedStringArray()
 	for h in (generator.active_hatch(c) if generator != null else []):
 		names.append(h.insect.display_name)

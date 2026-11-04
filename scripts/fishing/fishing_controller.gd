@@ -22,12 +22,16 @@ enum Phase { NONE, DRIFT, FIGHT, REEL }
 ## (data/catalog.tres), in its order. Y (F) cycles the flies this rod throws and
 ## L2 (R) the rods, while the line is reeled in. The first of each starts on.
 var tackle := Tackle.new(Catalog.shared().rods, Catalog.shared().flies)
-## The day (REQ-0007), rolled from a new seed each load unless pinned here.
+## The day (REQ-0007) from a year of the climate's weather (REQ-0008), rolled
+## from a new seed each load unless pinned. Views repaint on conditions_changed.
 @export var calendar: Calendar = preload("res://data/calendar.tres")
+@export var climate: Climate = preload("res://data/climates/central_oregon.tres")
 @export var fixed_conditions: Conditions
 @export var fixed_seed := 0
 var conditions: Conditions
 var day_seed := 0
+var weather: WeatherYear
+signal conditions_changed(conditions: Conditions)
 
 ## The bite rules: each trout rolls as the fly drifts past it.
 @export var take_rules: DriftPastRules = preload("res://data/take_rules/drift_past.tres")
@@ -108,9 +112,18 @@ func _ready() -> void:
 func stock(day: Conditions, p_seed: int) -> void:
 	day_seed = p_seed
 	var roller := FishGenerator.seeded(p_seed)
-	conditions = day if day != null else Conditions.roll(calendar, roller, _generator != null and _generator.stretch.spring_fed)
+	weather = WeatherGenerator.year(climate, calendar, roller.randi())
+	conditions = day if day != null else weather.roll(roller, _generator != null and _generator.stretch.spring_fed)
 	_rng.seed = roller.randi()
 	fish.assign((_generator.generate(conditions, roller) if _generator else []).map(func(p): return Fish.from_plan(p, _rng)))
+	conditions_changed.emit(conditions)
+
+
+## New slot or weather, same water (REQ-0008): fish stay; hatch and activity change.
+func set_conditions(c: Conditions) -> void:
+	conditions = c
+	FishGenerator.refresh_activity(_generator, fish, c)
+	conditions_changed.emit(c)
 
 
 ## The tied-on fly, or null when the rod throws none in the box.
@@ -152,7 +165,7 @@ func debug_lines() -> PackedStringArray:
 	for f in fish:
 		states.append("%s:%s" % [String(f.species.id).left(3), Fish.State.keys()[f.state].left(4).to_lower()])
 	lines.append(" ".join(states))
-	lines.append_array(FishGenerator.describe_day(_generator, conditions, day_seed))
+	lines.append_array(FishGenerator.describe_day(_generator, conditions, day_seed, weather))
 	lines.append("bites  %s" % take_rules.display_name)
 	lines.append("line out  %.1f m" % drift.line_length)
 	return lines
@@ -207,7 +220,7 @@ func _on_landed(_presentation: String, _quality: float) -> void:
 	phase = Phase.DRIFT
 	_fly_taken = false
 	drift.start(_tip_m(), at)
-	drift.downstream = _downstream_at(at)
+	drift.downstream = _river.downstream_at(at)
 	var presentation: String = _cast.model.presentation
 	_landed_at = at
 	_landed_presentation = presentation
@@ -377,19 +390,6 @@ func _update_fight(delta: float, stick: Vector2) -> void:
 func _fish_position() -> Vector2:
 	var p: Vector2 = _stream.rod_tip() + Vector2.from_angle(fight.angle) * WorldScale.to_px(fight.distance)
 	return WorldScale.vec_to_m(_stream.keep_in_water(p, WorldScale.vec_to_px(hooked.pos)))
-
-
-## Which way the water runs at `at` (m), for the drift's bow and mends. The
-## test screen's river runs +x; on a stretch it's the local current, so a fly
-## in an eddy mends against the eddy's reversed current.
-func _downstream_at(at: Vector2) -> Vector2:
-	if _river == null or _river.stretch == null:
-		return Vector2.RIGHT
-	var v := _river.flow_at(at)
-	if v.length() > 0.05:
-		return v.normalized()
-	var k := _river.nearest_centre(at)
-	return _river.centre_dir[k] if k >= 0 else Vector2.RIGHT
 
 
 ## The rod tip in metres.

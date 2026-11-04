@@ -1,9 +1,10 @@
 class_name Conditions
 extends Resource
-## One day on one stretch of water (REQ-0007): the date, the time slot, the
-## weather and the temperatures. Fish and the generator read this, never a
-## clock. Until the Clock exists the fishing node rolls one per visit from its
-## seed; tests and the generate_fish tool build one with at().
+## One time slot on one stretch of water (REQ-0007, REQ-0008): the date, the
+## slot, the weather and how hard it's falling, and the temperatures. Fish,
+## the fish generator and the weather views read this, never a clock or the
+## weather generator. A WeatherYear hands these out; tests and the tools build
+## one with at().
 ##
 ## It's a Resource so a fixed day can be set in the inspector, but it is built
 ## at runtime and never saved as content. Temperatures are the lower °F of a
@@ -13,6 +14,9 @@ extends Resource
 @export_range(1, 30) var day := 1
 @export var slot := Calendar.Slot.MORNING
 @export var weather := Calendar.Weather.SUNNY
+## How hard it rains, snows or storms, 0 to 1 (drizzle to downpour). Always 0
+## for Sunny and Overcast.
+@export_range(0.0, 1.0) var intensity := 0.0
 ## The day's air high, and the air in this slot.
 @export var high_f := 50
 @export var air_f := 50
@@ -20,27 +24,19 @@ extends Resource
 @export var water_f := 50
 
 
-## A day rolled from the calendar: season, day, weather, the day's high band,
-## and a slot. `spring_fed` water stays cool all year.
-static func roll(calendar: Calendar, rng: RandomNumberGenerator, spring_fed := false) -> Conditions:
-	var season := rng.randi_range(0, 3) as Calendar.Season
-	var day := rng.randi_range(1, Calendar.DAYS_PER_SEASON)
-	var slot := rng.randi_range(0, Calendar.Slot.size() - 1) as Calendar.Slot
-	var weather := pick_weather(calendar.weather_odds(season), rng)
-	var bands := (calendar.high_max_f[season] - calendar.high_min_f[season]) / Calendar.BAND
-	var high := calendar.high_min_f[season] + rng.randi_range(0, bands) * Calendar.BAND
-	return at(calendar, season, day, slot, weather, high, spring_fed)
-
-
-## A given day. `high_f` is the day's high before the weather is applied.
-static func at(calendar: Calendar, p_season: Calendar.Season, p_day: int, p_slot: Calendar.Slot,
-		p_weather: Calendar.Weather, p_high_f: int, spring_fed := false) -> Conditions:
+## A given slot. `high_f` is the day's high before the weather is applied; the
+## climate says how much each weather takes off it. `spring_fed` water stays
+## cool all year.
+static func at(calendar: Calendar, climate: Climate, p_season: Calendar.Season, p_day: int,
+		p_slot: Calendar.Slot, p_weather: Calendar.Weather, p_high_f: int, spring_fed := false,
+		p_intensity := 0.0) -> Conditions:
 	var c := Conditions.new()
 	c.season = p_season
 	c.day = clampi(p_day, 1, Calendar.DAYS_PER_SEASON)
 	c.slot = p_slot
 	c.weather = p_weather
-	var high := p_high_f - calendar.weather_drop[p_weather] * Calendar.BAND
+	c.intensity = clampf(p_intensity, 0.0, 1.0) if climate.intensity_max[p_weather] > 0.0 else 0.0
+	var high := p_high_f - climate.weather_drop[p_weather] * Calendar.BAND
 	if p_weather == Calendar.Weather.SNOW:
 		high = Calendar.AIR_MIN_F
 	c.high_f = clampi(high, Calendar.AIR_MIN_F, Calendar.AIR_MAX_F)
@@ -50,26 +46,16 @@ static func at(calendar: Calendar, p_season: Calendar.Season, p_day: int, p_slot
 	return c
 
 
-## For the debug overlay and the tool: "Summer 12  Dusk  Overcast",
+## For the debug overlay and the tools: "Summer 12  Dusk  Rain 0.6",
 ## "air 70s  water 50s".
 func describe() -> PackedStringArray:
+	var w := _name(Calendar.Weather.keys(), weather)
+	if intensity > 0.0:
+		w += " %.1f" % intensity
 	return PackedStringArray([
-		"%s  %s  %s" % [Calendar.date_name(season, day), _name(Calendar.Slot.keys(), slot), _name(Calendar.Weather.keys(), weather)],
+		"%s  %s  %s" % [Calendar.date_name(season, day), _name(Calendar.Slot.keys(), slot), w],
 		"air %ds  water %ds" % [air_f, water_f],
 	])
-
-
-## One weather, from a season's odds.
-static func pick_weather(odds: PackedFloat32Array, rng: RandomNumberGenerator) -> Calendar.Weather:
-	var total := 0.0
-	for p in odds:
-		total += p
-	var r := rng.randf() * total
-	for i in odds.size():
-		r -= odds[i]
-		if r < 0.0:
-			return i as Calendar.Weather
-	return Calendar.Weather.SUNNY
 
 
 static func _name(keys: Array, i: int) -> String:
