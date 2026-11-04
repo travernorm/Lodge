@@ -1,6 +1,6 @@
 # REQ-0007: Fish generator
 
-Status: draft
+Status: review
 
 ## Problem
 
@@ -136,10 +136,12 @@ Inputs worth adding. **In scope** means this REQ, **later** means a REQ of its o
 
 ## Open questions
 
-1. **Fish per screen.** How rich should the demo stretch be? Recommended: about the same as today (5 fish over 120 × 75 m), so the change is in *which* fish, not how many. (Also FISH_LOGIC.md open question 2.)
-2. **Conditions before the clock.** Roll them randomly each load (recommended), or set them by hand in a debug file until the clock exists?
-3. **Water temperature.** Follow the air-minus-2-bands rule with a `spring_fed` switch (recommended), or set a water band per season by hand on each river? (Also SPECIES_AND_CONDITIONS.md open question 3.)
-4. **Scarcity as weight or count.** `abundance` as a 0 to 1 weight (recommended, scales to many species), or keep a fixed count per species and only roll whether each one shows up?
+Answered by Traver on 2026-11-04 (all as recommended):
+
+1. **Fish per screen.** Keep the demo stretch about as rich as today (5 fish over 120 × 75 m), so the change is in *which* fish, not how many.
+2. **Conditions before the clock.** Roll them randomly each load from the seed; a debug option can pin them.
+3. **Water temperature.** Air high minus 2 bands, kept between the 30s and 70s, with a `spring_fed` switch per stretch.
+4. **Scarcity.** `abundance` is a 0 to 1 weight per spawn entry, not a fixed count.
 
 ## Architecture
 
