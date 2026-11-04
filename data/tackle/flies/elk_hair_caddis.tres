@@ -1,8 +1,9 @@
-[gd_resource type="Resource" script_class="FlyPattern" load_steps=4 format=3]
+[gd_resource type="Resource" script_class="FlyPattern" load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/tackle/fly_pattern.gd" id="1_fly"]
 [ext_resource type="Script" path="res://scripts/fishing/insect.gd" id="2_insect"]
 [ext_resource type="Resource" path="res://data/insects/caddis.tres" id="3_caddis"]
+[ext_resource type="Texture2D" path="res://assets/flies/elk_hair_caddis.png" id="4_p3oxq"]
 
 [resource]
 script = ExtResource("1_fly")
@@ -12,4 +13,6 @@ description = "Tan elk-hair wing that rides high in fast, broken water. Caddis f
 body_color = Color(0.42, 0.45, 0.25, 1)
 wing_color = Color(0.79, 0.64, 0.42, 1)
 hackle_color = Color(0.55, 0.4, 0.25, 1)
+fly_type = 0
 imitates = Array[ExtResource("2_insect")]([ExtResource("3_caddis")])
+sprite_sheet = ExtResource("4_p3oxq")

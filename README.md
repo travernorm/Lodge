@@ -67,7 +67,7 @@ A fish longer than the rod's rating pulls the line tighter, so it snaps the tipp
 
 ## How to fish
 
-For now the stream holds **one Redband Rainbow**, holding in a good lie at the head of the pool (usually the slack pocket behind the boulder), and Dad's fly box holds **three flies**: a Parachute Adams (mayflies), an Elk Hair Caddis and a Royal Wulff (an attractor). Press **Y** (or **F**) while reeled in to tie on the next one. Watch for the rings where it rises on its own to find it.
+For now the stream holds **one Redband Rainbow**, holding in a good lie at the head of the pool (usually the slack pocket behind the boulder), and Dad's fly box holds **four flies**: a Parachute Adams (mayflies), an Elk Hair Caddis, a Royal Wulff (an attractor) and a Pale Morning Dun. The fly box in the bottom left shows a picture of the tied-on fly, and on the water the fly faces you, its head up the line. Press **Y** (or **F**) while reeled in to tie on the next one. Watch for the rings where it rises on its own to find it.
 
 1. **Drift the fly past the fish.** A trout judges the fly as it drifts within about 1 m of it, once per pass. The odds show at the top of the screen, for example `(Lane 20 + Delicate 20 + No drag 20) × PMD 1 = 60%`:
    - **Lane (20%):** the fly came through the fish's window at all.

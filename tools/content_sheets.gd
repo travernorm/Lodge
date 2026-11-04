@@ -15,6 +15,8 @@ extends RefCounted
 ## * a link to another file by its id (pmd); a list of links as ids joined
 ##   with ";" (pmd;baetis).
 ## * a list of entries (a DietEntry) as id:number pairs (pmd:1;caddis:0.5).
+## * a file that isn't content, like a fly's art, by its path
+##   (res://assets/flies/parachute_adams.png).
 ## * an empty cell keeps what the file has, or the default for a new row.
 
 const BUILD := preload("res://tools/build_catalog.gd")
@@ -141,7 +143,9 @@ static func encode(value: Variant, prop: Dictionary) -> String:
 				return LIST_SEP.join(on)
 			return str(value)
 		TYPE_OBJECT:
-			return "" if value == null else String(value.get(&"id"))
+			if value == null:
+				return ""
+			return String(value.get(&"id")) if &"id" in value else String(value.resource_path)
 		TYPE_ARRAY:
 			var items := PackedStringArray()
 			for item in value:
@@ -317,6 +321,12 @@ static func _decode_list(text: String, prop: Dictionary, where: String,
 static func _resolve(cls: String, id: String, where: String,
 		errors: PackedStringArray, registry: Dictionary) -> Resource:
 	var kind := kind_of_class(cls)
+	if kind == "" and id.begins_with("res://"):
+		var file: Resource = load(id) if ResourceLoader.exists(id) else null
+		if file != null and file.is_class(cls):
+			return file
+		errors.append("%s: no %s at '%s'" % [where, cls, id])
+		return null
 	if registry.has(kind) and registry[kind].has(id):
 		return registry[kind][id]
 	if kind != "" and RegEx.create_from_string(ID_RULE).search(id) and ResourceLoader.exists(file_for(kind, id)):

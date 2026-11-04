@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="FlyPattern" load_steps=8 format=3]
+[gd_resource type="Resource" script_class="FlyPattern" load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/tackle/fly_pattern.gd" id="1_fly"]
 [ext_resource type="Script" path="res://scripts/fishing/insect.gd" id="2_insect"]
@@ -7,6 +7,7 @@
 [ext_resource type="Resource" path="res://data/insects/march_brown.tres" id="5_march_brown"]
 [ext_resource type="Resource" path="res://data/insects/mahogany.tres" id="6_mahogany"]
 [ext_resource type="Resource" path="res://data/insects/callibaetis.tres" id="7_callibaetis"]
+[ext_resource type="Texture2D" path="res://assets/flies/parachute_adams.png" id="8_xdunt"]
 
 [resource]
 script = ExtResource("1_fly")
@@ -16,4 +17,6 @@ description = "Grey all-rounder that passes for most mayflies. Dad's box has mor
 body_color = Color(0.54, 0.54, 0.54, 1)
 wing_color = Color(1, 1, 1, 1)
 hackle_color = Color(0.54, 0.42, 0.29, 1)
+fly_type = 0
 imitates = Array[ExtResource("2_insect")]([ExtResource("4_pmd"), ExtResource("3_baetis"), ExtResource("5_march_brown"), ExtResource("6_mahogany"), ExtResource("7_callibaetis")])
+sprite_sheet = ExtResource("8_xdunt")

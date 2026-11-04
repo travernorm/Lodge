@@ -80,10 +80,15 @@ var _landed_presentation := ""
 ## The last roll's odds, spelled out, and when it was rolled.
 var _odds_text := ""
 var _odds_at := -100.0
+var _fly_view: FlyView  # the fly on the water
+var _box_view: FlyBoxView
 
 
 func _ready() -> void:
 	add_to_group(&"fishing")
+	_fly_view = FlyView.add_to(self)
+	_box_view = FlyBoxView.new()
+	add_child(_box_view)
 	_rng.randomize()
 	_stream = get_parent() as Node2D
 	_cast = _stream.get_node(^"Cast")
@@ -428,6 +433,7 @@ func _burst(at: Vector2, size: float) -> void:
 
 
 func _draw() -> void:
+	_fly_view.clear()
 	for f in fish:
 		if f != hooked:
 			_draw_fish(f)
@@ -497,8 +503,7 @@ func _draw_drift(tip: Vector2) -> void:
 
 
 func _draw_fly(p: Vector2) -> void:
-	if current_fly() != null:
-		current_fly().draw_at(self, p)
+	_fly_view.show_fly(current_fly(), p, _stream.rod_tip() - p)  # head up the line, at the angler
 
 
 func _draw_fight(tip: Vector2) -> void:
@@ -542,16 +547,7 @@ func _draw_rings() -> void:
 func _draw_hud() -> void:
 	var font := ThemeDB.fallback_font
 	var view: Vector2 = _stream.VIEW
-	# Fly box, bottom left, with the rod above it.
-	var fly := current_fly()
-	var fly_name := fly.display_name if fly != null else "No fly for this rod"
-	var box := Rect2(4, view.y - 17, font.get_string_size(fly_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x + 20, 13)
-	draw_rect(box, COL_PANEL)
-	if fly != null:
-		fly.draw_at(self, box.position + Vector2(5, 5), 2.0)
-	draw_string(font, box.position + Vector2(14, 10), fly_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, COL_TEXT)
-	if tackle.rod() != null:
-		draw_string(font, box.position + Vector2(0, -3), "%s  (Y fly, L2 rod)" % tackle.rod().display_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, COL_DIM)
+	_box_view.show_box(tackle, _stream.screen_origin(), view)  # fly box, bottom left
 	# Catch log, bottom right.
 	var log_text := "%d caught" % catches.size()
 	if _unique_species() > 1:
