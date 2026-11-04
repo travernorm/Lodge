@@ -130,7 +130,7 @@ func _run_scene() -> void:
 	_check(fishing.conditions != before and fishing.conditions.weather == WeatherMix.DEBUG_STEPS[(WeatherMix.debug_step(before) + 1) % WeatherMix.DEBUG_STEPS.size()][0],
 		"scene: F2 moves the day to the next weather")
 	_check(view.conditions == fishing.conditions and view.is_fading(), "scene: the view fades to the new day")
-	var same := fishing.fish.size() == fish_before.size()
+	var same: bool = fishing.fish.size() == fish_before.size()
 	for i in fish_before.size():
 		same = same and fishing.fish[i] == fish_before[i]
 	_check(same, "scene: the fish stay when the weather changes")
