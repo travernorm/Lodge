@@ -4,13 +4,16 @@ extends Node2D
 ## Paints the river's water with a WaterLook. The stream scene calls setup()
 ## with its RiverField; this view bakes the field into a small texture (one
 ## texel per 0.25 m cell: current, depth, wet) and a shader picks the deep, mid
-## or white texture per pixel from it. It draws behind the stream scene, which
+## or white texture per pixel from it. A second baked texture holds how far each
+## cell is from the bank and from the nearest rock, for the foam lines. It draws behind the stream scene, which
 ## leaves its water pixels clear when this view is active.
 ##
 ## In the editor it builds its own field from preview_stretch, so the water
 ## shows in the viewport and changes live as the look is edited.
 
 const SHADER := preload("res://shaders/water.gdshader")
+## Furthest distance (m) from a bank or rock the edge texture can hold.
+const EDGE_RANGE := 3.0
 
 ## The look to paint. Empty = the stream scene draws its old flat bands.
 @export var look: WaterLook:
@@ -30,6 +33,7 @@ const SHADER := preload("res://shaders/water.gdshader")
 
 var _mat := ShaderMaterial.new()
 var _size := Vector2.ZERO
+var _palette_tex := GradientTexture1D.new()
 
 
 func _ready() -> void:
@@ -50,6 +54,8 @@ func is_active() -> bool:
 func setup(river: RiverField) -> void:
 	_size = Vector2(river.width, river.bottom - river.top) * WorldScale.PX_PER_M
 	_mat.set_shader_parameter(&"field", ImageTexture.create_from_image(field_image(river)))
+	_mat.set_shader_parameter(&"edges", ImageTexture.create_from_image(edge_image(river)))
+	_mat.set_shader_parameter(&"edge_range", EDGE_RANGE)
 	_mat.set_shader_parameter(&"field_cells", Vector2(river.cols, river.rows))
 	_mat.set_shader_parameter(&"cell_px", RiverField.CELL * WorldScale.PX_PER_M)
 	_mat.set_shader_parameter(&"flow_range", flow_range())
@@ -85,6 +91,61 @@ static func field_image(river: RiverField) -> Image:
 	return Image.create_from_data(river.cols, river.rows, false, Image.FORMAT_RGBA8, data)
 
 
+## How far each cell is from the edges, one texel per cell: R = from the bank,
+## G = from the nearest boulder or log, both in metres mapped 0..EDGE_RANGE to
+## 0..1.
+static func edge_image(river: RiverField) -> Image:
+	var n := river.cols * river.rows
+	var bank := PackedFloat32Array()
+	var rock := PackedFloat32Array()
+	bank.resize(n)
+	rock.resize(n)
+	rock.fill(EDGE_RANGE)
+	var reach := ceili(EDGE_RANGE / RiverField.CELL)
+	for j in river.rows:
+		for i in river.cols:
+			var idx := j * river.cols + i
+			var p := river.cell_pos(i, j)
+			if river.shore.is_empty():
+				bank[idx] = minf(p.y - river.top, river.bottom - p.y)
+			else:
+				bank[idx] = -river.shore[idx]
+			if (river.wet.is_empty() or river.wet[idx] == 1) and river.is_solid(p):
+				# Stamp this rock cell's distance onto its neighbours.
+				for dj in range(-reach, reach + 1):
+					for di in range(-reach, reach + 1):
+						var ii := i + di
+						var jj := j + dj
+						if ii < 0 or jj < 0 or ii >= river.cols or jj >= river.rows:
+							continue
+						var d := Vector2(di, dj).length() * RiverField.CELL
+						var k := jj * river.cols + ii
+						rock[k] = minf(rock[k], d)
+	var data := PackedByteArray()
+	data.resize(n * 4)
+	for idx in n:
+		data[idx * 4] = clampi(roundi(bank[idx] / EDGE_RANGE * 255.0), 0, 255)
+		data[idx * 4 + 1] = clampi(roundi(rock[idx] / EDGE_RANGE * 255.0), 0, 255)
+		data[idx * 4 + 3] = 255
+	return Image.create_from_data(river.cols, river.rows, false, Image.FORMAT_RGBA8, data)
+
+
+## A texture's average colour, so the shader can keep its light and dark
+## pattern while the palette sets the colour. White when there is no texture.
+static func mean_colour(tex: Texture2D) -> Color:
+	if tex == null:
+		return Color.WHITE
+	var img := tex.get_image()
+	if img == null or img.is_empty():
+		return Color.WHITE
+	if img.is_compressed():
+		img.decompress()
+	img = img.duplicate()
+	img.resize(1, 1, Image.INTERPOLATE_BILINEAR)
+	var c := img.get_pixel(0, 0)
+	return Color(maxf(c.r, 0.02), maxf(c.g, 0.02), maxf(c.b, 0.02))
+
+
 func _draw() -> void:
 	if is_active() and _size != Vector2.ZERO:
 		draw_rect(Rect2(Vector2.ZERO, _size), Color.WHITE)
@@ -102,8 +163,21 @@ func _apply_look() -> void:
 			[&"white_start", look.white_start], [&"white_softness", look.white_softness],
 			[&"shallow_depth", look.shallow_depth], [&"shallow_amount", look.shallow_amount],
 			[&"edge_noise", look.edge_noise], [&"edge_noise_px", look.edge_noise_size_m * px],
-			[&"dither", look.dither], [&"motion", look.motion], [&"motion_cycle", look.motion_cycle]]:
+			[&"dither", look.dither], [&"motion", look.motion], [&"motion_cycle", look.motion_cycle],
+			[&"use_palette", look.palette != null], [&"texture_detail", look.texture_detail],
+			[&"wash_clear", look.wash_clear],
+			[&"deep_mean", mean_colour(look.deep)], [&"mid_mean", mean_colour(look.mid)],
+			[&"bed_depth", look.bed_depth], [&"sand_tint", look.sand_tint],
+			[&"sand_amount", look.sand_amount], [&"stone_tint", look.stone_tint],
+			[&"stone_amount", look.stone_amount], [&"stone_px", look.stone_size_m * px],
+			[&"stone_density", look.stone_density], [&"foam_tint", look.foam_tint],
+			[&"bank_foam", look.bank_foam], [&"bank_foam_w", look.bank_foam_width_m],
+			[&"rock_foam", look.rock_foam], [&"rock_foam_w", look.rock_foam_width_m],
+			[&"foam_surge", look.foam_surge]]:
 		_mat.set_shader_parameter(p[0], p[1])
+	if look.palette != null:
+		_palette_tex.gradient = look.palette
+		_mat.set_shader_parameter(&"palette", _palette_tex)
 	queue_redraw()
 
 

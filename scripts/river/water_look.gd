@@ -46,6 +46,30 @@ extends Resource
 		shallow_tint = v
 		emit_changed()
 
+@export_group("Palette")
+## Water colour by depth: the left end is the edge, the right end the deepest
+## water. Empty = the textures keep their own colours (the first look).
+@export var palette: Gradient:
+	set(v):
+		if palette != null and palette.changed.is_connected(emit_changed):
+			palette.changed.disconnect(emit_changed)
+		palette = v
+		if palette != null:
+			palette.changed.connect(emit_changed)
+		emit_changed()
+## With a palette: how much the textures' light and dark pattern shows on top
+## of the palette colour. 0 = flat palette, 1 = the full pattern.
+@export_range(0.0, 2.0, 0.01) var texture_detail := 1.0:
+	set(v):
+		texture_detail = v
+		emit_changed()
+## How much the darker parts of the white water let the water below show
+## through. 0 = solid white water (the first look), 1 = only the bright crests.
+@export_range(0.0, 1.0, 0.01) var wash_clear := 0.0:
+	set(v):
+		wash_clear = v
+		emit_changed()
+
 @export_group("Where each texture shows")
 ## Depth (0 = dry, 1 = deepest in the stretch) where deep water takes over.
 @export_range(0.0, 1.0, 0.01) var deep_start := 0.6:
@@ -75,6 +99,76 @@ extends Resource
 @export_range(0.0, 1.0, 0.01) var shallow_amount := 0.35:
 	set(v):
 		shallow_amount = v
+		emit_changed()
+
+@export_group("Riverbed")
+## Depth where the bed (sand and stones) has faded from view. Clear water
+## shows the bed further out.
+@export_range(0.0, 1.0, 0.01) var bed_depth := 0.35:
+	set(v):
+		bed_depth = v
+		emit_changed()
+## Sand seen through the shallows.
+@export var sand_tint := Color("d8cc9c"):
+	set(v):
+		sand_tint = v
+		emit_changed()
+## 0 = no sand.
+@export_range(0.0, 1.0, 0.01) var sand_amount := 0.0:
+	set(v):
+		sand_amount = v
+		emit_changed()
+## Stones on the bed are the water colour times this tint.
+@export var stone_tint := Color("6f8f99"):
+	set(v):
+		stone_tint = v
+		emit_changed()
+## 0 = no stones.
+@export_range(0.0, 1.0, 0.01) var stone_amount := 0.0:
+	set(v):
+		stone_amount = v
+		emit_changed()
+## Typical stone spacing, in metres. Stones are up to about half this wide.
+@export_range(0.25, 5.0, 0.05) var stone_size_m := 1.0:
+	set(v):
+		stone_size_m = v
+		emit_changed()
+## Share of the bed that has a stone. 0 = none, 1 = cobbles everywhere.
+@export_range(0.0, 1.0, 0.01) var stone_density := 0.5:
+	set(v):
+		stone_density = v
+		emit_changed()
+
+@export_group("Foam")
+## Colour of the foam lines along the banks and around rocks.
+@export var foam_tint := Color("e6f4f8"):
+	set(v):
+		foam_tint = v
+		emit_changed()
+## Foam where the water meets the bank. 0 = off.
+@export_range(0.0, 1.0, 0.01) var bank_foam := 0.0:
+	set(v):
+		bank_foam = v
+		emit_changed()
+## Width of the bright bank line, in metres. A soft glow runs about three
+## times further out.
+@export_range(0.0, 2.0, 0.05) var bank_foam_width_m := 0.35:
+	set(v):
+		bank_foam_width_m = v
+		emit_changed()
+## Foam ringing boulders and logs. 0 = off.
+@export_range(0.0, 1.0, 0.01) var rock_foam := 0.0:
+	set(v):
+		rock_foam = v
+		emit_changed()
+@export_range(0.0, 2.0, 0.05) var rock_foam_width_m := 0.3:
+	set(v):
+		rock_foam_width_m = v
+		emit_changed()
+## How quickly the foam lines surge in and out, in waves per second.
+@export_range(0.0, 3.0, 0.05) var foam_surge := 0.6:
+	set(v):
+		foam_surge = v
 		emit_changed()
 
 @export_group("Edges")

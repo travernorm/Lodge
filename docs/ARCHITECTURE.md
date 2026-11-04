@@ -89,7 +89,7 @@ The data folders today, each covered by `tests/data_test.gd`:
 * `data/cast_rules/`: the casting rule sets (one `CastRules` per file).
 * `data/take_rules/`: the bite rules (`DriftPastRules`).
 * `data/stretches/`: `Stretch`, one per river location (today the demo freestone).
-* `data/looks/`: `WaterLook`, how the water is painted: the deep, mid and white water textures (in `assets/water/`), tints, and where each one shows by depth and speed. `WaterView` paints it from the river field.
+* `data/looks/`: `WaterLook`, how the water is painted: the deep, mid and white water textures (in `assets/water/`), tints, and where each one shows by depth and speed. `WaterView` paints it from the river field A look can also set a palette (water colour by depth, the textures then add only their light and dark pattern), the riverbed seen through the shallows (sand and stones) and foam lines along banks and rocks. `water_clear.tres` is the game's look, `water_clear_crisp.tres` the same with pixel dithering, and `water_spring.tres` the first textured look.
 * `data/cast_tuning.tres`: casting numbers shared by every rule set.
 * `data/weather_looks/`: `WeatherLook`, how the weather and the time of day look on screen (REQ-0009): a `WeatherStyle` per weather (grade, rain or snow, cloud shadows, rain dimples, lightning) and a tint and brightness per slot. `WeatherView` paints it from the day's `Conditions`.
 * `data/calendar.tres`: `Calendar`, the year's rules (REQ-0007): how each slot lowers the air, how the water follows it, and how keen fish are in each slot and weather. Not in the catalog; the fishing node takes it as an export.
