@@ -5,8 +5,8 @@ extends Node2D
 ##   fallen log. The camera scrolls with the angler, who walks the bank.
 ## - Without one: the original test screen, a fast riffle on the left feeding a
 ##   slow pool on the right, with a boulder at the head of the pool.
-## Everything is drawn with primitives so feel can be tuned before any real art
-## exists. Swap in Aseprite tiles later.
+## The ground and features are drawn with primitives so feel can be tuned
+## before any real art exists. The angler is Traver's sprite (AnglerView).
 ##
 ## The current comes from a RiverField (scripts/river/river_field.gd): the
 ## thalweg (deepest, fastest line), slow edges, the boulder's cushion, pocket and
@@ -68,11 +68,6 @@ const COL_ROCK_LIGHT := Color("8f8a78")
 const COL_ROCK_DARK := Color("4f4c43")
 const COL_FOAM := Color("c9dcd6")
 const COL_STREAK := Color("4f8290")
-const COL_WADERS := Color("5a5a48")
-const COL_JACKET := Color("c26a3a")
-const COL_HAT := Color("6b4a2a")
-const COL_SKIN := Color("e0b48a")
-const COL_ROD := Color("e8d8a8")
 const COL_CUT_BANK := Color("5b3e26")
 const COL_LOG := Color("5a442c")
 const COL_LOG_LIGHT := Color("7a5e3e")
@@ -95,6 +90,8 @@ var _rng := RandomNumberGenerator.new()
 @onready var _cast: Node = get_node_or_null(^"Cast")
 ## Paints the water with a WaterLook when it has one (scripts/river/water_view.gd).
 @onready var _water: WaterView = get_node_or_null(^"Water")
+## Draws the angler and the rod (scripts/angler_view.gd).
+var _angler: AnglerView
 
 
 func _enter_tree() -> void:
@@ -119,6 +116,7 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	add_to_group(&"stream")
 	_rng.seed = 1979
+	_angler = AnglerView.add_to(self)
 	if camera != null:
 		camera.make_current()
 		camera.reset_smoothing()
@@ -417,7 +415,8 @@ func _draw() -> void:
 		draw_line(s.floor(), (s + v / speed * length).floor(), col, 1.0)
 
 	for f in river.features: _draw_feature(f)
-	_draw_angler()
+	if _angler != null:
+		_angler.show_angler(angler_pos, _facing, hand_position(), rod_tip())
 
 
 ## Boulders and logs have art; other kinds above ground show their footprint.
@@ -449,11 +448,3 @@ func _draw_log(a: Vector2, b: Vector2) -> void:
 		var p: Vector2 = (a + along * t).floor()
 		draw_line(p, p + along.normalized().rotated(0.7 if t != 0.55 else -0.7) * 5.0, COL_LOG, 1.0)
 
-
-func _draw_angler() -> void:
-	var p := angler_pos.floor()
-	draw_rect(Rect2(p + Vector2(-3, -6), Vector2(6, 6)), COL_WADERS)
-	draw_rect(Rect2(p + Vector2(-3, -12), Vector2(6, 6)), COL_JACKET)
-	draw_rect(Rect2(p + Vector2(-2, -16), Vector2(4, 4)), COL_SKIN)
-	draw_rect(Rect2(p + Vector2(-3, -17), Vector2(6, 2)), COL_HAT)
-	draw_line(hand_position().floor(), rod_tip().floor(), COL_ROD, 1.0)

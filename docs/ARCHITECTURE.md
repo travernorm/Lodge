@@ -176,7 +176,7 @@ var on_water: bool
 
 * **Owns:** one `RiverField` per stretch: velocity, depth, seams, lie scores, water and rock masks. Read-only to everyone else: `flow_at`, `depth_at`, `lie_at`, `is_water`, `pick_lie`.
 * **Data:** `Stretch`: shape, a spawn table (`SpawnEntry`) and a list of features (`RiverFeature`, one script per kind in `scripts/river/features/`: `Boulder`, `FallenLog`, `Eddy`, `GravelBar`). The field runs the features through hooks (`blocks`, `shape_flow`, `calm`, `swirl`, `prepare`) and names no kind, so a new kind is one new script and a new feature in a river is one entry (REQ-0004 C3). Views draw boulders and logs with their own art and outline any other kind from its `footprint()`. Built at load today; baked offline later (backlog). `tests/fixtures/demo_field.txt` records the demo stretch's water so `river_test` catches any unintended change; re-record it with `tools/record_field_fixture.gd` only when a change to the water is intended.
-* **Today:** `stream_scene.gd` (445 lines) builds the field, walks the angler, runs the camera, generates textures and draws the water (R9). Fishing reads `river` and `stretch` from it by name (R3). **Target:** a `RiverView`, an `Angler` node and a camera owner, with the field and stretch handed to the session (step A2, agreed with the river thread).
+* **Today:** `stream_scene.gd` (451 lines) builds the field, walks the angler, runs the camera, generates textures and draws the water (R9). `AnglerView` (`scripts/angler_view.gd`) draws the angler from Traver's sprite (`assets/angler/idle.png`, 8 views in a row in the fly sheets' order) and the rod; the stream scene owns it and tells it where the angler stands and faces. Fishing reads `river` and `stretch` from it by name (R3). **Target:** a `RiverView`, an `Angler` node and a camera owner, with the field and stretch handed to the session (step A2, agreed with the river thread).
 
 ### 3.5 Flies and the fly box
 
@@ -283,7 +283,7 @@ Autoloads: Controls, Clock, SaveGame
 | Casting rule chassis; bite rules as a resource | **Fits** |
 | `Controls` the only autoload; controller and keyboard parity | **Fits** (R7 checked) |
 | Metres in models and data | **Fits** (R11 checked) |
-| `fishing_controller.gd` (615 lines) and `stream_scene.gd` (445) do too much | **Drifts** (R9, steps A, A2) |
+| `fishing_controller.gd` (615 lines) and `stream_scene.gd` (451) do too much | **Drifts** (R9, steps A, A2) |
 | Cast, Fishing and Practice reach into each other; no single phase owner | **Drifts** (R2, R3, step B) |
 | `fly_pos` written by two nodes; world positions still in pixels in controllers | **Drifts** (R2, R11, step B) |
 | Presentation strings, fish event `StringName`s | **Drifts** (R6, step C) |
@@ -316,7 +316,7 @@ The rules marked "Review" (R2, R6, R12) are checked by the PR template's Archite
 | R8 | `scripts/fishing/fishing_controller.gd` (`randomize`) | 1 | Step G |
 | R8 | `scripts/casting/cast_model.gd` (`randomize`) | 1 | Step G |
 | R9 | `scripts/fishing/fishing_controller.gd` | 615 lines | Step A |
-| R9 | `scripts/stream_scene.gd` | 460 lines | Step A2 |
+| R9 | `scripts/stream_scene.gd` | 451 lines | Step A2 |
 | R9 | `scripts/river/river_field.gd` | 623 lines | Split builder from queries (river thread) |
 
 By design, not debt: `scripts/world_scale.gd` converts to pixels (it is the conversion).
@@ -352,6 +352,7 @@ Every script, its layer and its system. `architecture_test.gd` fails if a script
 
 | Script | Class | Layer | System |
 |---|---|---|---|
+| `scripts/angler_view.gd` | `AnglerView` | View | Angler (drawing) |
 | `scripts/casting/cast_controller.gd` | (node) | Session + view, to split | Casting |
 | `scripts/casting/cast_model.gd` | `CastModel` | Model | Casting |
 | `scripts/casting/cast_practice.gd` | (node) | Mode + view, to become a session mode | UI and modes |
