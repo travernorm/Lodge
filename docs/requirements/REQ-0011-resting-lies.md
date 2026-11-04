@@ -1,6 +1,6 @@
 # REQ-0011: Resting lies, and fish along the whole river
 
-Status: draft
+Status: implemented
 
 ## Problem
 
@@ -52,7 +52,7 @@ As a player, I want to find fish all along the river, including under the cut ba
 
 1. Every cell's resting score is between 0 and 1, and it's 0 on land, on rock and in water that's too fast to hold in. *(test)*
 2. On the demo stretch, the cut-bank pool (tenths 6 and 7 of the river) has resting lies scoring 0.4 or more. *(test)*
-3. Over 300 seeded days, every reach that has a lie scoring 0.4 or more holds fish on at least half of the days. No reach gets more than twice its share by length. *(test)*
+3. Over 300 seeded days, every reach whose share is at least one fish holds fish on at least half of the days. No reach gets more than twice its share by length. A share's fraction is rolled each day, so a short reach gets its share over many days. *(test)*
 4. The total number of fish is still `fish_count()` (5 on the demo), 3 m apart, and the biggest fish still sits on at least the median lie in 80% of days. *(test, existing)*
 5. The water fixture and `river_test` are unchanged. *(test)*
 6. Fish on resting lies can be hooked and landed like any other. *(playthrough)*
@@ -67,6 +67,8 @@ As a player, I want to find fish all along the river, including under the cut ba
 * Keyboard and DualSense. Watch the load time in the browser build (one more pass over the field at load).
 
 ## Open questions
+
+Answered by Traver on 2026-11-04 (approved as recommended): reaches of one screen (40 m), resting lies count the same as feeding lies when placing fish, and a dry fly gets ×0.5 over a resting fish.
 
 1. **Reach length:** one screen (40 m, recommended), or two?
 2. **Feeding versus resting, for placement.** Should a resting lie count the same as a feeding lie when placing fish (recommended for now)? Traver answered the bite side on 2026-11-04: resting fish get a discount on dry flies, and full odds on nymphs and streamers.
