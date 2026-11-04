@@ -4,6 +4,8 @@
 
 * `idle.png`: Traver's PixelLab "Idle" rotations (2026-11-04, 48x48, low top-down, 8 directions), laid side by side in the order above. No pixel was repainted or trimmed.
 
-To swap in new art, paint a sheet in the same layout and drop it over the file. Walk or cast animations would be new sheets and a change to `AnglerView`.
+* `walk.png`: Traver's PixelLab walk (2026-11-04, 8 GIFs of 8 frames, one per direction, 68x68 canvases). One row per direction in the order above, 8 frames left to right, each frame cut to the middle 48x48 of its canvas so the feet line up with `idle.png`. Every painted pixel kept, none repainted. `AnglerView` steps the frames with the distance he walks (`WALK_CYCLE_PX` per cycle). The original GIFs are in the project files under `art/angler/walk/`.
+
+To swap in new art, paint a sheet in the same layout and drop it over the file. A cast animation would be a new sheet and a change to `AnglerView`.
 
 Before shipping, confirm that the generating tool's terms allow commercial use, and record that here.

@@ -11,6 +11,8 @@ func _initialize() -> void:
 	_test_facing()
 	_test_placement()
 	_test_drawn_first()
+	_test_walk_sheet()
+	_test_walking()
 	if _failures == 0:
 		print("Angler view tests passed.")
 		quit(0)
@@ -59,6 +61,42 @@ func _test_drawn_first() -> void:
 	var view := AnglerView.add_to(owner)
 	_check(view.get_index() == 0, "the angler draws before the owner's other children")
 	owner.free()
+
+
+func _test_walk_sheet() -> void:
+	var view := AnglerView.new()
+	_check(view.walk_sheet != null, "the angler has a walk sheet")
+	if view.walk_sheet != null:
+		_check(AnglerView.walk_frames(view.walk_sheet) == 8, "the walk has 8 frames")
+		_check(view.walk_sheet.get_height() == view.sheet.get_height() * FlyView.VIEWS, "one row of walk frames per view, the idle's cell size")
+		_check(AnglerView.walk_rect(view.walk_sheet, FlyView.Facing.EAST, 3) == Rect2(144, 96, 48, 48), "east is the third row, frame 3 the fourth cell")
+	view.free()
+
+
+## He walks the way his feet move, the frames stepping with distance, and
+## stands facing the water when he stops.
+func _test_walking() -> void:
+	var view := AnglerView.new()
+	var hand := Vector2(3, -9)
+	var tip := Vector2(3, -35)
+	view.show_angler(Vector2(100, 100), Vector2.UP, Vector2(100, 100) + hand, Vector2(100, 100) + tip)
+	_check(not view.is_walking() and view.walk_frame() == -1, "standing still on the first frame shown")
+	var p := Vector2(100, 100)
+	var frames_seen := {}
+	for i in 32:  # 32 px east, one walk cycle
+		p.x += 1.0
+		view.show_angler(p, Vector2.UP, p + hand, p + tip)
+		frames_seen[view.walk_frame()] = true
+	_check(view.is_walking(), "moving makes him walk")
+	_check(view.facing() == FlyView.Facing.EAST, "he faces the way he walks, not the water")
+	_check(frames_seen.size() == 8, "one cycle of walking shows all 8 frames (saw %d)" % frames_seen.size())
+	view.show_angler(p, Vector2.UP, p + hand, p + tip)
+	_check(not view.is_walking(), "stopping stands him still")
+	_check(view.facing() == FlyView.Facing.NORTH, "stopped, he turns back to the water")
+	p.x -= 1.0
+	view.show_angler(p, Vector2.UP, p + hand, p + tip)
+	_check(view.walk_frame() == 0 and view.facing() == FlyView.Facing.WEST, "walking again starts the cycle from its first frame")
+	view.free()
 
 
 func _check(ok: bool, what: String) -> void:
