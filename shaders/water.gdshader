@@ -31,6 +31,9 @@ uniform bool dither = false;
 uniform float motion = 0.35;
 uniform float motion_cycle = 3.0;
 uniform float px_per_m = 8.0;
+// Rain dimples (REQ-0009 version C), 0 = none. Set by WaterView.set_rain().
+uniform float rain = 0.0;
+uniform float rain_cell_px = 6.0;
 
 varying vec2 world_px;
 
@@ -80,6 +83,22 @@ vec4 flowing(sampler2D tex, vec2 p, vec2 v_px, float w1) {
 	return mix(b, a, w1);
 }
 
+// A rain drop's ring on the surface: each cell of the water gets a drop now
+// and then, at a random spot, that opens into a small ring and fades.
+float dimple(vec2 p) {
+	vec2 cell = floor(p / rain_cell_px);
+	if (hash(cell + 0.37) > rain * 0.7) {
+		return 0.0;
+	}
+	float t = fract(TIME * 0.9 + hash(cell + 7.1));
+	if (t > 0.5) {
+		return 0.0;
+	}
+	vec2 centre = cell * rain_cell_px + 1.0 + floor(vec2(hash(cell + 3.3), hash(cell + 5.7)) * (rain_cell_px - 2.0)) + 0.5;
+	float r = t * 4.0;
+	return abs(length(p - centre) - r) < 0.5 ? 1.0 - t * 2.0 : 0.0;
+}
+
 void fragment() {
 	vec2 p = floor(world_px) + 0.5;
 	vec4 f = texture(field, (p / cell_px + 0.5) / field_cells);
@@ -103,5 +122,8 @@ void fragment() {
 	c = mix(c, flowing(white_tex, p, v_px, w1) * white_tint, weight(speed + n, white_start, white_softness, p + vec2(1.0, 2.0)));
 	float shallow = shallow_amount * (1.0 - smoothstep(0.0, shallow_depth + 0.0001, depth));
 	c.rgb = mix(c.rgb, shallow_tint.rgb, dither ? step(bayer4(p + vec2(3.0, 0.0)), shallow) : shallow);
+	if (rain > 0.0) {
+		c.rgb = mix(c.rgb, vec3(1.0), 0.35 * dimple(p));
+	}
 	COLOR = vec4(c.rgb, 1.0);
 }

@@ -35,6 +35,7 @@ func _initialize() -> void:
 	_test_climates(_load_dir("res://data/climates", "Climate"))
 	_test_take_rules()
 	_test_water_looks()
+	_test_weather_looks(_load_dir("res://data/weather_looks", "WeatherLook"))
 	_test_catalog(flies, fish, insects, _load_dir("res://data/stretches", "Stretch"), rods)
 	_main.free()
 	if _failures == 0:
@@ -440,3 +441,21 @@ func _check(ok: bool, label: String) -> void:
 	else:
 		_failures += 1
 		printerr("  FAIL  ", label)
+
+
+## Every weather look has a style for each weather and a grade for each slot,
+## within the drop cap; the scene's weather view uses one (REQ-0009).
+func _test_weather_looks(looks: Dictionary) -> void:
+	for path in looks:
+		var look: WeatherLook = looks[path]
+		var stem: String = path.get_file().get_basename()
+		_check(look.is_complete(), "weather look %s: a style per weather, a tint and brightness per slot" % stem)
+		for w in Calendar.Weather.size():
+			var st := look.style(w as Calendar.Weather)
+			if st != null:
+				_check(st.fall_amount <= WeatherMix.MAX_FALL, "weather look %s: %s has at most %d drops" % [stem, Calendar.Weather.keys()[w], WeatherMix.MAX_FALL])
+	var view := _main.get_node_or_null(^"Weather/WeatherView") as WeatherView
+	_check(view != null, "scene: Main has a Weather/WeatherView")
+	if view != null:
+		_check(view.look != null and looks.has(view.look.resource_path),
+			"scene: the weather look is a data/weather_looks file (%s)" % _path(view.look))

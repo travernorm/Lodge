@@ -11,6 +11,9 @@ extends SceneTree
 ##   * a catch under the bite rules (DriftPastRules, Drift past is the only set)
 ##   * the mend button (Square / M) mends a drift, like a stick loop
 ##   * walking only while reeled in, and B reeling in a drift
+##   * the weather debug key (R2 / F2) during a drift: every weather comes round,
+##     the fish stay, the drift carries on, and with a debug view open it steps
+##     through the weather look versions (REQ-0009)
 ##
 ##   godot --headless --path . --script res://tests/playthrough_test.gd
 ##
@@ -132,6 +135,10 @@ func _run() -> void:
 	if not await _rod_pass():
 		return
 	catches += 1
+
+	# 2d. Weather: R2 / F2 during a drift (REQ-0009).
+	if not await _weather_pass():
+		return
 
 	# 3. Practice mode under every rule set: no bites, every landing is scored.
 	await _tap(&"practice_mode")
@@ -293,6 +300,73 @@ func _rod_pass() -> bool:
 	print("  ok    rods: L2 cycles %d rods; caught a %s on the %s%s" % [count, _trout.species.display_name, rod.display_name,
 		"; the %s won't cast with no fly, but casts in practice" % bare if bare != "" else ""])
 	return true
+
+
+## R2 / F2 steps the day's weather round during a drift without touching the
+## fish or the drift; with a debug view open it steps the look versions round.
+func _weather_pass() -> bool:
+	var view: Node = _main.get_node_or_null(^"Weather/WeatherView")
+	if view == null or not view.has_method(&"show_conditions"):
+		_fail("main.tscn has no Weather/WeatherView, or its script didn't load")
+		return false
+	var start: Conditions = _fishing.conditions
+	var fish_before: Array = _fishing.fish.duplicate()
+	_trout.species.bite_chance = 0.0  # keep the fly free while the weather turns
+	await _cast_once(0)
+	if not await _wait_for(func(): return _fishing.phase == 1, 3.0):
+		_fail("No drift to turn the weather in")
+		return false
+	var seen := {}
+	for i in WeatherMix.DEBUG_STEPS.size():
+		await _press_event(Controls.DEBUG_WEATHER)
+		var c: Conditions = _fishing.conditions
+		seen[c.weather] = true
+		if view.conditions != c or c.season != start.season or c.day != start.day or c.slot != start.slot:
+			_fail("R2 / F2 didn't hand the weather view the same day with a new weather")
+			return false
+	if seen.size() != Calendar.Weather.size() or WeatherMix.debug_step(_fishing.conditions) != WeatherMix.debug_step(start):
+		_fail("R2 / F2 didn't step through every weather and come back round (saw %d)" % seen.size())
+		return false
+	var same_fish: bool = _fishing.fish.size() == fish_before.size()
+	for i in fish_before.size():
+		same_fish = same_fish and _fishing.fish[i] == fish_before[i]
+	if not same_fish or _fishing.phase != 1:
+		_fail("Turning the weather restocked the fish or ended the drift")
+		return false
+	await _press_event(&"toggle_debug")
+	var weather: Calendar.Weather = _fishing.conditions.weather
+	for i in WeatherMix.Version.size():
+		await _press_event(Controls.DEBUG_WEATHER)
+	await _cycle_debug_views_closed()
+	if view.version != WeatherMix.Version.GRADE or _fishing.conditions.weather != weather:
+		_fail("With a debug view open, R2 / F2 didn't step the look versions round (version %d)" % view.version)
+		return false
+	await _tap(&"back")
+	await _wait_for(func(): return _cast.model.state == CastModel.State.IDLE, 3.0)
+	_trout.species.bite_chance = 1.0
+	print("  ok    weather: R2 / F2 stepped %d days through every weather in a drift, fish kept; %d look versions" % [
+		WeatherMix.DEBUG_STEPS.size(), WeatherMix.Version.size()])
+	return true
+
+
+## Presses and releases an action as input events, for nodes that listen in
+## _unhandled_input.
+func _press_event(action: StringName) -> void:
+	var e := InputEventAction.new()
+	e.action = action
+	e.pressed = true
+	Input.parse_input_event(e)
+	await _wait(0.1)
+	var up := InputEventAction.new()
+	up.action = action
+	Input.parse_input_event(up)
+	await _wait(0.05)
+
+
+## Steps the debug overlay on until it's hidden again.
+func _cycle_debug_views_closed() -> void:
+	while _overlay.view != 0:
+		await _press_event(&"toggle_debug")
 
 
 ## Casts until the trout takes, then sets the hook and lands it. Optionally

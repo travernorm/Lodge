@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/stream_scene.gd" id="1_stream"]
 [ext_resource type="Script" path="res://scripts/debug_overlay.gd" id="2_debug"]
@@ -8,6 +8,8 @@
 [ext_resource type="Resource" path="res://data/stretches/demo_freestone.tres" id="10_stretch"]
 [ext_resource type="Script" path="res://scripts/river/water_view.gd" id="11_water"]
 [ext_resource type="Resource" path="res://data/looks/water_spring.tres" id="12_look"]
+[ext_resource type="Script" path="res://scripts/conditions/weather_view.gd" id="13_weather"]
+[ext_resource type="Resource" path="res://data/weather_looks/default.tres" id="14_weather_look"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_stream")
@@ -28,6 +30,13 @@ script = ExtResource("4_fishing")
 [node name="Practice" type="Node2D" parent="."]
 script = ExtResource("9_practice")
 
+[node name="Weather" type="CanvasLayer" parent="."]
+layer = 5
+
+[node name="WeatherView" type="Node2D" parent="Weather"]
+script = ExtResource("13_weather")
+look = ExtResource("14_weather_look")
+
 [node name="DebugLayer" type="CanvasLayer" parent="."]
 layer = 10
 
@@ -40,3 +49,8 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("2_debug")
+
+[connection signal="conditions_changed" from="Fishing" to="Weather/WeatherView" method="show_conditions"]
+[connection signal="day_requested" from="Weather/WeatherView" to="Fishing" method="set_conditions"]
+[connection signal="rain_on_water" from="Weather/WeatherView" to="Water" method="set_rain"]
+[connection signal="view_changed" from="DebugLayer/DebugOverlay" to="Weather/WeatherView" method="set_debug_view"]
