@@ -30,6 +30,10 @@ const ARROW_GRID := 12.0
 
 enum View { HIDDEN, CONTROLS, WATER }
 
+## The view changed. main.tscn tells the weather view, whose debug key steps
+## through its versions while any view is open.
+signal view_changed(view: int)
+
 var view := View.HIDDEN
 
 var _time := 0.0
@@ -51,6 +55,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed(Controls.TOGGLE_DEBUG):
 		view = ((view + 1) % View.size()) as View
 		visible = view != View.HIDDEN
+		view_changed.emit(view)
 		if view == View.CONTROLS:
 			Controls.rumble(0.3, 0.7, 0.15)  # rumble test
 

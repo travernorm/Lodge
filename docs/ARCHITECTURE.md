@@ -91,6 +91,7 @@ The data folders today, each covered by `tests/data_test.gd`:
 * `data/stretches/`: `Stretch`, one per river location (today the demo freestone).
 * `data/looks/`: `WaterLook`, how the water is painted: the deep, mid and white water textures (in `assets/water/`), tints, and where each one shows by depth and speed. `WaterView` paints it from the river field.
 * `data/cast_tuning.tres`: casting numbers shared by every rule set.
+* `data/weather_looks/`: `WeatherLook`, how the weather and the time of day look on screen (REQ-0009): a `WeatherStyle` per weather (grade, rain or snow, cloud shadows, rain dimples, lightning) and a tint and brightness per slot. `WeatherView` paints it from the day's `Conditions`.
 * `data/calendar.tres`: `Calendar`, the year's rules (REQ-0007): how each slot lowers the air, how the water follows it, and how keen fish are in each slot and weather. Not in the catalog; the fishing node takes it as an export.
 * `data/climates/`: `Climate`, one per region (REQ-0008; today `central_oregon.tres`): each season's highs, weather odds and persistence (how long spells last), how far the high wanders a day, how each weather lowers it, when storms hit, and how hard rain, snow and storms fall. A new region is a new file. Not in the catalog; the fishing node takes one as an export until regions exist.
 * `data/catalog.tres`: the index of every fish, fly, insect and stretch (generated, see below).
@@ -242,6 +243,7 @@ Game (Node)                         owns GameState, pause and menus; loads stret
 │  ├─ CastView (Node2D)             line in the air, timing meter
 │  ├─ Angler (Node2D)               walking, rod pose
 │  └─ Camera2D                      owned by the stretch, follows the angler
+├─ Weather (CanvasLayer)            the weather's grade, rain and snow (WeatherView)
 ├─ Hud (CanvasLayer)                fly box, catch count, coaching text, fight meter, catch card
 ├─ Screens (CanvasLayer)            journal, fly box, game menu with controls (backlog)
 └─ DebugLayer (CanvasLayer)         finds things through groups
@@ -371,6 +373,10 @@ Every script, its layer and its system. `architecture_test.gd` fails if a script
 | `scripts/conditions/season_window.gd` | `SeasonWindow` | Data | Conditions |
 | `scripts/conditions/weather_day.gd` | `WeatherDay` | Model (value) | Conditions (weather) |
 | `scripts/conditions/weather_generator.gd` | `WeatherGenerator` | Model | Conditions (weather) |
+| `scripts/conditions/weather_look.gd` | `WeatherLook` | Data (look) | Conditions (weather drawing) |
+| `scripts/conditions/weather_mix.gd` | `WeatherMix` | Model | Conditions (weather drawing) |
+| `scripts/conditions/weather_style.gd` | `WeatherStyle` | Data (look) | Conditions (weather drawing) |
+| `scripts/conditions/weather_view.gd` | `WeatherView` | View | Conditions (weather drawing) |
 | `scripts/conditions/weather_year.gd` | `WeatherYear` | Model (value) | Conditions (weather) |
 | `scripts/controls.gd` | `Controls` (autoload) | Service | Input |
 | `scripts/data/catalog.gd` | `Catalog` | Data (index) | All content |

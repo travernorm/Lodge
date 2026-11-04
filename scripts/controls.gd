@@ -15,10 +15,11 @@ extends Node
 ##   L3 (click left stick)   practice_mode  casting practice range on/off
 ##   R3 (click right stick)  cycle_rules    switch casting rule set
 ##   Select/View     toggle_debug  cycle debug views (controller, read the water)
+##   R2 (R trigger)  debug_weather next weather; with a debug view open, next weather look version
 ##
 ## Keyboard fallbacks (for working on a laptop): WASD move, IJKL rod, Q = L bumper,
 ## E = R bumper, M mend, Space interact / set hook, Backspace back, F change fly, R change rod, Esc pause, F1 debug,
-## T practice mode, Tab switch casting rules.
+## F2 next weather, T practice mode, Tab switch casting rules.
 
 const CAST_BACK := &"cast_back"
 const CAST_FORWARD := &"cast_forward"
@@ -31,11 +32,12 @@ const CYCLE_RULES := &"cycle_rules"
 const BACK := &"back"
 const PAUSE := &"pause"
 const TOGGLE_DEBUG := &"toggle_debug"
+const DEBUG_WEATHER := &"debug_weather"
 
 const ALL_ACTIONS: Array[StringName] = [
 	&"move_left", &"move_right", &"move_up", &"move_down",
 	&"rod_left", &"rod_right", &"rod_up", &"rod_down",
-	CAST_BACK, CAST_FORWARD, MEND, INTERACT, CHANGE_FLY, CHANGE_ROD, BACK, PAUSE, TOGGLE_DEBUG, PRACTICE_MODE, CYCLE_RULES,
+	CAST_BACK, CAST_FORWARD, MEND, INTERACT, CHANGE_FLY, CHANGE_ROD, BACK, PAUSE, TOGGLE_DEBUG, PRACTICE_MODE, CYCLE_RULES, DEBUG_WEATHER,
 ]
 
 

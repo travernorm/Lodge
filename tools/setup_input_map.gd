@@ -30,6 +30,7 @@ func _initialize() -> void:
 		"toggle_debug": [_button(JOY_BUTTON_BACK), _key(KEY_F1)],
 		"practice_mode": [_button(JOY_BUTTON_LEFT_STICK), _key(KEY_T)],
 		"cycle_rules": [_button(JOY_BUTTON_RIGHT_STICK), _key(KEY_TAB)],
+		"debug_weather": [_axis(JOY_AXIS_TRIGGER_RIGHT, 1.0), _key(KEY_F2)],
 	}
 	# Drop actions that are no longer in the list, so removing one here removes it
 	# from project.godot too.

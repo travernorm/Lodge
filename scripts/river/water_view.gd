@@ -58,6 +58,12 @@ func setup(river: RiverField) -> void:
 	queue_redraw()
 
 
+## Rain dimples on the water, 0 to 1 (REQ-0009 version C). main.tscn connects
+## the weather view's rain_on_water here.
+func set_rain(amount: float) -> void:
+	_mat.set_shader_parameter(&"rain", clampf(amount, 0.0, 1.0))
+
+
 ## Largest current the field texture can hold (m/s).
 static func flow_range() -> float:
 	return RiverField.WATER_SPEED * 1.5

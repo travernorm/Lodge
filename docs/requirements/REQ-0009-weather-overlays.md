@@ -1,6 +1,6 @@
 # REQ-0009: Weather you can see
 
-Status: review (Traver answered the open questions on 2026-11-04; waiting for the go-ahead to build)
+Status: approved by Traver 2026-11-04; built (feel experiment, waiting for Traver to pick a version)
 
 ## Problem
 
@@ -27,7 +27,7 @@ All three read the same `Conditions` the fish use, and each adds to the one befo
 | **C. Grade + falling + on the water** | B, plus the water reacts: rain dimples the surface, slow cloud shadows drift over it when overcast, and lightning flashes the screen in a storm. Done inside the existing water shader. |
 
 - **Intensity.** Particle amount, ripple strength and grade depth scale with the weather's `intensity` (0 to 1) from REQ-0008, so a drizzle and a downpour look different. If the weather changes at a slot, the view cross-fades over a few seconds.
-- **`WeatherLook`** resource, `data/looks/weather.tres`: one `WeatherStyle` per weather (tint, brightness, saturation, contrast, particle amount, size, speed, slant, water ripple and cloud strength, flash rate) and a tint per time slot. Traver tunes everything in the Inspector, like the water look.
+- **`WeatherLook`** resource, `data/weather_looks/default.tres` (its own folder, since `data/looks/` holds water looks): one `WeatherStyle` per weather (tint, brightness, saturation, contrast, particle amount, size, speed, slant, water ripple and cloud strength, flash rate) and a tint per time slot. Traver tunes everything in the Inspector, like the water look.
 - **Particle sprites are texture slots.** Traver makes the rain streak, snowflake and splash ring in PixelLab or Aseprite and drags them in. Until then a plain one-pixel streak and dot stand in, and the PR says so.
 - **`WeatherView`** node on its own `Weather` canvas layer in `scenes/main.tscn`, above the river and below the HUD and debug layers. It owns the variant and draws only.
 - **Debug key: R2 / F2 cycles the weather.** It changes the real day's weather, so the hatch follows it (a rain day brings the rain hatches), but the fish already in the stretch stay as they are. Moving to another location still restocks the fish as today. With the debug overlay open, R2 / F2 cycles the variant instead. The current weather, slot and variant show in the corner while it's being cycled.
@@ -52,14 +52,14 @@ Changing the weather during a visit, wind that moves the fly, sound, seasonal wa
 - Each weather and slot gives the grade written in `weather.tres` (weather_view_test).
 - The debug key cycles all five weathers, and with the debug overlay open, the three variants (weather_view_test).
 - Cycling the weather changes the day's weather and the active hatch, and leaves the stretch's fish untouched (fishing_test).
-- `weather.tres` has a style for every weather and a tint for every slot (data_test).
+- `default.tres` has a style for every weather and a tint for every slot (data_test).
 - Variant A costs one full-screen pass; B and C stay under 400 particles on screen (weather_view_test checks the cap).
 - Every existing suite still passes (tools/run_tests.sh).
 
 ## Playtest checks
 
 - On DualSense and keyboard: cycle through all five weathers in each variant, cast Short, Middle and Long, and check the fly, line and rings stay readable in Storm and Snow at night.
-- Open `data/looks/weather.tres` and drag the sliders with the game running.
+- Open `data/weather_looks/default.tres` and drag the sliders with the game running.
 - Browser build: rain and snow fall, no shader errors.
 - Steam Deck: holds 60 fps in Storm with variant C. Not checked until Traver tries it.
 
@@ -76,10 +76,10 @@ Answered by Traver, 2026-11-04:
 - **Layers (R1).** `WeatherLook` and `WeatherStyle` are data (layer 1). `WeatherView` is a view (layer 3) and reads `Conditions`, never a clock.
 - **One writer (R2).** Fishing still owns `conditions`, so the debug key builds a new day with `Conditions.at()` and hands it to `fishing.set_conditions()` (from REQ-0008, PR #50), which keeps the fish, re-rolls the hatch and emits `conditions_changed`. The variant belongs to `WeatherView` alone.
 - **Ledger (R9).** `fishing_controller.gd` is at 613 of its 615-line cap, so the weather change and signal go in a small helper rather than growing that file.
-- **Call down, signal up (R3).** Fishing signals `day_stocked`; the stream scene connects it to `WeatherView` and hands `WaterView` the rain and cloud values (variant C). No node reaches a sibling.
+- **Call down, signal up (R3).** Every link is a signal connected in `main.tscn`: Fishing's `conditions_changed` to `WeatherView`, its `day_requested` to `Fishing.set_conditions`, its `rain_on_water` to `WaterView.set_rain`, and the debug overlay's `view_changed` to it. No node reaches a sibling, and `stream_scene.gd` (at its line cap) is untouched. Cloud shadows live in the grade shader, so only the rain dimples go in the water shader.
 - **Typed data (R4, R5).** Styles are typed sub-resources keyed by `Calendar.Weather`, not by strings.
 - **Pixels (R11).** Particle speeds and sizes are in metres and converted through `WorldScale` in the view.
 - **Web and Deck.** CPU particles and canvas shaders only, which work in GL Compatibility and WebGL2. No new plugins.
 - **Merge order.** Builds on REQ-0008 (PR #50), which merges first.
-- **Hot files.** `scenes/main.tscn` (one layer added), `project.godot` (one action, regenerated by `tools/setup_input_map.gd`), `README.md` (one controls row), `fishing_controller.gd` (one signal), `smoke_test.gd` untouched.
-- **Map.** New scripts go in the class index, `data/looks/weather.tres` in section 2 and data_test, and Fishing → WeatherView in the system map.
+- **Hot files.** `scenes/main.tscn` (one layer added), `project.godot` (one action, regenerated by `tools/setup_input_map.gd`), `README.md` (one controls row), `fishing_controller.gd` (untouched; the signal comes from REQ-0008), `smoke_test.gd` untouched.
+- **Map.** New scripts go in the class index, `data/weather_looks/` in section 2 and data_test, and Fishing → WeatherView in the system map.

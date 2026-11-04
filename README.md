@@ -100,6 +100,7 @@ The bite numbers live in `data/take_rules/drift_past.tres`.
 | B | Backspace | Back / reel in |
 | Menu (Start) | Esc | Pause |
 | View (Select) | F1 | Cycle debug views: controller, read the water, hidden |
+| R2 | F2 | Debug: next weather (the hatch follows, the fish stay). With a debug view open: next weather look version (A grade, B + rain and snow, C + on the water) |
 | Left stick click (L3) | T | Casting practice on/off |
 | Right stick click (R3) | Tab | Switch casting rule set |
 
