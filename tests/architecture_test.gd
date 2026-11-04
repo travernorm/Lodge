@@ -94,7 +94,7 @@ const DEBT_LOOSE := {}
 const DEBT_LINES := {
 	"res://scripts/fishing/fishing_controller.gd": 615,  # F1: step A (fly box HUD moved to FlyBoxView)
 	"res://scripts/river/river_field.gd": 623,  # F11: builder and query in one (603 after REQ-0004 C3)
-	"res://scripts/stream_scene.gd": 460,  # F1: step A2 (445)
+	"res://scripts/stream_scene.gd": 451,  # F1: step A2 (angler drawing moved to AnglerView)
 }
 
 var _failures := 0
