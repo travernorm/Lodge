@@ -7,11 +7,12 @@ extends RefCounted
 ##
 ##   1. Who can be here: spawn entries in season whose species suits the water.
 ##   2. How many: the stretch's fish_count(), as far as the lies allow.
-##   3. Which species: each fish picks one, weighted by abundance.
-##   4. Size and lie: lengths lean small, and the biggest fish get the best
-##      lies, with a little noise. A lie is a feeding lie (RiverField.lie) or
-##      a resting lie (RestingLies), and each reach of river gets its share
-##      of fish (REQ-0011).
+##   3. Which species: each lie picks one, weighted by abundance times how
+##      much the species likes that lie's kind of water (REQ-0010).
+##   4. Size and lie: sizes lean small, and the best lies get the biggest,
+##      with a little noise; a fish's size is a rank within its own species'
+##      range. A lie is a feeding lie (RiverField.lie) or a resting lie
+##      (RestingLies), and each reach of river gets its share of fish (REQ-0011).
 ##
 ## It also answers which hatches are on and how active each fish is, which is
 ## how the day shows: fish rise more in a good hatch on a good evening.
@@ -29,6 +30,7 @@ const LIE_TRIES := 40
 
 var stretch: Stretch
 var calendar: Calendar
+var water_rules: WaterTypeRules
 ## The river is shared out between reaches about this long (m) along the
 ## centreline, so every reach gets fish (REQ-0011).
 const REACH_M := 40.0
@@ -42,6 +44,8 @@ var _cells := PackedVector3Array()
 var _rests := PackedByteArray()
 ## Running total of score², for picking better lies more often.
 var _cumulative := PackedFloat32Array()
+## Per candidate cell: its water type (WaterTypeRules.WaterType).
+var _types := PackedByteArray()
 ## Per reach: its cells (indices into _cells), their running score² totals, and
 ## its length (m) inside the map.
 var _reach_cells: Array[PackedInt32Array] = []
@@ -51,9 +55,11 @@ var _reach_len := PackedFloat32Array()
 
 ## Scans the river field once for lies. With no field there are no lies, so
 ## generate() gives no fish.
-func _init(p_stretch: Stretch, field: RiverField, p_calendar: Calendar) -> void:
+func _init(p_stretch: Stretch, field: RiverField, p_calendar: Calendar,
+		p_rules: WaterTypeRules = null) -> void:
 	stretch = p_stretch
 	calendar = p_calendar
+	water_rules = p_rules if p_rules != null else WaterTypeRules.shared()
 	if field == null or stretch == null:
 		return
 	resting = RestingLies.new(field)
@@ -71,6 +77,7 @@ func _init(p_stretch: Stretch, field: RiverField, p_calendar: Calendar) -> void:
 				var reach := _reach_at(field, p)
 				var k := _cells.size()
 				_cells.append(Vector3(p.x, p.y, score))
+				_types.append(WaterTypes.at(field, water_rules, p))
 				_rests.append(1 if resting.rest[idx] > field.lie[idx] else 0)
 				total += score * score
 				_cumulative.append(total)
@@ -127,20 +134,24 @@ func generate(c: Conditions, rng: RandomNumberGenerator) -> Array[FishPlan]:
 	if entries.is_empty():
 		return out
 	var lies := _pick_lies(stretch.fish_count(), lie_rng)
-	# Best lie first, with a little luck, then the biggest fish into it.
+	# Best lie first, with a little luck: (cell, noisy score). Each lie picks
+	# a species that suits its water, and the best lies get the biggest ranks.
 	var keyed: Array[Vector2] = []
 	for k in lies:
 		keyed.append(Vector2(k, _cells[k].z + lie_rng.randf_range(-LIE_NOISE, LIE_NOISE)))
 	keyed.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.y > b.y)
+	var ranks: Array[float] = []
 	for n in keyed.size():
-		var sp := pick_species(entries, species_rng)
-		out.append(FishPlan.new(sp, roll_length(sp, size_rng), Vector2.ZERO, 0.0, activity(sp, c)))
+		ranks.append(size_rank(size_rng))
+	ranks.sort_custom(func(a: float, b: float) -> bool: return a > b)
+	for n in keyed.size():
+		var k := int(keyed[n].x)
+		var type := _types[k]
+		var sp := pick_species_for(entries, type, water_rules.stray_weight, species_rng)
+		var plan := FishPlan.new(sp, length_at(sp, ranks[n]), Vector2(_cells[k].x, _cells[k].y), _cells[k].z, activity(sp, c), type)
+		plan.resting = _rests[k] == 1
+		out.append(plan)
 	out.sort_custom(func(a: FishPlan, b: FishPlan) -> bool: return a.length_in > b.length_in)
-	for n in out.size():
-		var cell := _cells[int(keyed[n].x)]
-		out[n].lie = Vector2(cell.x, cell.y)
-		out[n].lie_score = cell.z
-		out[n].resting = _rests[int(keyed[n].x)] == 1
 	return out
 
 
@@ -168,10 +179,38 @@ static func pick_species(entries: Array[SpawnEntry], rng: RandomNumberGenerator)
 	return entries[-1].species
 
 
+## One species for a lie in water of `type`, weighted by abundance times how
+## much the species likes that water (FishSpecies.habitat_for).
+static func pick_species_for(entries: Array[SpawnEntry], type: int, stray: float,
+		rng: RandomNumberGenerator) -> FishSpecies:
+	var weights := PackedFloat32Array()
+	var total := 0.0
+	for e in entries:
+		weights.append(e.abundance * e.species.habitat_for(type, stray))
+		total += weights[-1]
+	if total <= 0.0:
+		return pick_species(entries, rng)
+	var r := rng.randf() * total
+	for k in entries.size():
+		r -= weights[k]
+		if r < 0.0:
+			return entries[k].species
+	return entries[-1].species
+
+
+## A size rank, 0 (smallest) to 1 (biggest), leaning small.
+static func size_rank(rng: RandomNumberGenerator) -> float:
+	return pow(rng.randf(), SIZE_SKEW)
+
+
+## The length (in, to the half inch) at size rank `u` in the species' range.
+static func length_at(sp: FishSpecies, u: float) -> float:
+	return snappedf(lerpf(sp.min_length_in, sp.max_length_in, u), 0.5)
+
+
 ## A length (in, to the half inch) in the species' range, leaning small.
 static func roll_length(sp: FishSpecies, rng: RandomNumberGenerator) -> float:
-	var u := pow(rng.randf(), SIZE_SKEW)
-	return snappedf(lerpf(sp.min_length_in, sp.max_length_in, u), 0.5)
+	return length_at(sp, size_rank(rng))
 
 
 ## The stretch's hatches that are coming off in `c`.

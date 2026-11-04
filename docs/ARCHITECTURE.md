@@ -93,6 +93,7 @@ The data folders today, each covered by `tests/data_test.gd`:
 * `data/cast_tuning.tres`: casting numbers shared by every rule set.
 * `data/weather_looks/`: `WeatherLook`, how the weather and the time of day look on screen (REQ-0009): a `WeatherStyle` per weather (grade, rain or snow, cloud shadows, rain dimples, lightning) and a tint and brightness per slot. `WeatherView` paints it from the day's `Conditions`.
 * `data/calendar.tres`: `Calendar`, the year's rules (REQ-0007): how each slot lowers the air, how the water follows it, and how keen fish are in each slot and weather. Not in the catalog; the fishing node takes it as an export.
+* `data/water_types.tres`: `WaterTypeRules`, how the river's water is sorted into riffle, run, pool, tail-out, pocket, seam and eddy (REQ-0010), plus the `WaterType` enum and the stray weight for water a species doesn't list. Not in the catalog; code reaches it through `WaterTypeRules.shared()`.
 * `data/climates/`: `Climate`, one per region (REQ-0008; today `central_oregon.tres`): each season's highs, weather odds and persistence (how long spells last), how far the high wanders a day, how each weather lowers it, when storms hit, and how hard rain, snow and storms fall. A new region is a new file. Not in the catalog; the fishing node takes one as an export until regions exist.
 * `data/catalog.tres`: the index of every fish, fly, insect and stretch (generated, see below).
 
@@ -195,7 +196,7 @@ The design is in [FISH_LOGIC.md](FISH_LOGIC.md): generation (per season or visit
 
 | Part | Kind | Holds |
 |---|---|---|
-| `FishSpecies` | Data | What's true of every fish of the kind: diet, selectivity, hook-set window, fight stats, sizes. Later habitat preference, temperature range, light preference. Not where it lives (R12). |
+| `FishSpecies` | Data | What's true of every fish of the kind: diet, selectivity, hook-set window, fight stats, sizes, temperature range, habitat (`HabitatEntry`: water type and weight). Later light preference. Not where it lives (R12). |
 | `Fish` | Model | This fish: length, lie, state; later mood, hunger, wariness, refusals. |
 | `DriftPastRules` | Rule set | The bite roll: lane, landing and drift shares × fly match. The only bite rules since 2026-11-02. |
 | `FishGenerator` | Model | Stocks a stretch for one day from its spawn and hatch tables, the `Conditions` and the river's lies (REQ-0007). |
@@ -388,6 +389,7 @@ Every script, its layer and its system. `architecture_test.gd` fails if a script
 | `scripts/fishing/fish_generator.gd` | `FishGenerator` | Model | Fishing (fish) |
 | `scripts/fishing/fish_plan.gd` | `FishPlan` | Model (value) | Fishing (fish) |
 | `scripts/fishing/fish_species.gd` | `FishSpecies` | Data | Fishing (fish) |
+| `scripts/fishing/habitat_entry.gd` | `HabitatEntry` | Data | Fishing (fish, habitat) |
 | `scripts/fishing/fishing_controller.gd` | (node) | Session + views, to split | Fishing |
 | `scripts/fishing/insect.gd` | `Insect` | Data | Fishing (flies, diets) |
 | `scripts/fishing/rules/drift_past_rules.gd` | `DriftPastRules` | Rule set (data) | Fishing (take) |
@@ -403,6 +405,8 @@ Every script, its layer and its system. `architecture_test.gd` fails if a script
 | `scripts/river/spawn_entry.gd` | `SpawnEntry` | Data (place) | River, fish |
 | `scripts/river/stretch.gd` | `Stretch` | Data | River |
 | `scripts/river/water_look.gd` | `WaterLook` | Data (look) | River (drawing) |
+| `scripts/river/water_type_rules.gd` | `WaterTypeRules` | Data | River (water types) |
+| `scripts/river/water_types.gd` | `WaterTypes` | Model (value) | River (water types) |
 | `scripts/river/water_view.gd` | `WaterView` | View | River (drawing) |
 | `scripts/stream_scene.gd` | (node) | Scene root + views, to split | River, scene wiring |
 | `scripts/tackle/fly_pattern.gd` | `FlyPattern` | Data | Tackle (flies) |

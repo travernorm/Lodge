@@ -58,9 +58,10 @@ static func _one(generator: FishGenerator, calendar: Calendar, opts: Dictionary,
 	var lines := PackedStringArray(["%s  (%.0f m of river, %d lie cells)" % [name, generator.stretch.river_length_m(), generator.lie_cells()]])
 	lines.append_array(FishGenerator.describe_day(generator, day, p_seed))
 	lines.append("%d fish" % plans.size())
-	lines.append("  %-20s %8s  %-14s %6s %9s" % ["species", "length", "lie (m)", "score", "activity"])
+	lines.append("  %-20s %8s  %-14s %-8s %6s %9s" % ["species", "length", "lie (m)", "water", "score", "activity"])
 	for p in plans:
-		lines.append("  %-20s %6.1f in  (%5.1f, %5.1f)  %5.2f %9.2f" % [p.species.display_name, p.length_in, p.lie.x, p.lie.y, p.lie_score, p.activity])
+		lines.append("  %-20s %6.1f in  (%5.1f, %5.1f)  %-8s %5.2f %9.2f" % [p.species.display_name, p.length_in, p.lie.x, p.lie.y,
+			WaterTypeRules.label(p.water_type), p.lie_score, p.activity])
 	return lines
 
 

@@ -1,9 +1,10 @@
-[gd_resource type="Resource" script_class="FishSpecies" load_steps=9 format=3]
+[gd_resource type="Resource" script_class="FishSpecies" load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1_species"]
 [ext_resource type="Script" path="res://scripts/fishing/diet_entry.gd" id="2_diet"]
 [ext_resource type="Resource" path="res://data/insects/pmd.tres" id="3_pmd"]
 [ext_resource type="Resource" path="res://data/insects/baetis.tres" id="4_baetis"]
+[ext_resource type="Script" path="res://scripts/fishing/habitat_entry.gd" id="5_28qfx"]
 [ext_resource type="Resource" path="res://data/insects/caddis.tres" id="5_caddis"]
 
 [sub_resource type="Resource" id="diet_pmd"]
@@ -21,6 +22,21 @@ script = ExtResource("2_diet")
 insect = ExtResource("5_caddis")
 weight = 0.5
 
+[sub_resource type="Resource" id="Resource_yj8lh"]
+script = ExtResource("5_28qfx")
+type = 5
+weight = 1.0
+
+[sub_resource type="Resource" id="Resource_krbmh"]
+script = ExtResource("5_28qfx")
+type = 4
+weight = 0.8
+
+[sub_resource type="Resource" id="Resource_3mm46"]
+script = ExtResource("5_28qfx")
+type = 0
+weight = 0.6
+
 [resource]
 script = ExtResource("1_species")
 id = &"redband"
@@ -30,6 +46,9 @@ color = Color(0.3, 0.34, 0.3, 1)
 bite_chance = 0.6
 diet = Array[ExtResource("2_diet")]([SubResource("diet_pmd"), SubResource("diet_baetis"), SubResource("diet_caddis")])
 selectivity = 0.5
+water_min_f = 30
+water_max_f = 70
+habitat = Array[ExtResource("5_28qfx")]([SubResource("Resource_yj8lh"), SubResource("Resource_krbmh"), SubResource("Resource_3mm46")])
 set_min = 0.1
 set_max = 1.0
 pull = 0.65

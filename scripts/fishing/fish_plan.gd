@@ -15,12 +15,16 @@ var lie_score := 0.0
 var resting := false
 ## 0 to 1: how often it rises (FishGenerator.activity()).
 var activity := 1.0
+## The kind of water its lie is in (a WaterTypeRules.WaterType), or
+## WaterTypes.NONE (REQ-0010).
+var water_type := WaterTypes.NONE
 
 
 func _init(p_species: FishSpecies = null, p_length_in := 0.0, p_lie := Vector2.ZERO,
-		p_lie_score := 0.0, p_activity := 1.0) -> void:
+		p_lie_score := 0.0, p_activity := 1.0, p_water_type := WaterTypes.NONE) -> void:
 	species = p_species
 	length_in = p_length_in
 	lie = p_lie
 	lie_score = p_lie_score
 	activity = p_activity
+	water_type = p_water_type

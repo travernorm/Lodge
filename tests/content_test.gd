@@ -17,6 +17,7 @@ func _initialize() -> void:
 	_test_edit_rewrites_one_field()
 	_test_new_rows_link_each_other()
 	_test_bad_cells()
+	_test_habitat_cells()
 	_test_missing_row_is_reported()
 	_test_art_cells()
 	_clean()
@@ -89,6 +90,7 @@ func _test_bad_cells() -> void:
 		["fish", ",4d574d,0.6,", ",4d574d,1.5,", "1.5 is outside 0 to 1"],
 		["fish", "pmd:1;baetis:1;caddis:0.5", "pmd:1;baetis:1;caddis:lots", "weight: 'lots' isn't a number"],
 		["fish", "brook,Brook", "Brook Trout,Brook", "id must be lower case"],
+		["fish", "Pocket:1;Pool:0.8", "Pocket:1;Puddle:0.8", "'Puddle' isn't one of Riffle"],
 		["fish", "cutthroat,Westslope", "brook,Westslope", "id is used twice"],
 		["flies", ",8a8a8a,", ",grey,", "'grey' isn't an html colour"],
 		["flies", ",Dry,caddis", ",Wet,caddis", "'Wet' isn't one of Dry, Nymph, Streamer"],
@@ -104,6 +106,20 @@ func _test_bad_cells() -> void:
 			hit = hit or e.contains(c[3])
 		_check(hit, "%s.csv: %s %s" % [c[0], c[3], plan.errors])
 		_check(Sheets.apply(plan) == ERR_INVALID_DATA, "  and nothing is written")
+
+
+## A habitat is water types by name (REQ-0010), with spaces or underscores.
+func _test_habitat_cells() -> void:
+	_sheets({"fish": ["Riffle:1;Run:0.8;Tail Out:0.6", "riffle:1;run:0.5;tail_out:0.6"]})
+	var plan := Sheets.plan(TMP)
+	var cut: FishSpecies = null
+	for w in plan.writes:
+		if w.path.ends_with("cutthroat.tres"):
+			cut = w.res
+	_check(plan.errors.is_empty() and cut != null and cut.habitat.size() == 3, "habitat: a fish row reads water types (%s)" % [plan.errors])
+	if cut != null and cut.habitat.size() == 3:
+		_check(cut.habitat[2].type == WaterTypeRules.WaterType.TAIL_OUT and is_equal_approx(cut.habitat[1].weight, 0.5),
+			"  tail_out and Tail Out are the same type, and the weight comes through")
 
 
 func _test_missing_row_is_reported() -> void:

@@ -14,7 +14,8 @@ extends RefCounted
 ##   field by its inspector names (Dry, or Dry;Nymph).
 ## * a link to another file by its id (pmd); a list of links as ids joined
 ##   with ";" (pmd;baetis).
-## * a list of entries (a DietEntry) as id:number pairs (pmd:1;caddis:0.5).
+## * a list of entries as key:number pairs: a DietEntry by insect id
+##   (pmd:1;caddis:0.5), a HabitatEntry by water type (Pool:1;Tail Out:0.6).
 ## * a file that isn't content, like a fly's art, by its path
 ##   (res://assets/flies/parachute_adams.png).
 ## * an empty cell keeps what the file has, or the default for a new row.
@@ -310,7 +311,9 @@ static func _decode_list(text: String, prop: Dictionary, where: String,
 			errors.append("%s: can't fill a list of %s from a sheet" % [where, cls])
 			return null
 		var entry: Resource = script.new()
-		entry.set(pair[0].name, _resolve(_element_class(pair[0]), part.get_slice(PAIR_SEP, 0).strip_edges(), where, errors, registry))
+		var key := part.get_slice(PAIR_SEP, 0).strip_edges()
+		entry.set(pair[0].name, _resolve(_element_class(pair[0]), key, where, errors, registry) \
+			if pair[0].type == TYPE_OBJECT else decode(key, pair[0], where, errors, registry))
 		if part.contains(PAIR_SEP):
 			entry.set(pair[1].name, decode(part.get_slice(PAIR_SEP, 1).strip_edges(), pair[1], "%s, %s" % [where, pair[1].name], errors, registry))
 		out.append(entry)
@@ -362,7 +365,7 @@ static func _decode_names(text: String, prop: Dictionary, where: String, errors:
 	for part in parts:
 		var found := false
 		for pair in _names(prop):
-			if pair[0].to_lower() == part.strip_edges().to_lower():
+			if _same_name(pair[0], part):
 				total |= pair[1]
 				found = true
 		if not found:
@@ -371,6 +374,11 @@ static func _decode_names(text: String, prop: Dictionary, where: String, errors:
 				names.append(pair[0])
 			errors.append("%s: '%s' isn't one of %s" % [where, part, ", ".join(names)])
 	return total
+
+
+## Names match ignoring case, spaces and underscores ("Tail Out" = tail_out).
+static func _same_name(a: String, b: String) -> bool:
+	return a.strip_edges().to_lower().replace(" ", "_") == b.strip_edges().to_lower().replace(" ", "_")
 
 
 ## An enum or flags field's [name, value] pairs, from its hint ("Dry:0,Nymph:1").
@@ -389,12 +397,14 @@ static func _element_class(prop: Dictionary) -> String:
 	return String(prop.hint_string).get_slice(":", String(prop.hint_string).count(":"))
 
 
-## An entry resource's link field and number field (DietEntry: insect, weight).
+## An entry resource's key field and number field: a link (DietEntry: insect,
+## weight) or an enum (HabitatEntry: type, weight).
 static func _entry_fields(script: Script) -> Array[Dictionary]:
 	var link := {}
 	var number := {}
 	for c in columns(script):
-		if c.type == TYPE_OBJECT and link.is_empty():
+		var is_key: bool = c.type == TYPE_OBJECT or (c.type == TYPE_INT and c.hint == PROPERTY_HINT_ENUM)
+		if is_key and link.is_empty():
 			link = c
 		elif (c.type == TYPE_FLOAT or c.type == TYPE_INT) and number.is_empty():
 			number = c

@@ -73,7 +73,7 @@ Insects, flies, rods and fish are data files, so adding one doesn't need code. T
 
 - **New fly:** a row in `content/flies.csv`: a new `id`, `display_name`, colours, `fly_type` (Dry, Nymph or Streamer) and the insects it `imitates`. It joins the fly box at the end.
 - **New rod:** a row in `content/rods.csv`: the fly types it throws, `max_line_m` (its longest line), `forgiveness` (1 is the baseline timing windows) and `rated_length_in` (fish longer than this snap the tippet sooner). L2 / R cycles rods in catalog order.
-- **New fish:** a row in `content/fish.csv`: `bite_chance` (the odds for a perfect pass), `diet` and `selectivity`, the hook-set window (`set_min`/`set_max`), `pull` (around 1.0 snaps the tippet under full pressure), `toughness` and the size range. `water_min_f`/`water_max_f` set the water it can live in (30 to 70, the lower °F of each band). A species says nothing about where it lives: to put it in a river, add a `SpawnEntry` to that stretch's `spawn` list in `data/stretches/`.
+- **New fish:** a row in `content/fish.csv`: `bite_chance` (the odds for a perfect pass), `diet` and `selectivity`, the hook-set window (`set_min`/`set_max`), `pull` (around 1.0 snaps the tippet under full pressure), `toughness` and the size range. `water_min_f`/`water_max_f` set the water it can live in (30 to 70, the lower °F of each band). `habitat` says which kinds of water it likes (`Pocket:1;Pool:0.8`); types it leaves out get a small stray weight, and an empty habitat likes all water. A species says nothing about where it lives: to put it in a river, add a `SpawnEntry` to that stretch's `spawn` list in `data/stretches/`.
 - **Bite odds:** `DriftPastRules` (`data/take_rules/`) splits `bite_chance` into lane, landing and drift shares, and `selectivity` sets how much a fly that isn't on the diet costs.
 
 ## Stocking a stretch with fish
@@ -126,6 +126,7 @@ How to fill a cell:
 | Fly type, rod fly types | The inspector's names; several joined with `;` | `Dry`, `Dry;Nymph` |
 | A link, or a list of links | ids joined with `;` | `pmd;baetis` |
 | A diet | `insect:weight` pairs joined with `;` | `pmd:1;caddis:0.5` |
+| A habitat | `type:weight` pairs joined with `;` (Riffle, Run, Pool, Tail Out, Pocket, Seam, Eddy; `tail_out` works too) | `Pocket:1;Pool:0.8` |
 | Empty | Keeps what the file has (or the default, for a new row) | |
 
 * **Ids** are lower case with `_`, unique, and the file name. Never rename one: a rename makes a new file and leaves the old one.
