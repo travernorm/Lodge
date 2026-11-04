@@ -8,5 +8,6 @@
 [resource]
 script = ExtResource("1_look")
 deep = ExtResource("2_deep")
+deep_tint = Color(2.6, 2.6, 2.6, 1)
 mid = ExtResource("3_mid")
 white = ExtResource("4_white")
