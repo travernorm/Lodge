@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="Stretch" load_steps=10 format=3]
+[gd_resource type="Resource" script_class="Stretch" load_steps=40 format=3]
 
 [ext_resource type="Script" path="res://scripts/river/stretch.gd" id="1_7rl41"]
 [ext_resource type="Script" path="res://scripts/river/spawn_entry.gd" id="2_spawn"]
@@ -9,26 +9,119 @@
 [ext_resource type="Script" path="res://scripts/river/features/fallen_log.gd" id="7_log"]
 [ext_resource type="Script" path="res://scripts/river/features/eddy.gd" id="8_eddy"]
 [ext_resource type="Script" path="res://scripts/river/river_feature.gd" id="9_feature"]
+[ext_resource type="Script" path="res://scripts/river/hatch_entry.gd" id="10_hatch"]
+[ext_resource type="Script" path="res://scripts/conditions/season_window.gd" id="11_window"]
+[ext_resource type="Resource" path="res://data/insects/caddis.tres" id="12_caddis"]
+[ext_resource type="Resource" path="res://data/insects/pmd.tres" id="13_pmd"]
+[ext_resource type="Resource" path="res://data/insects/baetis.tres" id="14_baetis"]
+[ext_resource type="Resource" path="res://data/insects/march_brown.tres" id="15_march_brown"]
+[ext_resource type="Resource" path="res://data/insects/mahogany.tres" id="16_mahogany"]
+[ext_resource type="Resource" path="res://data/insects/callibaetis.tres" id="17_callibaetis"]
 
-[sub_resource type="Resource" id="spawn_redband_a"]
+[sub_resource type="Resource" id="spawn_redband"]
 script = ExtResource("2_spawn")
 species = ExtResource("3_ere81")
-count = 2
+abundance = 0.6
 
 [sub_resource type="Resource" id="spawn_cutthroat"]
 script = ExtResource("2_spawn")
 species = ExtResource("4_3jtx1")
-count = 1
-
-[sub_resource type="Resource" id="spawn_redband_b"]
-script = ExtResource("2_spawn")
-species = ExtResource("3_ere81")
-count = 1
+abundance = 0.2
 
 [sub_resource type="Resource" id="spawn_brook"]
 script = ExtResource("2_spawn")
 species = ExtResource("5_uv1mv")
-count = 1
+abundance = 0.2
+
+[sub_resource type="Resource" id="window_caddis"]
+script = ExtResource("11_window")
+from_season = 0
+from_day = 15
+to_season = 2
+to_day = 20
+
+[sub_resource type="Resource" id="hatch_caddis"]
+script = ExtResource("10_hatch")
+insect = ExtResource("12_caddis")
+window = SubResource("window_caddis")
+slots = 24
+weathers = 7
+strength = 0.8
+
+[sub_resource type="Resource" id="window_pmd"]
+script = ExtResource("11_window")
+from_season = 0
+from_day = 15
+to_season = 1
+to_day = 30
+
+[sub_resource type="Resource" id="hatch_pmd"]
+script = ExtResource("10_hatch")
+insect = ExtResource("13_pmd")
+window = SubResource("window_pmd")
+slots = 2
+weathers = 7
+strength = 0.7
+
+[sub_resource type="Resource" id="window_baetis"]
+script = ExtResource("11_window")
+from_season = 2
+from_day = 1
+to_season = 0
+to_day = 30
+
+[sub_resource type="Resource" id="hatch_baetis"]
+script = ExtResource("10_hatch")
+insect = ExtResource("14_baetis")
+window = SubResource("window_baetis")
+slots = 8
+weathers = 6
+strength = 0.6
+
+[sub_resource type="Resource" id="window_march_brown"]
+script = ExtResource("11_window")
+from_season = 0
+from_day = 11
+to_season = 0
+to_day = 30
+
+[sub_resource type="Resource" id="hatch_march_brown"]
+script = ExtResource("10_hatch")
+insect = ExtResource("15_march_brown")
+window = SubResource("window_march_brown")
+slots = 14
+weathers = 6
+strength = 0.5
+
+[sub_resource type="Resource" id="window_mahogany"]
+script = ExtResource("11_window")
+from_season = 2
+from_day = 1
+to_season = 2
+to_day = 20
+
+[sub_resource type="Resource" id="hatch_mahogany"]
+script = ExtResource("10_hatch")
+insect = ExtResource("16_mahogany")
+window = SubResource("window_mahogany")
+slots = 8
+weathers = 6
+strength = 0.5
+
+[sub_resource type="Resource" id="window_callibaetis"]
+script = ExtResource("11_window")
+from_season = 1
+from_day = 1
+to_season = 2
+to_day = 10
+
+[sub_resource type="Resource" id="hatch_callibaetis"]
+script = ExtResource("10_hatch")
+insect = ExtResource("17_callibaetis")
+window = SubResource("window_callibaetis")
+slots = 2
+weathers = 7
+strength = 0.4
 
 [sub_resource type="Resource" id="boulder_1"]
 script = ExtResource("6_boulder")
@@ -75,4 +168,7 @@ depth_keys = PackedVector2Array(0, 0.3, 0.1, 0.4, 0.15, 0.43, 0.2, 0.33, 0.25, 0
 bend_shift = 1.0
 features = Array[ExtResource("9_feature")]([SubResource("boulder_1"), SubResource("boulder_2"), SubResource("boulder_3"), SubResource("boulder_4"), SubResource("log_1"), SubResource("log_2"), SubResource("eddy_1")])
 angler_start = Vector2(10, 7.5)
-spawn = Array[ExtResource("2_spawn")]([SubResource("spawn_redband_a"), SubResource("spawn_cutthroat"), SubResource("spawn_redband_b"), SubResource("spawn_brook")])
+spawn = Array[ExtResource("2_spawn")]([SubResource("spawn_redband"), SubResource("spawn_cutthroat"), SubResource("spawn_brook")])
+fish_per_100m = 2.7
+hatches = Array[ExtResource("10_hatch")]([SubResource("hatch_caddis"), SubResource("hatch_pmd"), SubResource("hatch_baetis"), SubResource("hatch_march_brown"), SubResource("hatch_mahogany"), SubResource("hatch_callibaetis")])
+spring_fed = false

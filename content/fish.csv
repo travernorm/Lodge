@@ -1,4 +1,4 @@
-id,display_name,description,color,bite_chance,diet,selectivity,set_min,set_max,pull,toughness,min_length_in,max_length_in
-brook,Brook Trout,"Worm-track back, white-edged fins. Tucks along the slow far edge of the pool and strikes fast.",4d523d,0.6,attractor:1;caddis:1;pmd:1,0.2,0.08,0.45,0.55,0.8,6,12
-cutthroat,Westslope Cutthroat,"Red slash under the jaw. Holds in the riffle and rises slow and deliberate, so don't rush the set.",5c5c38,0.6,caddis:1,0.6,0.25,0.85,0.75,1,9,16
-redband,Redband Rainbow,"The desert-side rainbow of Eastern Oregon. Holds in the slack water behind the boulder at the head of the pool, darting out to sip mayflies drifting down the seams.",4d574d,0.6,pmd:1;baetis:1;caddis:0.5,0.5,0.1,1,0.65,1.2,10,20
+id,display_name,description,color,bite_chance,diet,selectivity,water_min_f,water_max_f,set_min,set_max,pull,toughness,min_length_in,max_length_in
+brook,Brook Trout,"Worm-track back, white-edged fins. Tucks along the slow far edge of the pool and strikes fast.",4d523d,0.6,attractor:1;caddis:1;pmd:1,0.2,30,60,0.08,0.45,0.55,0.8,6,12
+cutthroat,Westslope Cutthroat,"Red slash under the jaw. Holds in the riffle and rises slow and deliberate, so don't rush the set.",5c5c38,0.6,caddis:1,0.6,30,60,0.25,0.85,0.75,1,9,16
+redband,Redband Rainbow,"The desert-side rainbow of Eastern Oregon. Holds in the slack water behind the boulder at the head of the pool, darting out to sip mayflies drifting down the seams.",4d574d,0.6,pmd:1;baetis:1;caddis:0.5,0.5,30,70,0.1,1,0.65,1.2,10,20

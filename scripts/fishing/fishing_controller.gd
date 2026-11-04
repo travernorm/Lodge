@@ -22,8 +22,12 @@ enum Phase { NONE, DRIFT, FIGHT, REEL }
 ## (data/catalog.tres), in its order. Y (F) cycles the flies this rod throws and
 ## L2 (R) the rods, while the line is reeled in. The first of each starts on.
 var tackle := Tackle.new(Catalog.shared().rods, Catalog.shared().flies)
-## One species per fish, from the stretch's spawn table (Stretch.spawn).
-var stocking: Array[FishSpecies] = []
+## The day (REQ-0007), rolled from a new seed each load unless pinned here.
+@export var calendar: Calendar = preload("res://data/calendar.tres")
+@export var fixed_conditions: Conditions
+@export var fixed_seed := 0
+var conditions: Conditions
+var day_seed := 0
 
 ## The bite rules: each trout rolls as the fly drifts past it.
 @export var take_rules: DriftPastRules = preload("res://data/take_rules/drift_past.tres")
@@ -65,6 +69,7 @@ var catches: Array[Dictionary] = []
 
 var _gestures := StickGestures.new()
 var _rng := RandomNumberGenerator.new()
+var _generator: FishGenerator
 var _stream: Node2D
 var _river: RiverField
 var _cast: Node
@@ -89,30 +94,23 @@ func _ready() -> void:
 	_fly_view = FlyView.add_to(self)
 	_box_view = FlyBoxView.new()
 	add_child(_box_view)
-	_rng.randomize()
 	_stream = get_parent() as Node2D
 	_cast = _stream.get_node(^"Cast")
 	_cast.model.landed.connect(_on_landed)
 	_cast.model.rod = tackle.rod()
 	_river = _stream.get(&"river")
-	# The stretch's spawn table stocks it, spread over the whole river. The
-	# one-screen test stream (no stretch) has no fish.
-	var stretch: Stretch = _stream.get(&"stretch")
-	var area := Rect2()
-	if stretch != null:
-		stocking = stretch.stocked()
-		area = Rect2(Vector2.ZERO, stretch.size_m)
-	for species in stocking:
-		fish.append(Fish.new(species, _rng, _river, area, _lies_except))
+	_generator = FishGenerator.for_stretch(_stream.get(&"stretch"), _river, calendar)
+	stock(fixed_conditions, fixed_seed if fixed_seed != 0 else Time.get_ticks_usec())
 
 
-## The lies (m) of every trout but `me`, so trout spread out over the water.
-func _lies_except(me: Fish) -> PackedVector2Array:
-	var out := PackedVector2Array()
-	for f in fish:
-		if f != me and f.state != Fish.State.CAUGHT:
-			out.append(f.lie)
-	return out
+## Stocks the stretch for a day from a seed (REQ-0007): the day (rolled when null),
+## its fish (none without a stretch) and the take rolls.
+func stock(day: Conditions, p_seed: int) -> void:
+	day_seed = p_seed
+	var roller := FishGenerator.seeded(p_seed)
+	conditions = day if day != null else Conditions.roll(calendar, roller, _generator != null and _generator.stretch.spring_fed)
+	_rng.seed = roller.randi()
+	fish.assign((_generator.generate(conditions, roller) if _generator else []).map(func(p): return Fish.from_plan(p, _rng)))
 
 
 ## The tied-on fly, or null when the rod throws none in the box.
@@ -154,6 +152,7 @@ func debug_lines() -> PackedStringArray:
 	for f in fish:
 		states.append("%s:%s" % [String(f.species.id).left(3), Fish.State.keys()[f.state].left(4).to_lower()])
 	lines.append(" ".join(states))
+	lines.append_array(FishGenerator.describe_day(_generator, conditions, day_seed))
 	lines.append("bites  %s" % take_rules.display_name)
 	lines.append("line out  %.1f m" % drift.line_length)
 	return lines
@@ -560,8 +559,8 @@ func _draw_hud() -> void:
 
 func _unique_species() -> int:
 	var seen := {}
-	for s in stocking:
-		seen[s.id] = true
+	for f in fish:
+		seen[f.species.id] = true
 	return seen.size()
 
 

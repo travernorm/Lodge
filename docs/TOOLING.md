@@ -73,8 +73,28 @@ Insects, flies, rods and fish are data files, so adding one doesn't need code. T
 
 - **New fly:** a row in `content/flies.csv`: a new `id`, `display_name`, colours, `fly_type` (Dry, Nymph or Streamer) and the insects it `imitates`. It joins the fly box at the end.
 - **New rod:** a row in `content/rods.csv`: the fly types it throws, `max_line_m` (its longest line), `forgiveness` (1 is the baseline timing windows) and `rated_length_in` (fish longer than this snap the tippet sooner). L2 / R cycles rods in catalog order.
-- **New fish:** a row in `content/fish.csv`: `bite_chance` (the odds for a perfect pass), `diet` and `selectivity`, the hook-set window (`set_min`/`set_max`), `pull` (around 1.0 snaps the tippet under full pressure), `toughness` and the size range. A species says nothing about where it lives: to put it in a river, add a `SpawnEntry` to that stretch's `spawn` list in `data/stretches/`.
+- **New fish:** a row in `content/fish.csv`: `bite_chance` (the odds for a perfect pass), `diet` and `selectivity`, the hook-set window (`set_min`/`set_max`), `pull` (around 1.0 snaps the tippet under full pressure), `toughness` and the size range. `water_min_f`/`water_max_f` set the water it can live in (30 to 70, the lower °F of each band). A species says nothing about where it lives: to put it in a river, add a `SpawnEntry` to that stretch's `spawn` list in `data/stretches/`.
 - **Bite odds:** `DriftPastRules` (`data/take_rules/`) splits `bite_chance` into lane, landing and drift shares, and `selectivity` sets how much a fly that isn't on the diet costs.
+
+## Stocking a stretch with fish
+
+Each load, the fish generator (REQ-0007) stocks the stretch for one day: it rolls the day from a seed (season, day, time slot, weather, air and water temperature) and places fish from the stretch's data. To fill a new stretch, set these in the inspector on its `.tres` in `data/stretches/`:
+
+- `spawn`: a `SpawnEntry` per species, with its `abundance` (0 to 1, how common it is here) and an optional season `window` (Spring 1 to Winter 30 when empty).
+- `fish_per_100m`: how many fish per 100 m of river. The demo's 2.7 gives 5 fish.
+- `hatches`: a `HatchEntry` per insect, with its season `window`, the `slots` and `weathers` it comes off in, and its `strength`. Fish that eat a hatch that's on rise more often.
+- `spring_fed`: water that stays in the 40s and 50s all year.
+
+The year's own numbers (each season's temperatures and weather odds, and how keen fish are in each slot and weather) are in `data/calendar.tres`.
+
+Try a stretch from the command line before playing it:
+
+```
+godot --headless --path . --script res://tools/generate_fish.gd -- --stretch demo_freestone --season summer --day 12 --slot dusk --weather overcast --seed 42
+godot --headless --path . --script res://tools/generate_fish.gd -- --stretch demo_freestone --runs 200
+```
+
+The first prints the day, the hatch and every fish (species, length, lie, lie score, activity). The second prints each species' share, average and biggest length over 200 days. Leave out any day option to roll it. A seed with no day options gives the same day and fish as the game with that seed, which the debug overlay (View / F1) shows. In the game, set `fixed_seed` or `fixed_conditions` on the Fishing node to pin a day.
 
 ## Content sheets
 

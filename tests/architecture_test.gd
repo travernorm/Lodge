@@ -84,7 +84,6 @@ const DEBT_REACH := {
 }
 ## R8 debt: unseeded randomness per file. Step G (one seeded RNG) empties this.
 const DEBT_UNSEEDED := {
-	"res://scripts/fishing/fishing_controller.gd": 1,  # F9
 	"res://scripts/casting/cast_model.gd": 1,  # F9
 }
 ## R5 debt: loosely typed data exports per file. Empty since REQ-0004 C2
@@ -92,7 +91,7 @@ const DEBT_UNSEEDED := {
 const DEBT_LOOSE := {}
 ## R9 debt: line caps above MAX_LINES. Steps A and A2 bring them down.
 const DEBT_LINES := {
-	"res://scripts/fishing/fishing_controller.gd": 615,  # F1: step A (fly box HUD moved to FlyBoxView)
+	"res://scripts/fishing/fishing_controller.gd": 614,  # F1: step A (stocking moved to FishGenerator, REQ-0007)
 	"res://scripts/river/river_field.gd": 623,  # F11: builder and query in one (603 after REQ-0004 C3)
 	"res://scripts/stream_scene.gd": 451,  # F1: step A2 (angler drawing moved to AnglerView)
 }

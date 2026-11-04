@@ -56,12 +56,14 @@ func _run(main: Node) -> void:
 	if fishing == null or not fishing.has_method(&"current_fly"):
 		_fail("Fishing controller script did not load")
 		return
+	fishing.stock(null, 7)  # the same day and fish every run (REQ-0007)
 	if fishing.fish.size() != 5:
 		_fail("Expected five trout in the stretch, found %d" % fishing.fish.size())
 		return
 	var trout: Fish = fishing.fish[0]
 	trout.species = trout.species.duplicate()
 	trout.species.bite_chance = 1.0
+	trout.species.selectivity = 0.0  # whatever species it is, it takes the tied-on fly
 	# Move it under wherever the cast is headed, as the fly leaves the rod.
 	cast.model.delivered.connect(func(offset: Vector2, _q: float):
 		trout.lie = WorldScale.vec_to_m(main.rod_tip()) + offset

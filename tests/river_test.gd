@@ -328,7 +328,7 @@ func _test_trout_spread_over_the_stretch(f: RiverField, st: Stretch) -> void:
 	for run in 5:
 		rng.seed = run
 		var lies := PackedVector2Array()
-		var count := st.stocked().size()
+		var count := st.fish_count()
 		for n in count:
 			var l := f.pick_lie(area, rng, Fish.MIN_LIE_SCORE, lies, Fish.LIE_GAP)
 			if l == Vector2.INF:

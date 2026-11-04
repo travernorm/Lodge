@@ -2,10 +2,12 @@ class_name Fish
 extends RefCounted
 ## One trout holding in the stream.
 ##
-## It holds where the river field says a trout would: slow, deep-enough water
-## with fast water close by (see RiverField.pick_lie()), inside the area it's
-## given (the whole stretch, in the game). Without a river field it picks any
-## spot in that area. Positions are in metres (REQ-0001).
+## In the game each fish comes from a FishPlan (from_plan(), REQ-0007): the
+## fish generator picks its species, length, lie and how often it rises, and
+## a fish that breaks off comes back to that same lie. Built directly (tests),
+## it picks its own lie from the river field (RiverField.pick_lie()) inside
+## the area it's given, or any spot there without a field. Positions are in
+## metres (REQ-0001).
 ##
 ## When it bites is up to the fishing controller's bite rules (DriftPastRules):
 ## one roll per pass as the fly drifts by (watch_pass() and roll()). If the
@@ -53,6 +55,11 @@ var other_lies: Callable
 ## Where to draw it. Moves to the fly during a rise.
 var pos := Vector2.ZERO
 var length_in := 0.0
+## 0 to 1: how keen it is today. Natural rises come 1/activity times as far
+## apart as at full activity.
+var activity := 1.0
+## Built from a FishPlan: it keeps its lie and length when it comes back.
+var planned := false
 var state := State.HOLDING
 ## Time since the take, while TAKEN.
 var since_take := 0.0
@@ -82,8 +89,23 @@ func _init(p_species: FishSpecies, rng: RandomNumberGenerator, p_river: RiverFie
 	respawn()
 
 
-## Picks a new lie in its habitat, as a new fish.
+## A fish from the generator's plan, on its planned lie.
+static func from_plan(plan: FishPlan, rng: RandomNumberGenerator) -> Fish:
+	var f := Fish.new(plan.species, rng)
+	f.planned = true
+	f.lie = plan.lie
+	f.length_in = plan.length_in
+	f.activity = plan.activity
+	f.respawn()
+	return f
+
+
+## Back on its lie, holding. A planned fish keeps its lie and length; any
+## other picks a new lie in its habitat, as a new fish. in its habitat, as a new fish.
 func respawn() -> void:
+	if planned:
+		_hold()
+		return
 	var a := area
 	var spot := Vector2.INF
 	if river != null:
@@ -94,8 +116,13 @@ func respawn() -> void:
 	lie = spot
 	pos = lie
 	length_in = snappedf(_rng.randf_range(species.min_length_in, species.max_length_in), 0.5)
+	_hold()
+
+
+func _hold() -> void:
+	pos = lie
 	state = State.HOLDING
-	_dimple_timer = _rng.randf_range(0.5, DIMPLE_EVERY.y)
+	_dimple_timer = _rng.randf_range(0.5, DIMPLE_EVERY.y) / maxf(activity, 0.05)
 
 
 ## Visible in the water (not gone off somewhere, and not caught).
@@ -161,7 +188,7 @@ func update(dt: float, fly: Vector2, fly_on_water: bool) -> StringName:
 		State.HOLDING:
 			_dimple_timer -= dt
 			if _dimple_timer <= 0.0:
-				_dimple_timer = _rng.randf_range(DIMPLE_EVERY.x, DIMPLE_EVERY.y)
+				_dimple_timer = _rng.randf_range(DIMPLE_EVERY.x, DIMPLE_EVERY.y) / maxf(activity, 0.05)
 				return &"dimple"
 		State.WAITING:
 			if not fly_on_water:
