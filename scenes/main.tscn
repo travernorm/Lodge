@@ -7,7 +7,7 @@
 [ext_resource type="Script" path="res://scripts/casting/cast_practice.gd" id="9_practice"]
 [ext_resource type="Resource" path="res://data/stretches/demo_freestone.tres" id="10_stretch"]
 [ext_resource type="Script" path="res://scripts/river/water_view.gd" id="11_water"]
-[ext_resource type="Resource" path="res://data/looks/water_spring.tres" id="12_look"]
+[ext_resource type="Resource" path="res://data/looks/water_clear.tres" id="12_look"]
 [ext_resource type="Script" path="res://scripts/conditions/weather_view.gd" id="13_weather"]
 [ext_resource type="Resource" path="res://data/weather_looks/default.tres" id="14_weather_look"]
 
