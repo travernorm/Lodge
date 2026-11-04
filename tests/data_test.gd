@@ -32,6 +32,7 @@ func _initialize() -> void:
 	_test_input_parity()
 	_test_stretches(fish, insects)
 	_test_calendar(fish)
+	_test_climates(_load_dir("res://data/climates", "Climate"))
 	_test_take_rules()
 	_test_water_looks()
 	_test_catalog(flies, fish, insects, _load_dir("res://data/stretches", "Stretch"), rods)
@@ -339,18 +340,8 @@ func _test_calendar(fish: Dictionary) -> void:
 	_check(cal != null, "data/calendar.tres loads as a Calendar")
 	if cal == null:
 		return
-	var seasons := Calendar.Season.size()
-	_check(cal.high_min_f.size() == seasons and cal.high_max_f.size() == seasons, "calendar: a temperature range per season")
-	for i in seasons:
-		_check(cal.high_min_f[i] <= cal.high_max_f[i] and cal.high_min_f[i] % 10 == 0 and cal.high_max_f[i] % 10 == 0,
-			"calendar: season %d's highs are whole bands, low to high" % i)
-		var odds := cal.weather_odds(i)
-		var total := 0.0
-		for p in odds:
-			total += p
-		_check(odds.size() == Calendar.Weather.size() and absf(total - 1.0) < 0.001, "calendar: season %d's weather odds add up to 1" % i)
 	_check(cal.slot_drop.size() == Calendar.Slot.size() and cal.slot_activity.size() == Calendar.Slot.size(), "calendar: a number per slot")
-	_check(cal.weather_drop.size() == Calendar.Weather.size() and cal.weather_activity.size() == Calendar.Weather.size(), "calendar: a number per weather")
+	_check(cal.weather_activity.size() == Calendar.Weather.size(), "calendar: a number per weather")
 	for prop in HatchEntry.new().get_property_list():
 		if prop.name == "slots":
 			_check(prop.hint_string.split(",").size() == Calendar.Slot.size(), "hatch slots: one flag per calendar slot")
@@ -359,6 +350,43 @@ func _test_calendar(fish: Dictionary) -> void:
 	for path in fish:
 		var sp: FishSpecies = fish[path]
 		_check(sp.water_min_f <= sp.water_max_f, "fish %s: water range runs cold to warm" % sp.id)
+
+
+## Every climate (REQ-0008): a whole-band temperature range per season, odds
+## per season that add up to 1, persistence from 0 to 1, a number per weather,
+## intensity ranges inside 0 to 1, a storm slot, and storm flags that name the
+## calendar's slots in order. The fishing node's climate is one of them.
+func _test_climates(climates: Dictionary) -> void:
+	_check(not climates.is_empty(), "there is at least one climate in data/climates")
+	var seasons := Calendar.Season.size()
+	var weathers := Calendar.Weather.size()
+	for path in climates:
+		var cl: Climate = climates[path]
+		var stem: String = path.get_file().get_basename()
+		_check(cl.high_min_f.size() == seasons and cl.high_max_f.size() == seasons and cl.persistence.size() == seasons,
+			"climate %s: a temperature range and a persistence per season" % stem)
+		for i in mini(seasons, mini(cl.high_min_f.size(), mini(cl.high_max_f.size(), cl.persistence.size()))):
+			_check(cl.high_min_f[i] <= cl.high_max_f[i] and cl.high_min_f[i] % 10 == 0 and cl.high_max_f[i] % 10 == 0,
+				"climate %s: season %d's highs are whole bands, low to high" % [stem, i])
+			_check(cl.persistence[i] >= 0.0 and cl.persistence[i] <= 1.0, "climate %s: season %d's persistence is 0 to 1" % [stem, i])
+			var odds := cl.weather_odds(i)
+			var total := 0.0
+			for p in odds:
+				total += p
+			_check(odds.size() == weathers and absf(total - 1.0) < 0.001, "climate %s: season %d's weather odds add up to 1" % [stem, i])
+		var per_weather := cl.weather_drop.size() == weathers and cl.intensity_min.size() == weathers and cl.intensity_max.size() == weathers
+		_check(per_weather, "climate %s: a drop and an intensity range per weather" % stem)
+		for w in (weathers if per_weather else 0):
+			_check(cl.intensity_min[w] >= 0.0 and cl.intensity_min[w] <= cl.intensity_max[w] and cl.intensity_max[w] <= 1.0,
+				"climate %s: weather %d's intensity range is inside 0 to 1" % [stem, w])
+		_check(cl.storm_slots != 0 and cl.before_storm != Calendar.Weather.STORM,
+			"climate %s: storms hit in some slot, and before_storm isn't a storm" % stem)
+	for prop in Climate.new().get_property_list():
+		if prop.name == "storm_slots":
+			_check(prop.hint_string.split(",").size() == Calendar.Slot.size(), "climate storm slots: one flag per calendar slot")
+	var fishing := _main.find_child("Fishing", true, false)
+	_check(fishing != null and fishing.climate != null and climates.has(fishing.climate.resource_path),
+		"scene: the fishing node's climate is a data/climates file")
 
 
 ## Every water look has all three textures, and they're square, so they tile.

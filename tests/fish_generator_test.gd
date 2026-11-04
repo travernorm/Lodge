@@ -8,6 +8,7 @@ const RUNS := 1000
 
 var _failures := 0
 var _calendar: Calendar = load("res://data/calendar.tres")
+var _climate: Climate = load("res://data/climates/central_oregon.tres")
 var _stretch: Stretch = load("res://data/stretches/demo_freestone.tres")
 var _redband: FishSpecies = load("res://data/fish/redband.tres")
 var _brook: FishSpecies = load("res://data/fish/brook.tres")
@@ -43,7 +44,7 @@ func _initialize() -> void:
 
 func _day(season: Calendar.Season, day: int, slot: Calendar.Slot, weather: Calendar.Weather, high: int,
 		spring_fed := false) -> Conditions:
-	return Conditions.at(_calendar, season, day, slot, weather, high, spring_fed)
+	return Conditions.at(_calendar, _climate, season, day, slot, weather, high, spring_fed)
 
 
 func _summer_dusk() -> Conditions:
@@ -77,12 +78,13 @@ func _test_conditions() -> void:
 	c = _day(Calendar.Season.WINTER, 3, Calendar.Slot.NOON, Calendar.Weather.SNOW, 40)
 	_check(c.high_f == 30 and c.water_f == 30, "day: snow keeps the high in the 30s, water no colder than the 30s")
 	var rng := FishGenerator.seeded(5)
+	var year := WeatherGenerator.year(_climate, _calendar, 5)
 	var all_ok := true
 	for n in 500:
-		var r := Conditions.roll(_calendar, rng)
+		var r := year.roll(rng)
 		all_ok = all_ok and r.day >= 1 and r.day <= 30 and r.water_f >= 30 and r.water_f <= 70 \
-			and _calendar.weather_odds(r.season)[r.weather] > 0.0
-		all_ok = all_ok and (r.weather == Calendar.Weather.SNOW or r.high_f >= _calendar.high_min_f[r.season] - 10)
+			and _climate.weather_odds(r.season)[r.weather] > 0.0
+		all_ok = all_ok and (r.weather == Calendar.Weather.SNOW or r.high_f >= _climate.high_min_f[r.season] - 10)
 	_check(all_ok, "day: 500 rolled days are all valid, and never a weather the season can't have")
 	_check(c.describe().size() == 2 and c.describe()[0].begins_with("Winter 3"), "day: describes itself (%s)" % [c.describe()])
 
