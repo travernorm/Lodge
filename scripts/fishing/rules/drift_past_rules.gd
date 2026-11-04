@@ -47,6 +47,10 @@ extends Resource
 ## Seconds from a successful roll to the rise: quick, so the fish comes up
 ## while the fly is still beside it.
 @export var rise_delay_s := Vector2(0.2, 0.5)
+## A fish on a resting lie (deep, slow, covered) is slow to come up: a dry
+## fly's odds are multiplied by this. Nymphs and streamers go down to it, so
+## they keep full odds (REQ-0011).
+@export_range(0.0, 1.0) var resting_dry_factor := 0.5
 
 
 ## How close (m) the fly has to come for a pass to count.
@@ -60,12 +64,22 @@ func window() -> float:
 func pass_odds(fish: Fish, landed_at: Vector2, presentation: String, worst_slip: float, fly: FlyPattern = null) -> Dictionary:
 	var s := shares(fish, landed_at, presentation, worst_slip)
 	var match_factor := fish.species.fly_match(fly)
-	var chance := clampf(s.sum * match_factor, 0.0, 1.0)
+	var rest := resting_factor(fish, fly)
+	var chance := clampf(s.sum * match_factor * rest, 0.0, 1.0)
+	var rest_text := " × Resting lie %s" % _factor(rest) if rest < 1.0 else ""
 	return {
 		"chance": chance,
 		"match": match_factor,
-		"text": "(%s) × %s %s = %d%%" % [s.text, match_label(fish, fly), _factor(match_factor), _pct(chance)],
+		"text": "(%s) × %s %s%s = %d%%" % [s.text, match_label(fish, fly), _factor(match_factor), rest_text, _pct(chance)],
 	}
+
+
+## resting_dry_factor for a dry fly over a fish on a resting lie, else 1.
+## Nothing tied on counts as a dry.
+func resting_factor(fish: Fish, fly: FlyPattern) -> float:
+	if not fish.resting or (fly != null and fly.fly_type != FlyPattern.Type.DRY):
+		return 1.0
+	return resting_dry_factor
 
 
 ## The three shares for a pass, added up: {lane, landing, drift, sum, text}.

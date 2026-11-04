@@ -9,7 +9,9 @@ extends RefCounted
 ##   2. How many: the stretch's fish_count(), as far as the lies allow.
 ##   3. Which species: each fish picks one, weighted by abundance.
 ##   4. Size and lie: lengths lean small, and the biggest fish get the best
-##      lies, with a little noise.
+##      lies, with a little noise. A lie is a feeding lie (RiverField.lie) or
+##      a resting lie (RestingLies), and each reach of river gets its share
+##      of fish (REQ-0011).
 ##
 ## It also answers which hatches are on and how active each fish is, which is
 ## how the day shows: fish rise more in a good hatch on a good evening.
@@ -27,10 +29,24 @@ const LIE_TRIES := 40
 
 var stretch: Stretch
 var calendar: Calendar
-## Every cell that could hold a fish: x, y (m) and the lie score.
+## The river is shared out between reaches about this long (m) along the
+## centreline, so every reach gets fish (REQ-0011).
+const REACH_M := 40.0
+
+## Resting lies (REQ-0011), scored once from the field.
+var resting: RestingLies
+## Every cell that could hold a fish: x, y (m) and its lie score, the better of
+## feeding and resting.
 var _cells := PackedVector3Array()
+## Per cell: 1 when its resting score beats its feeding score.
+var _rests := PackedByteArray()
 ## Running total of score², for picking better lies more often.
 var _cumulative := PackedFloat32Array()
+## Per reach: its cells (indices into _cells), their running score² totals, and
+## its length (m) inside the map.
+var _reach_cells: Array[PackedInt32Array] = []
+var _reach_cumulative: Array[PackedFloat32Array] = []
+var _reach_len := PackedFloat32Array()
 
 
 ## Scans the river field once for lies. With no field there are no lies, so
@@ -40,18 +56,54 @@ func _init(p_stretch: Stretch, field: RiverField, p_calendar: Calendar) -> void:
 	calendar = p_calendar
 	if field == null or stretch == null:
 		return
+	resting = RestingLies.new(field)
 	var bounds := Rect2(Vector2.ZERO, stretch.size_m)
+	_measure_reaches(field, bounds)
 	var total := 0.0
 	for j in field.rows:
 		for i in field.cols:
-			var score := field.lie[j * field.cols + i]
+			var idx := j * field.cols + i
+			var score := maxf(field.lie[idx], resting.rest[idx])
 			if score < MIN_LIE_SCORE:
 				continue
 			var p := field.cell_pos(i, j)
 			if bounds.has_point(p) and field.is_water(p):
+				var reach := _reach_at(field, p)
+				var k := _cells.size()
 				_cells.append(Vector3(p.x, p.y, score))
+				_rests.append(1 if resting.rest[idx] > field.lie[idx] else 0)
 				total += score * score
 				_cumulative.append(total)
+				var cells_here := _reach_cells[reach]
+				cells_here.append(k)
+				_reach_cells[reach] = cells_here
+				var rc := _reach_cumulative[reach]
+				rc.append((rc[-1] if not rc.is_empty() else 0.0) + score * score)
+				_reach_cumulative[reach] = rc
+
+
+## Each reach's length inside the map, from the centreline's points (one per
+## RiverField.CHANNEL_STEP m). A field with no centreline is one reach.
+func _measure_reaches(field: RiverField, bounds: Rect2) -> void:
+	var count := maxi(ceili(field.centre.size() * RiverField.CHANNEL_STEP / REACH_M), 1)
+	_reach_len.resize(count)
+	_reach_len.fill(0.0)
+	for k in field.centre.size():
+		if bounds.has_point(field.centre[k]):
+			_reach_len[_reach_index(k)] += RiverField.CHANNEL_STEP
+	if field.centre.is_empty():
+		_reach_len[0] = 1.0
+	for r in count:
+		_reach_cells.append(PackedInt32Array())
+		_reach_cumulative.append(PackedFloat32Array())
+
+
+func _reach_at(field: RiverField, p: Vector2) -> int:
+	return 0 if field.centre.is_empty() else _reach_index(field.nearest_centre(p))
+
+
+func _reach_index(k: int) -> int:
+	return mini(floori(k * RiverField.CHANNEL_STEP / REACH_M), _reach_len.size() - 1)
 
 
 ## A generator for `p_stretch`, or null when there's no stretch.
@@ -76,17 +128,19 @@ func generate(c: Conditions, rng: RandomNumberGenerator) -> Array[FishPlan]:
 		return out
 	var lies := _pick_lies(stretch.fish_count(), lie_rng)
 	# Best lie first, with a little luck, then the biggest fish into it.
-	var keyed: Array[Vector4] = []
-	for l in lies:
-		keyed.append(Vector4(l.x, l.y, l.z, l.z + lie_rng.randf_range(-LIE_NOISE, LIE_NOISE)))
-	keyed.sort_custom(func(a: Vector4, b: Vector4) -> bool: return a.w > b.w)
+	var keyed: Array[Vector2] = []
+	for k in lies:
+		keyed.append(Vector2(k, _cells[k].z + lie_rng.randf_range(-LIE_NOISE, LIE_NOISE)))
+	keyed.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.y > b.y)
 	for n in keyed.size():
 		var sp := pick_species(entries, species_rng)
 		out.append(FishPlan.new(sp, roll_length(sp, size_rng), Vector2.ZERO, 0.0, activity(sp, c)))
 	out.sort_custom(func(a: FishPlan, b: FishPlan) -> bool: return a.length_in > b.length_in)
 	for n in out.size():
-		out[n].lie = Vector2(keyed[n].x, keyed[n].y)
-		out[n].lie_score = keyed[n].z
+		var cell := _cells[int(keyed[n].x)]
+		out[n].lie = Vector2(cell.x, cell.y)
+		out[n].lie_score = cell.z
+		out[n].resting = _rests[int(keyed[n].x)] == 1
 	return out
 
 
@@ -141,26 +195,105 @@ func activity(sp: FishSpecies, c: Conditions) -> float:
 	return clampf(a, calendar.min_activity, 1.0)
 
 
-## Up to `count` lies, better ones more likely (score²), each at least
-## LIE_GAP from the others. Fewer if the water runs out.
-func _pick_lies(count: int, rng: RandomNumberGenerator) -> PackedVector3Array:
-	var out := PackedVector3Array()
+## How many fish each reach gets out of `count`: its share by length. The
+## whole part is certain and the fractions are rolled, so the total is always
+## `count` and over many days each reach gets its share. A reach with no lies
+## passes its share to the nearest reach that has some.
+func reach_quota(count: int, rng: RandomNumberGenerator) -> PackedInt32Array:
+	var n := _reach_len.size()
+	var quota := PackedInt32Array()
+	quota.resize(n)
+	quota.fill(0)
+	var total := 0.0
+	for r in n:
+		total += _reach_len[r]
+	if total <= 0.0 or n == 0:
+		return quota
+	var rest: Array[Vector2] = []
+	var given := 0
+	for r in n:
+		var exact := count * _reach_len[r] / total
+		quota[r] = floori(exact)
+		given += quota[r]
+		rest.append(Vector2(r, exact - quota[r]))
+	for k in count - given:
+		var weight := 0.0
+		for e in rest:
+			weight += e.y
+		var roll := rng.randf() * weight
+		var pick := rest.size() - 1
+		for e_at in rest.size():
+			roll -= rest[e_at].y
+			if roll < 0.0:
+				pick = e_at
+				break
+		quota[int(rest[pick].x)] += 1
+		rest.remove_at(pick)
+	for r in n:
+		if quota[r] > 0 and _reach_cells[r].is_empty():
+			var to := _nearest_reach_with_lies(r)
+			if to >= 0:
+				quota[to] += quota[r]
+			quota[r] = 0
+	return quota
+
+
+## How many reaches the river is shared between.
+func reach_count() -> int:
+	return _reach_len.size()
+
+
+## Which reach a lie (m) is in, for tests and the tool.
+func reach_at(p: Vector2) -> int:
+	return _reach_at(resting.field, p) if resting != null else 0
+
+
+func _nearest_reach_with_lies(r: int) -> int:
+	for d in range(1, _reach_len.size()):
+		for to in [r - d, r + d]:
+			if to >= 0 and to < _reach_len.size() and not _reach_cells[to].is_empty():
+				return to
+	return -1
+
+
+## Up to `count` lies (indices into _cells), shared out by reach_quota(). In
+## each reach better lies are more likely (score²), and every lie is at least
+## LIE_GAP from the others. A reach that runs out of room passes what's left
+## to the whole river; fewer fish if the water runs out.
+func _pick_lies(count: int, rng: RandomNumberGenerator) -> PackedInt32Array:
+	var out := PackedInt32Array()
 	if _cells.is_empty():
 		return out
-	var total := _cumulative[-1]
-	for n in count:
-		for t in LIE_TRIES:
-			var k := mini(_cumulative.bsearch(rng.randf() * total), _cells.size() - 1)
-			var cell := _cells[k]
-			if _clear(cell, out):
-				out.append(cell)
-				break
+	var short := 0
+	var quota := reach_quota(count, rng)
+	for r in quota.size():
+		for n in quota[r]:
+			if not _pick_one(_reach_cells[r], _reach_cumulative[r], rng, out):
+				short += 1
+	var everywhere := PackedInt32Array()
+	for n in short:
+		_pick_one(everywhere, _cumulative, rng, out)
 	return out
 
 
-static func _clear(cell: Vector3, taken: PackedVector3Array) -> bool:
-	for o in taken:
-		if Vector2(cell.x, cell.y).distance_to(Vector2(o.x, o.y)) < LIE_GAP:
+## Picks one cell from `cells` (indices into _cells; empty means every cell)
+## weighted by `cumulative`, clear of `out`, and adds it. False if none fits.
+func _pick_one(cells: PackedInt32Array, cumulative: PackedFloat32Array, rng: RandomNumberGenerator,
+		out: PackedInt32Array) -> bool:
+	if cumulative.is_empty():
+		return false
+	for t in LIE_TRIES:
+		var at := mini(cumulative.bsearch(rng.randf() * cumulative[-1]), cumulative.size() - 1)
+		var k := cells[at] if not cells.is_empty() else at
+		if _clear(_cells[k], out):
+			out.append(k)
+			return true
+	return false
+
+
+func _clear(cell: Vector3, taken: PackedInt32Array) -> bool:
+	for k in taken:
+		if Vector2(cell.x, cell.y).distance_to(Vector2(_cells[k].x, _cells[k].y)) < LIE_GAP:
 			return false
 	return true
 
