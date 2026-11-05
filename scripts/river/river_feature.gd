@@ -28,6 +28,12 @@ func blocks(_p: Vector2) -> bool:
 	return false
 
 
+## True where the angler can stand on it over the water, like a bridge deck
+## (Footing).
+func carries(_p: Vector2) -> bool:
+	return false
+
+
 ## Bends the current `v` (m/s) at `p`. Called in list order.
 func shape_flow(_p: Vector2, v: Vector2) -> Vector2:
 	return v

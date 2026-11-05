@@ -26,6 +26,13 @@ const COL_FOAM := Color("c9dcd6")
 const COL_STREAK := Color("4f8290")
 const COL_LOG := Color("5a442c")
 const COL_LOG_LIGHT := Color("7a5e3e")
+## Placeholder bridge and falls.
+const COL_DECK := Color("8a6a44")
+const COL_DECK_LIGHT := Color("a0805a")
+const COL_DECK_DARK := Color("6e5233")
+const COL_CLIFF := Color("5c5a52")
+const COL_CLIFF_DARK := Color("3e3c36")
+const COL_FALL := Color("d8ebee")
 ## The old flat water's depth bands (ChunkPainter owns them).
 const BANDS := ChunkPainter.BANDS
 const CUTS := ChunkPainter.CUTS
@@ -42,6 +49,8 @@ var _streak_life: Array[float] = []
 var _water_tex: ImageTexture
 var _tufts: Array[Vector2] = []
 var _rng := RandomNumberGenerator.new()
+## Seconds since setup, for the waterfall's moving foam.
+var _time := 0.0
 
 
 ## `stretch` null means the one-screen test stream, `screen` px across with
@@ -82,6 +91,7 @@ func ground_texture() -> Texture2D:
 ## Moves the streaks on; `view` is the part of the world on screen (px).
 func tick(delta: float, view: Rect2) -> void:
 	_view = view
+	_time += delta
 	for i in _streaks.size():
 		var s := _streaks[i]
 		s += _flow_px(s) * delta
@@ -183,12 +193,17 @@ func _draw() -> void:
 		_draw_feature(f)
 
 
-## Boulders and logs have art; other kinds above ground show their footprint.
+## Boulders and logs have art, the bridge and waterfall placeholder art (until
+## Traver's arrives); other kinds above ground show their footprint.
 func _draw_feature(f: RiverFeature) -> void:
 	if f is Boulder:
 		_draw_rock(WorldScale.vec_to_px((f as Boulder).centre), WorldScale.to_px((f as Boulder).radius))
 	elif f is FallenLog:
 		_draw_log(WorldScale.vec_to_px((f as FallenLog).a), WorldScale.vec_to_px((f as FallenLog).b))
+	elif f is Bridge:
+		_draw_bridge(f as Bridge)
+	elif f is Waterfall:
+		_draw_waterfall(f as Waterfall)
 	elif not f is GravelBar and not f.footprint().is_empty():
 		var pts := Array(f.footprint()).map(func(q: Vector2) -> Vector2: return WorldScale.vec_to_px(q).floor())
 		draw_polyline(PackedVector2Array(pts + [pts[0]]), COL_ROCK, 1.0)
@@ -211,3 +226,62 @@ func _draw_log(a: Vector2, b: Vector2) -> void:
 	for t in [0.3, 0.55, 0.8]:
 		var p: Vector2 = (a + along * t).floor()
 		draw_line(p, p + along.normalized().rotated(0.7 if t != 0.55 else -0.7) * 5.0, COL_LOG, 1.0)
+
+
+## Placeholder footbridge: a plank deck with a rail along each side and a post
+## at each corner.
+func _draw_bridge(b: Bridge) -> void:
+	var a := WorldScale.vec_to_px(b.a)
+	var e := WorldScale.vec_to_px(b.b)
+	var along := (e - a).normalized()
+	var side := Vector2(-along.y, along.x) * WorldScale.to_px(b.width_m) * 0.5
+	draw_colored_polygon(PackedVector2Array([a + side + Vector2(2, 3), e + side + Vector2(2, 3),
+		e - side + Vector2(2, 3), a - side + Vector2(2, 3)]), Color(0, 0, 0, 0.3))  # its shadow on the water
+	draw_colored_polygon(PackedVector2Array([a + side, e + side, e - side, a - side]), COL_DECK)
+	var length := a.distance_to(e)
+	var t := 0.0
+	var n := 0
+	while t < length:
+		var p := a + along * t
+		draw_line((p + side).floor(), (p - side).floor(), COL_DECK_DARK if n % 2 == 0 else COL_DECK_LIGHT, 1.0)
+		t += 2.0
+		n += 1
+	for s_ in [side, -side]:
+		draw_line((a + s_).floor(), (e + s_).floor(), COL_LOG, 1.0)
+		for p in [a + s_, e + s_]:
+			draw_rect(Rect2((p - Vector2(1, 2)).floor(), Vector2(2, 3)), COL_LOG)
+
+
+## Placeholder falls (the base of a tall falls; we never see its top): the
+## cliff above the lip, the water pouring over it, and white water spreading
+## into the plunge pool, with foam running downstream.
+func _draw_waterfall(w: Waterfall) -> void:
+	var a := WorldScale.vec_to_px(w.a)
+	var b := WorldScale.vec_to_px(w.b)
+	var down := w.down
+	var across := (b - a).normalized()
+	var wide := across * WorldScale.to_px(Waterfall.CLIFF_SIDE_M)
+	var up := -down * WorldScale.to_px(Waterfall.CLIFF_UP_M)
+	var lip := down * WorldScale.to_px(Waterfall.FALL_M)
+	# The cliff, darker toward its foot.
+	draw_colored_polygon(PackedVector2Array([a - wide + up, b + wide + up, b + wide + lip, a - wide + lip]), COL_CLIFF)
+	draw_colored_polygon(PackedVector2Array([a - wide - down * 6.0 + lip, b + wide - down * 6.0 + lip,
+		b + wide + lip, a - wide + lip]), COL_CLIFF_DARK)
+	# The sheet of water over the lip, streaked.
+	var sheet := -down * 18.0
+	draw_colored_polygon(PackedVector2Array([a + sheet, b + sheet, b + lip, a + lip]), COL_FALL)
+	var width := a.distance_to(b)
+	var x := 1.0
+	while x < width:
+		var p := a + across * x
+		var phase := fmod(_time * 2.0 + sin(x * 0.7) * 3.0, 1.0)
+		draw_line((p + sheet * (1.0 - phase)).floor(), (p + sheet * maxf(0.0, 0.7 - phase) + lip).floor(), COL_FOAM, 1.0)
+		x += 3.0
+	# White water fading into the pool.
+	var foam := down * WorldScale.to_px(w.foam_m)
+	draw_polygon(PackedVector2Array([a + lip, b + lip, b + lip + foam, a + lip + foam]),
+		PackedColorArray([COL_FOAM, COL_FOAM, Color(COL_FOAM, 0.0), Color(COL_FOAM, 0.0)]))
+	for i in 24:
+		var u := fmod(i * 0.618 + _time * 0.25, 1.0)
+		var p := a + across * (fmod(i * 7.3, 1.0) * width) + lip + foam * u
+		draw_rect(Rect2(p.floor(), Vector2(2, 1)), Color(COL_FOAM, 1.0 - u))

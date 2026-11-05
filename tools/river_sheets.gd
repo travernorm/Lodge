@@ -15,7 +15,7 @@ extends RefCounted
 ##   downstream), offset_m, size_m, value, note.
 ##
 ## Built kinds (KINDS): section, end, bend, water, boulder, log, eddy,
-## gravel_bar, grass, angler_start. Planned kinds (PLANNED) are drawn on the
+## gravel_bar, grass, angler_start, waterfall, bridge. Planned kinds (PLANNED) are drawn on the
 ## preview plate and reported, and are built by REQ-0014 step 3.
 
 const Sheets := preload("res://tools/content_sheets.gd")
@@ -24,8 +24,9 @@ const OUT_DIR := "res://data/stretches"
 const RIVERS := "rivers.csv"
 const MARKERS := "river_markers.csv"
 
-const KINDS := ["section", "end", "bend", "water", "boulder", "log", "eddy", "gravel_bar", "grass", "angler_start"]
-const PLANNED := ["waterfall", "bridge", "cabin", "ford", "trail", "inflow", "boat_launch", "width", "reach_break"]
+const KINDS := ["section", "end", "bend", "water", "boulder", "log", "eddy", "gravel_bar", "grass", "angler_start",
+	"waterfall", "bridge"]
+const PLANNED := ["cabin", "ford", "trail", "inflow", "boat_launch", "width", "reach_break"]
 const SIDES := ["left", "right", "mid"]
 ## Thalweg depth (0..1) for each kind of water.
 const WATER_DEPTH := {"riffle": 0.3, "run": 0.5, "pocket": 0.45, "pool": 0.95, "tail_out": 0.35, "plunge": 1.0}
@@ -34,6 +35,9 @@ const BASE_DEPTH := 0.45
 const BANK_ROOM := 16.0
 ## How far the river runs straight off the map past each end of a section (m).
 const LEAD := 60.0
+## How much (m) of the cliff a section that opens at a waterfall shows above
+## the lip.
+const FALLS_ROOM := 3.0
 ## Spacing of the centreline points written to the stretch (m).
 const POINT_STEP := 10.0
 const STEP := 1.0  # metres per step when tracing the river
@@ -185,7 +189,7 @@ static func _read_markers(path: String, rivers: Dictionary, p: Plan) -> void:
 			p.errors.append("%s: side must be left, right or mid" % where)
 		_check_value(m, where, p)
 		if kind in PLANNED:
-			p.notes.append("%s: drawn on the plate; built in REQ-0014 step 3" % where)
+			p.notes.append("%s: drawn on the plate; built later" % where)
 		rivers[rid].markers.append(m)
 	for r: River in rivers.values():
 		r.markers.sort_custom(func(a, b): return a.at < b.at)
@@ -354,6 +358,21 @@ static func section_box(r: River, from: float, to: float) -> Rect2:
 		box = box.expand(r.point_at(s))
 		s += STEP
 	box = box.grow(r.width_m * 0.5 + BANK_ROOM)
+	# A section that opens under a waterfall stops just above its lip, so the
+	# first screen shows the falls, the pool and the bridge below.
+	for m in r.markers:
+		if m.kind == "waterfall" and absf(m.at - from) < 0.01:
+			var lip := r.point_at(from)
+			var d := r.dir_at(from)
+			if absf(d.y) >= absf(d.x):
+				if d.y > 0.0:
+					box = Rect2(box.position.x, lip.y - FALLS_ROOM, box.size.x, box.end.y - (lip.y - FALLS_ROOM))
+				else:
+					box.size.y = lip.y + FALLS_ROOM - box.position.y
+			elif d.x > 0.0:
+				box = Rect2(lip.x - FALLS_ROOM, box.position.y, box.end.x - (lip.x - FALLS_ROOM), box.size.y)
+			else:
+				box.size.x = lip.x + FALLS_ROOM - box.position.x
 	var origin := box.position.floor()
 	return Rect2(origin, (box.end - origin).ceil())
 
@@ -428,6 +447,22 @@ static func _feature(r: River, m: Dictionary, hw: float, origin: Vector2) -> Riv
 			var size: float = m.size if m.size > 0.0 else 6.0
 			return GrassPatch.make(_place(r, m, hw, origin, true), Vector2(size, size * 0.5),
 				clampf(float(m.value), 0.1, 4.0) if m.value.is_valid_float() else 1.0)
+		"waterfall", "bridge":
+			# Bank to bank across the river at at_m, reaching onto both banks.
+			var c := r.point_at(m.at) - origin
+			var across := r.left_at(m.at) * (hw + (3.0 if m.kind == "waterfall" else 2.0))
+			if m.kind == "bridge":
+				var br := Bridge.new()
+				br.a = c + across
+				br.b = c - across
+				br.width_m = m.size if m.size > 0.0 else 2.5
+				return br
+			var w := Waterfall.new()
+			w.a = c + across
+			w.b = c - across
+			w.down = r.dir_at(m.at)
+			w.foam_m = clampf(m.size, 1.0, 40.0) if m.size > 0.0 else 8.0
+			return w
 		"log":
 			# Lies from the bank, angled 35 degrees downstream into the current.
 			var bank := m.duplicate()

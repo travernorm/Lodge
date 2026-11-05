@@ -164,6 +164,9 @@ static func edge_row(river: RiverField, bank: PackedFloat32Array, rock: PackedFl
 		else:
 			bank[idx] = -river.shore[idx]
 		if (river.wet.is_empty() or river.wet[idx] == 1) and river.is_solid(p):
+			rock[idx] = 0.0
+			if not _solid_edge(river, p):
+				continue  # inside the rock: the edge cells reach further out
 			for dj in range(-reach, reach + 1):
 				for di in range(-reach, reach + 1):
 					var ii := i + di
@@ -173,6 +176,15 @@ static func edge_row(river: RiverField, bank: PackedFloat32Array, rock: PackedFl
 					var d := Vector2(di, dj).length() * RiverField.CELL
 					var k := jj * river.cols + ii
 					rock[k] = minf(rock[k], d)
+
+
+## True when a solid cell at p touches open water: only those stamp foam, so a
+## big solid area (the river above a waterfall) costs only its edge.
+static func _solid_edge(river: RiverField, p: Vector2) -> bool:
+	for o in [Vector2(RiverField.CELL, 0), Vector2(-RiverField.CELL, 0), Vector2(0, RiverField.CELL), Vector2(0, -RiverField.CELL)]:
+		if not river.is_solid(p + o):
+			return true
+	return false
 
 
 static func edge_image_from(river: RiverField, bank: PackedFloat32Array, rock: PackedFloat32Array) -> Image:
