@@ -38,5 +38,11 @@ func swirl(p: Vector2, spin: float) -> Vector2:
 	return Vector2(-rel.y, rel.x) / radius * g * exp(0.5) * strength * RiverField.WATER_SPEED * spin
 
 
+## Four radii out it has faded to almost nothing (a Gaussian, 4 sigma).
+func reach() -> Rect2:
+	var r := radius * 4.0
+	return Rect2(centre - Vector2(r, r), Vector2(r, r) * 2.0)
+
+
 func river_points() -> PackedVector2Array:
 	return PackedVector2Array([centre])

@@ -50,6 +50,13 @@ func shape_flow(p: Vector2, v: Vector2) -> Vector2:
 	return shaped.rotated(angle) if angle != 0.0 else shaped
 
 
+## The cushion fades as (radius / distance)^2 and the wake trails up to about
+## 4 wake lengths downstream: past that it changes the current by under 2%.
+func reach() -> Rect2:
+	var r := radius * (1.0 + 4.0 * WAKE_LENGTH)
+	return Rect2(centre - Vector2(r, r), Vector2(r, r) * 2.0)
+
+
 ## Just outside its edge, on four sides: at least one is in the river.
 func river_points() -> PackedVector2Array:
 	var out := PackedVector2Array()

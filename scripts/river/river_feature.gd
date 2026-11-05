@@ -44,6 +44,13 @@ func swirl(_p: Vector2, _state: float) -> Vector2:
 	return Vector2.ZERO
 
 
+## Where the feature changes the water (m): a field built in chunks skips it
+## in chunks it can't reach. A size below zero (the default) means anywhere; an
+## empty rect means it never touches the current (a gravel bar, grass).
+func reach() -> Rect2:
+	return Rect2(0, 0, -1, -1)
+
+
 ## Points (m) that must be in the river for the feature to make sense. The data
 ## test checks each stretch's features against them.
 func river_points() -> PackedVector2Array:

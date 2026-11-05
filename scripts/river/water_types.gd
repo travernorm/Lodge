@@ -12,6 +12,7 @@ const NONE := -1
 
 var cols := 0
 var rows := 0
+var left := 0.0
 var top := 0.0
 ## Per cell: a WaterTypeRules.WaterType, or 255 for no water.
 var cells := PackedByteArray()
@@ -21,6 +22,7 @@ static func classify(field: RiverField, rules: WaterTypeRules) -> WaterTypes:
 	var out := WaterTypes.new()
 	out.cols = field.cols
 	out.rows = field.rows
+	out.left = field.left
 	out.top = field.top
 	out.cells.resize(field.cols * field.rows)
 	out.cells.fill(255)
@@ -37,14 +39,14 @@ static func classify(field: RiverField, rules: WaterTypeRules) -> WaterTypes:
 static func at(field: RiverField, rules: WaterTypeRules, p: Vector2) -> int:
 	if not field.is_water(p):
 		return NONE
-	var i := clampi(roundi(p.x / RiverField.CELL), 0, field.cols - 1)
+	var i := clampi(roundi((p.x - field.left) / RiverField.CELL), 0, field.cols - 1)
 	var j := clampi(roundi((p.y - field.top) / RiverField.CELL), 0, field.rows - 1)
 	return _type_of(field, rules, p, j * field.cols + i)
 
 
 ## The type at `p` (m): the nearest cell's, or NONE off the water.
 func type_at(p: Vector2) -> int:
-	var i := roundi(p.x / RiverField.CELL)
+	var i := roundi((p.x - left) / RiverField.CELL)
 	var j := roundi((p.y - top) / RiverField.CELL)
 	if i < 0 or j < 0 or i >= cols or j >= rows:
 		return NONE

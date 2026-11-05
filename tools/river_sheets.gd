@@ -321,6 +321,7 @@ static func build_section(r: River, from: float, to: float) -> Stretch:
 	st.depth_keys = _depth_keys(r, from - LEAD, to + LEAD)
 	st.fish_per_100m = r.fish_per_100m
 	st.spring_fed = r.spring_fed
+	st.streamed = true
 	st.spawn = _spawn(r)
 	if r.hatches_like != "":
 		var like: Stretch = load(_stretch_path(r.hatches_like))

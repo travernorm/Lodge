@@ -50,12 +50,14 @@ var _time := 0.0
 ## Grows the grass for every GrassPatch (and GrassBank) in the river's
 ## features. Where patches overlap, the first one in the list decides, so
 ## overlaps don't double up. `kinds` is how many clump sprites there are.
-static func grow(river: RiverField, look: GrassLook, rng: RandomNumberGenerator, kinds := 1) -> GrassField:
+## `clip` (m) grows only inside it: a chunk's own area (REQ-0014).
+static func grow(river: RiverField, look: GrassLook, rng: RandomNumberGenerator, kinds := 1,
+		clip := Rect2()) -> GrassField:
 	var patches: Array[GrassPatch] = []
 	for feat in river.features:
 		if feat is GrassPatch and (feat as GrassPatch).density * look.density > 0.0:
 			patches.append(feat)
-	var world := Rect2(0.0, river.top, river.cols * RiverField.CELL, river.rows * RiverField.CELL)
+	var world := Rect2(river.left, river.top, river.cols * RiverField.CELL, river.rows * RiverField.CELL)
 	if patches.is_empty():
 		return GrassField.new()
 	var dist := WaterDistance.new(river, world)
@@ -64,6 +66,8 @@ static func grow(river: RiverField, look: GrassLook, rng: RandomNumberGenerator,
 		var g := patches[n]
 		var cell := 1.0 / sqrt(g.density * look.density)
 		var box := g.area(world).intersection(world)
+		if clip.has_area():
+			box = box.intersection(clip)
 		var y := box.position.y + cell * 0.5
 		while y < box.end.y:
 			var x := box.position.x + cell * 0.5
@@ -97,7 +101,7 @@ static func is_land(river: RiverField, p: Vector2) -> bool:
 	if river.is_water(p) or river.is_solid(p):
 		return false
 	if not river.shore.is_empty():
-		var i := clampi(roundi(p.x / RiverField.CELL), 0, river.cols - 1)
+		var i := clampi(roundi((p.x - river.left) / RiverField.CELL), 0, river.cols - 1)
 		var j := clampi(roundi((p.y - river.top) / RiverField.CELL), 0, river.rows - 1)
 		if river.shore[j * river.cols + i] < SHORE_GAP_M + 3.0 * maxf(-river.bend[j * river.cols + i], 0.0):
 			return false

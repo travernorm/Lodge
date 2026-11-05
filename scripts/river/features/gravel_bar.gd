@@ -7,6 +7,11 @@ extends RiverFeature
 @export var radius := 2.0
 
 
+## A bar is drawn, not felt: the channel's point bar already shoals the water.
+func reach() -> Rect2:
+	return Rect2()
+
+
 func footprint() -> PackedVector2Array:
 	var out := PackedVector2Array()
 	for a in 12:

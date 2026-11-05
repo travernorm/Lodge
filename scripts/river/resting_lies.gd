@@ -58,6 +58,6 @@ func is_resting(p: Vector2) -> bool:
 func _cell(layer: PackedFloat32Array, p: Vector2) -> float:
 	if field == null or layer.is_empty() or not field.is_water(p):
 		return 0.0
-	var i := clampi(roundi(p.x / RiverField.CELL), 0, field.cols - 1)
+	var i := clampi(roundi((p.x - field.left) / RiverField.CELL), 0, field.cols - 1)
 	var j := clampi(roundi((p.y - field.top) / RiverField.CELL), 0, field.rows - 1)
 	return layer[j * field.cols + i]

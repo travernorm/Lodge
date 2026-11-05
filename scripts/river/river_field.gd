@@ -3,9 +3,10 @@ extends RefCounted
 ## The current, depth, seams and trout lies for a reach of river, stored on a
 ## grid and read back with bilinear sampling.
 ##
-## Two ways to build it: build() for a straight reach between two banks (the
-## original test screen), and build_stretch() for a Stretch whose river winds in
-## any direction, with bends, cut banks, logs and eddies. The hydraulic rules
+## Three ways to build it: build() for a straight reach between two banks (the
+## original test screen), build_stretch() for a Stretch whose river winds in
+## any direction, with bends, cut banks, logs and eddies, and start_chunk() for
+## one chunk of a long section (SectionField, REQ-0014), a little per frame. The hydraulic rules
 ## that fill the layers live in RiverFieldBuilder (river_field_builder.gd); this
 ## file keeps the layers and the read-only queries.
 ##
@@ -57,9 +58,10 @@ const CURVE_SMOOTH := 6.0
 ## The thalweg never moves more than this fraction of the half-width off centre.
 const MAX_THALWEG_SHIFT := 0.45
 
-var top := 0.0  # far bank, y (m); 0 for a stretch
+var left := 0.0  # left edge, x (m); 0 except for a chunk of a section
+var top := 0.0  # far bank, y (m); 0 for a stretch, the chunk's top for a chunk
 var bottom := 0.0  # near bank, y (m); the stretch's height for a stretch
-var width := 0.0  # reach length, x (m)
+var width := 0.0  # reach length, x (m): how far the grid runs right of `left`
 var cols := 0
 var rows := 0
 
@@ -72,6 +74,8 @@ var lie := PackedFloat32Array()  # 0..1
 var features: Array[RiverFeature] = []
 ## The stretch this was built from, or null for a straight reach.
 var stretch: Stretch
+## The river's line through the whole stretch (null for a straight reach).
+var channel: RiverChannel
 
 ## Stretch only, per cell: 1 = water. Empty for a straight reach.
 var wet := PackedByteArray()
@@ -129,14 +133,30 @@ func build(p_top: float, p_bottom: float, p_width: float, thalweg_y: Callable,
 		x += 0.5
 
 
-## Builds the field for a winding stretch of river (REQ-0002).
+## Builds the field for a winding stretch of river (REQ-0002), all at once.
 func build_stretch(p_stretch: Stretch) -> void:
+	start_chunk(p_stretch, RiverChannel.new(p_stretch), Rect2(Vector2.ZERO, p_stretch.size_m)).run()
+
+
+## Starts building the part of a stretch inside `area` (m, on the 0.25 m grid)
+## from the stretch's channel (REQ-0014). Returns the job: call its step()
+## until it is done, or run() it.
+func start_chunk(p_stretch: Stretch, p_channel: RiverChannel, area: Rect2) -> RiverFieldBuilder:
 	stretch = p_stretch
-	top = 0.0
-	bottom = stretch.size_m.y
-	width = stretch.size_m.x
+	channel = p_channel
+	left = area.position.x
+	top = area.position.y
+	width = area.size.x
+	bottom = area.end.y
 	features = stretch.features
-	RiverFieldBuilder.winding(self)
+	centre = channel.points
+	centre_dir = channel.tang
+	return RiverFieldBuilder.new(self, channel)
+
+
+## The area the grid covers (m).
+func bounds() -> Rect2:
+	return Rect2(left, top, width, bottom - top)
 
 
 # --- Reading the field ------------------------------------------------------
@@ -144,7 +164,7 @@ func build_stretch(p_stretch: Stretch) -> void:
 func is_water(p: Vector2) -> bool:
 	if wet.is_empty():
 		return p.y >= top and p.y <= bottom and not is_solid(p)
-	var i := roundi(p.x / CELL)
+	var i := roundi((p.x - left) / CELL)
 	var j := roundi((p.y - top) / CELL)
 	if i < 0 or j < 0 or i >= cols or j >= rows:
 		return false
@@ -164,8 +184,12 @@ func is_solid(p: Vector2) -> bool:
 func flow_frame(p: Vector2) -> Array:
 	if _near_k.is_empty():
 		return [Vector2.RIGHT, 1.0 if p.y >= (top + bottom) * 0.5 else -1.0]
-	var i := clampi(roundi(p.x / CELL), 0, cols - 1)
-	var j := clampi(roundi((p.y - top) / CELL), 0, rows - 1)
+	var i := roundi((p.x - left) / CELL)
+	var j := roundi((p.y - top) / CELL)
+	if channel != null and (i < 0 or j < 0 or i >= cols or j >= rows or _near_k[j * cols + i] < 0):
+		return channel.frame_at(p)
+	i = clampi(i, 0, cols - 1)
+	j = clampi(j, 0, rows - 1)
 	var idx := j * cols + i
 	var k := maxi(_near_k[idx], 0)
 	return [centre_dir[k], 1.0 if _near_n[idx] >= 0.0 else -1.0]
@@ -217,6 +241,14 @@ func pick_lie(area: Rect2, rng: RandomNumberGenerator, min_score := 0.4,
 		avoid := PackedVector2Array(), gap := 0.0) -> Vector2:
 	var cells: Array[Vector2] = []
 	var weights := PackedFloat32Array()
+	var total := lie_cells(area, min_score, avoid, gap, cells, weights)
+	return pick_weighted(cells, weights, total, rng)
+
+
+## Adds the cells inside `area` that pick_lie() could choose to `cells`, with
+## their weights (score squared). Returns the weights' sum.
+func lie_cells(area: Rect2, min_score: float, avoid: PackedVector2Array, gap: float,
+		cells: Array[Vector2], weights: PackedFloat32Array) -> float:
 	var total := 0.0
 	for j in rows:
 		for i in cols:
@@ -226,6 +258,12 @@ func pick_lie(area: Rect2, rng: RandomNumberGenerator, min_score := 0.4,
 				cells.append(p)
 				weights.append(s * s)
 				total += s * s
+	return total
+
+
+## One of `cells`, picked with the odds in `weights`; Vector2.INF if none.
+static func pick_weighted(cells: Array[Vector2], weights: PackedFloat32Array,
+		total: float, rng: RandomNumberGenerator) -> Vector2:
 	if cells.is_empty():
 		return Vector2.INF
 	var roll := rng.randf() * total
@@ -263,7 +301,7 @@ func nearest_centre(p: Vector2) -> int:
 
 
 func cell_pos(i: int, j: int) -> Vector2:
-	return Vector2(i * CELL, top + j * CELL)
+	return Vector2(left + i * CELL, top + j * CELL)
 
 
 func _clear_of(p: Vector2, avoid: PackedVector2Array, gap: float) -> bool:
@@ -284,7 +322,7 @@ func eddy_swirl(p: Vector2) -> Vector2:
 # --- Sampling ---------------------------------------------------------------
 
 func _grid_coords(p: Vector2) -> Vector2:
-	return Vector2(clampf(p.x / CELL, 0.0, cols - 1.001), clampf((p.y - top) / CELL, 0.0, rows - 1.001))
+	return Vector2(clampf((p.x - left) / CELL, 0.0, cols - 1.001), clampf((p.y - top) / CELL, 0.0, rows - 1.001))
 
 
 func _sample_v(p: Vector2) -> Vector2:

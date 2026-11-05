@@ -186,8 +186,8 @@ func _draw_water() -> void:
 	var origin: Vector2 = stream.screen_origin() if stream.has_method(&"screen_origin") else Vector2.ZERO
 	var view_m := Rect2(WorldScale.vec_to_m(origin), WorldScale.vec_to_m(size))
 	var cell_px := WorldScale.to_px(RiverField.CELL)
-	var i0 := maxi(0, floori(view_m.position.x / RiverField.CELL))
-	var i1 := mini(river.cols - 1, ceili(view_m.end.x / RiverField.CELL))
+	var i0 := maxi(0, floori((view_m.position.x - river.left) / RiverField.CELL))
+	var i1 := mini(river.cols - 1, ceili((view_m.end.x - river.left) / RiverField.CELL))
 	var j0 := maxi(0, floori((view_m.position.y - river.top) / RiverField.CELL))
 	var j1 := mini(river.rows - 1, ceili((view_m.end.y - river.top) / RiverField.CELL))
 	draw_set_transform(-origin)
@@ -283,8 +283,8 @@ func _draw_types() -> void:
 	# Every other cell is plenty to read the water and keeps the view cheap.
 	var step := 2
 	var block := Vector2.ONE * WorldScale.to_px(RiverField.CELL * step)
-	var i0 := maxi(0, floori(view_m.position.x / RiverField.CELL))
-	var i1 := mini(river.cols - 1, ceili(view_m.end.x / RiverField.CELL))
+	var i0 := maxi(0, floori((view_m.position.x - river.left) / RiverField.CELL))
+	var i1 := mini(river.cols - 1, ceili((view_m.end.x - river.left) / RiverField.CELL))
 	var j0 := maxi(0, floori((view_m.position.y - river.top) / RiverField.CELL))
 	var j1 := mini(river.rows - 1, ceili((view_m.end.y - river.top) / RiverField.CELL))
 	draw_set_transform(-origin)

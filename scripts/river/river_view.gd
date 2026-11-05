@@ -16,26 +16,20 @@ const FOAM_SPEED := 36.0 / 55.0
 const STREAK_COUNT := 22
 const STREAK_LIFE := Vector2(3.0, 8.0)
 
-const COL_GRASS := Color("4b6b3a")
-const COL_TUFT := Color("5f8446")
-const COL_GRAVEL := Color("8a7e62")
-const COL_WATER := Color("3f6e7a")
-const COL_POOL := Color("2c5260")
-const COL_DEEP := Color("244550")
-const COL_RIFFLE := Color("5e8f96")
-const COL_SHALLOW := Color("6f9188")
+const COL_GRASS := ChunkPainter.COL_GRASS
+const COL_TUFT := ChunkPainter.COL_TUFT
+const COL_GRAVEL := ChunkPainter.COL_GRAVEL
 const COL_ROCK := Color("6d6a5e")
 const COL_ROCK_LIGHT := Color("8f8a78")
 const COL_ROCK_DARK := Color("4f4c43")
 const COL_FOAM := Color("c9dcd6")
 const COL_STREAK := Color("4f8290")
-const COL_CUT_BANK := Color("5b3e26")
 const COL_LOG := Color("5a442c")
 const COL_LOG_LIGHT := Color("7a5e3e")
-## The old flat water: a colour per depth band, where each band starts, and a 2x2 dither.
-const BANDS: Array[Color] = [COL_SHALLOW, COL_RIFFLE, COL_WATER, COL_POOL, COL_DEEP]
-const CUTS: Array[float] = [0.1, 0.38, 0.62, 0.86]
-const DITHER: Array[float] = [-0.03, 0.01, 0.03, -0.01]
+## The old flat water's depth bands (ChunkPainter owns them).
+const BANDS := ChunkPainter.BANDS
+const CUTS := ChunkPainter.CUTS
+const DITHER := ChunkPainter.DITHER
 
 var _river: RiverField
 var _stretch: Stretch
@@ -63,7 +57,12 @@ func setup(river: RiverField, stretch: Stretch, screen: Vector2, banks: Vector2,
 	_banks = banks
 	_view = view if view.has_area() else Rect2(Vector2.ZERO, screen)
 	_rng.seed = 1979
-	_water_tex = _make_stretch_texture(clear_water, clear_land) if stretch != null else _make_water_texture()
+	if stretch == null:
+		_water_tex = _make_water_texture()
+	elif not river is SectionField:
+		_water_tex = _make_stretch_texture(clear_water, clear_land)
+	else:
+		_water_tex = null  # a streamed section: RiverStreamer draws the ground per chunk
 	_streaks.clear()
 	_streak_life.clear()
 	for i in STREAK_COUNT:
@@ -142,77 +141,25 @@ func _make_water_texture() -> ImageTexture:
 	return ImageTexture.create_from_image(img)
 
 
-## The whole stretch as one picture: grass, gravel banks, cut banks on the
-## outside of bends, point bars on the inside, and water in depth bands.
-## The field's grids are scaled up to pixels natively, then each pixel is
-## classified, so the picture takes a fraction of a second to make.
+## The whole stretch as one picture (ChunkPainter): grass, gravel banks, cut
+## banks on the outside of bends, point bars on the inside, and water in depth
+## bands, leaving clear what a WaterView or BankView paints underneath.
 func _make_stretch_texture(clear_water: bool, clear_land: bool) -> ImageTexture:
 	if clear_water and clear_land:
 		return ImageTexture.create_from_image(Image.create(1, 1, false, Image.FORMAT_RGBA8))
-	var size := Vector2i(WorldScale.vec_to_px(_stretch.size_m))
-	var depth_px := _layer_to_pixels(_river.depth, size, 1.0)
-	var wet_px := _layer_to_pixels(PackedFloat32Array(Array(_river.wet)), size, 1.0)
-	var shore_px := _layer_to_pixels(_river.shore, size, 20.0)
-	var bend_px := _layer_to_pixels(_river.bend, size, 1.0)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 1979
-	var data := PackedByteArray()
-	data.resize(size.x * size.y * 4)
-	for y in size.y:
-		for x in size.x:
-			var idx := y * size.x + x
-			var col := COL_GRASS
-			if wet_px[idx] >= 0.5 and clear_water:
-				col = Color.TRANSPARENT  # the WaterView paints it, underneath
-			elif wet_px[idx] < 0.5 and clear_land:
-				col = Color.TRANSPARENT  # the BankView paints it, underneath
-			elif wet_px[idx] >= 0.5:
-				var d := depth_px[idx] + DITHER[(y % 2) * 2 + (x % 2)]
-				var band := 0
-				while band < CUTS.size() and d > CUTS[band]:
-					band += 1
-				col = BANDS[band]
-			else:
-				var shore := shore_px[idx]
-				var b := bend_px[idx]
-				if b > 0.25 and shore < 0.5 + 0.5 * b:
-					col = COL_CUT_BANK  # undercut earth on the outside of a bend
-				elif shore < 0.75 + 3.0 * maxf(-b, 0.0):
-					col = COL_GRAVEL  # the inside of a bend widens into a point bar
-				elif rng.randf() < 0.025:
-					col = COL_TUFT
-			data[idx * 4] = col.r8
-			data[idx * 4 + 1] = col.g8
-			data[idx * 4 + 2] = col.b8
-			data[idx * 4 + 3] = col.a8
-	var img := Image.create_from_data(size.x, size.y, false, Image.FORMAT_RGBA8, data)
-	for g in [] if clear_land else _stretch.features.filter(func(x: RiverFeature) -> bool: return x is GravelBar):
-		var c := WorldScale.vec_to_px(g.centre)
-		var r := WorldScale.to_px(g.radius)
-		for y in range(maxi(0, int(c.y - r)), mini(size.y, int(c.y + r) + 1)):
-			for x in range(maxi(0, int(c.x - r)), mini(size.x, int(c.x + r) + 1)):
-				if Vector2(x, y).distance_to(c) <= r and wet_px[y * size.x + x] < 0.5:
-					img.set_pixel(x, y, COL_GRAVEL)
-	return ImageTexture.create_from_image(img)
-
-
-## One of the field's per-cell layers scaled up to `size` pixels (bilinear),
-## as floats. Values are clamped to +-limit first (the shore layer holds INF).
-func _layer_to_pixels(layer: PackedFloat32Array, size: Vector2i, limit: float) -> PackedFloat32Array:
-	var vals := PackedFloat32Array()
-	vals.resize(layer.size())
-	for i in layer.size():
-		vals[i] = clampf(layer[i], -limit, limit)
-	var img := Image.create_from_data(_river.cols, _river.rows, false, Image.FORMAT_RF, vals.to_byte_array())
-	img.resize(size.x, size.y, Image.INTERPOLATE_BILINEAR)
-	return img.get_data().to_float32_array()
+	var painter := ChunkPainter.new(_river, Rect2(Vector2.ZERO, _stretch.size_m), clear_water, clear_land)
+	painter.run()
+	var tex := painter.ground
+	painter.free()
+	return tex
 
 
 func _draw() -> void:
 	if _river == null:
 		return
 	if _stretch != null:
-		draw_texture(_water_tex, Vector2.ZERO)
+		if _water_tex != null:
+			draw_texture(_water_tex, Vector2.ZERO)
 	else:
 		draw_rect(Rect2(Vector2.ZERO, _screen), COL_GRASS)
 		for t in _tufts:

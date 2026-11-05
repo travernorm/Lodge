@@ -38,6 +38,8 @@ const REACH_RANGE := 8.0
 var _mat := ShaderMaterial.new()
 var _size := Vector2.ZERO
 var _river: RiverField
+## Chunks of a section it paints (REQ-0014), by key: Vector2i -> [Node2D, RiverField].
+var _chunks := {}
 
 
 func _ready() -> void:
@@ -61,6 +63,31 @@ func setup(river: RiverField) -> void:
 	_mat.set_shader_parameter(&"field_cells", Vector2(river.cols, river.rows))
 	_mat.set_shader_parameter(&"cell_px", RiverField.CELL * WorldScale.PX_PER_M)
 	_bake()
+
+
+## Streaming (REQ-0014): paints one chunk of a section, `area` (px) being the
+## chunk's own part of the world, from the image a ChunkPainter baked. Each
+## chunk draws on a child of its own with a copy of the material.
+func add_chunk(key: Vector2i, river: RiverField, area: Rect2, img: Image) -> void:
+	drop_chunk(key)
+	var part := Node2D.new()
+	var mat := _mat.duplicate() as ShaderMaterial
+	mat.set_shader_parameter(&"field_cells", Vector2(river.cols, river.rows))
+	mat.set_shader_parameter(&"cell_px", RiverField.CELL * WorldScale.PX_PER_M)
+	mat.set_shader_parameter(&"field_origin", WorldScale.vec_to_px(Vector2(river.left, river.top)))
+	mat.set_shader_parameter(&"data", ImageTexture.create_from_image(img))
+	part.material = mat
+	part.draw.connect(func() -> void:
+		if is_active():
+			part.draw_rect(area, Color.WHITE))
+	add_child(part)
+	_chunks[key] = [part, river]
+
+
+func drop_chunk(key: Vector2i) -> void:
+	if _chunks.has(key):
+		(_chunks[key][0] as Node).queue_free()
+		_chunks.erase(key)
 
 
 ## The bank as an image, one texel per field cell: R = metres from the water,
@@ -90,8 +117,8 @@ static func _inside_bars(river: RiverField) -> PackedFloat32Array:
 		var g := f as GravelBar
 		if g == null:
 			continue
-		var lo := ((g.centre - Vector2(g.radius, g.radius + river.top)) / RiverField.CELL).floor()
-		var hi := ((g.centre + Vector2(g.radius, g.radius - river.top)) / RiverField.CELL).ceil()
+		var lo := ((g.centre - Vector2(g.radius + river.left, g.radius + river.top)) / RiverField.CELL).floor()
+		var hi := ((g.centre + Vector2(g.radius - river.left, g.radius - river.top)) / RiverField.CELL).ceil()
 		for j in range(maxi(0, int(lo.y)), mini(river.rows, int(hi.y) + 1)):
 			for i in range(maxi(0, int(lo.x)), mini(river.cols, int(hi.x) + 1)):
 				var idx := j * river.cols + i
@@ -105,9 +132,13 @@ func _draw() -> void:
 
 
 func _bake() -> void:
-	if _river == null or look == null:
+	if look == null:
 		return
-	_mat.set_shader_parameter(&"data", ImageTexture.create_from_image(data_image(_river, look)))
+	if _river != null:
+		_mat.set_shader_parameter(&"data", ImageTexture.create_from_image(data_image(_river, look)))
+	for entry: Array in _chunks.values():
+		var mat := (entry[0] as Node2D).material as ShaderMaterial
+		mat.set_shader_parameter(&"data", ImageTexture.create_from_image(data_image(entry[1], look)))
 	queue_redraw()
 
 
@@ -130,6 +161,8 @@ func _apply_look() -> void:
 			[&"px_per_m", px], [&"shore_range", SHORE_RANGE], [&"face_range", FACE_RANGE],
 			[&"reach_low", REACH_LOW], [&"reach_range", REACH_RANGE]]:
 		_mat.set_shader_parameter(p[0], p[1])
+		for entry: Array in _chunks.values():
+			((entry[0] as Node2D).material as ShaderMaterial).set_shader_parameter(p[0], p[1])
 	_bake()  # widths come from the look, so a change re-bakes (a fraction of a second)
 	queue_redraw()
 

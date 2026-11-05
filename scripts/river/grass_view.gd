@@ -4,7 +4,8 @@ extends Node2D
 ## each GrassPatch, leaning in the wind and away from the angler. A view: it
 ## owns the field and the wind, and only reads the angler and the day.
 ##
-## Wiring: the stream scene calls setup(river) once and angler_at() each frame,
+## Wiring: the stream scene calls setup(river) once and angler_at() each frame
+## (and, for a section streamed in chunks, add_chunk() and drop_chunk()),
 ## and puts this node under the angler. main.tscn connects the fishing node's
 ## conditions_changed (the wind follows the weather) and the debug overlay's
 ## view_changed.
@@ -31,6 +32,9 @@ const PLACEHOLDERS := 4
 @export var grass_seed := 7
 
 var field := GrassField.new()
+## A section streamed in chunks (REQ-0014) grows grass per chunk instead:
+## Vector2i -> GrassField.
+var chunks := {}
 var wind := Wind.new()
 var push := GrassField.Push.LEAN
 
@@ -61,13 +65,28 @@ func setup(river: RiverField) -> void:
 		_placeholders = []
 		for k in PLACEHOLDERS:
 			_placeholders.append(_bake_placeholder(k))
-	field = GrassField.grow(river, look, _rng, maxi(look.clumps.size(), PLACEHOLDERS))
+	if not river is SectionField:
+		field = GrassField.grow(river, look, _rng, maxi(look.clumps.size(), PLACEHOLDERS))
 	wind = Wind.new(_rng)
 	wind.ease_seconds = look.wind_ease_seconds
 	wind.gust_size_m = look.gust_size_m
 	wind.gust_speed_mps = look.gust_speed_mps
 	wind.blow_for(_day, look.wind_by_weather)
 	wind.strength = wind.target
+
+
+## Grows the grass in one chunk of a section: `river` is the chunk's field and
+## `clip` its own area (m). Seeded by the chunk, so it grows back the same.
+func add_chunk(key: Vector2i, river: RiverField, clip: Rect2) -> void:
+	if look == null:
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([grass_seed, key])
+	chunks[key] = GrassField.grow(river, look, rng, maxi(look.clumps.size(), PLACEHOLDERS), clip)
+
+
+func drop_chunk(key: Vector2i) -> void:
+	chunks.erase(key)
 
 
 ## Where the angler's feet are (screen px), each frame.
@@ -99,11 +118,12 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
-	if look == null or field.size() == 0:
+	if look == null or (field.size() == 0 and chunks.is_empty()):
 		return
 	wind.step(delta)
 	if _angler != Vector2.INF:
-		field.step(delta, _angler, push, look)
+		for f: GrassField in _fields():
+			f.step(delta, _angler, push, look)
 	queue_redraw()
 	_front.queue_redraw()
 
@@ -124,31 +144,42 @@ func _draw_clumps(ci: CanvasItem, front: bool) -> void:
 		return
 	var tall := WorldScale.to_px(look.height_m) + 8.0
 	var view := (get_canvas_transform().affine_inverse() * get_viewport_rect()).grow(tall)
-	var from := field.first_at(WorldScale.to_m(view.position.y))
-	var to := field.first_at(WorldScale.to_m(view.end.y))
-	for i in range(from, to):
-		var base := WorldScale.vec_to_px(field.pos[i]).floor()
-		if view.has_point(base) and _in_front(i) == front:
-			_draw_clump(ci, i, base)
+	for f: GrassField in _fields():
+		var from := f.first_at(WorldScale.to_m(view.position.y))
+		var to := f.first_at(WorldScale.to_m(view.end.y))
+		for i in range(from, to):
+			var base := WorldScale.vec_to_px(f.pos[i]).floor()
+			if view.has_point(base) and _in_front(f, i) == front:
+				_draw_clump(ci, f, i, base)
 	ci.draw_set_transform_matrix(Transform2D.IDENTITY)
 
 
-func _in_front(i: int) -> bool:
+## The grass to draw: the whole stretch's, or each chunk's, top of the screen
+## first.
+func _fields() -> Array:
+	if chunks.is_empty():
+		return [field]
+	var keys := chunks.keys()
+	keys.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return a.y < b.y or (a.y == b.y and a.x < b.x))
+	return keys.map(func(k: Vector2i) -> GrassField: return chunks[k])
+
+
+func _in_front(f: GrassField, i: int) -> bool:
 	if _angler == Vector2.INF:
 		return false
-	var d := field.pos[i] - _angler
+	var d := f.pos[i] - _angler
 	return d.y > 0.0 and d.y < FRONT_REACH_M.y and absf(d.x) < FRONT_REACH_M.x
 
 
 ## One clump, sheared so its top leans by its sway and squashed as it lies flat.
-func _draw_clump(ci: CanvasItem, i: int, base: Vector2) -> void:
-	var s := field.sway(i, wind, look)
-	var squash := 1.0 - field.flat[i]
+func _draw_clump(ci: CanvasItem, f: GrassField, i: int, base: Vector2) -> void:
+	var s := f.sway(i, wind, look)
+	var squash := 1.0 - f.flat[i]
 	var sprites: Array[Texture2D] = look.clumps if not look.clumps.is_empty() else _placeholders
 	var tex: Texture2D = null
 	if not sprites.is_empty():
-		tex = sprites[field.kind[i] % sprites.size()]
-	if look.flat_clump != null and field.flat[i] > 0.5 * look.flatten:
+		tex = sprites[f.kind[i] % sprites.size()]
+	if look.flat_clump != null and f.flat[i] > 0.5 * look.flatten:
 		tex = look.flat_clump
 		squash = 1.0
 	if tex == null:

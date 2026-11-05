@@ -8,6 +8,9 @@ shader_type canvas_item;
 uniform sampler2D data : filter_linear, repeat_disable;
 uniform vec2 field_cells = vec2(1.0);
 uniform float cell_px = 2.0;
+// Where the data texture's first cell sits (world px): 0 for a whole
+// stretch, the chunk's corner for a chunk of a section (REQ-0014).
+uniform vec2 field_origin = vec2(0.0);
 uniform float px_per_m = 8.0;
 uniform float shore_range = 8.0;
 uniform float face_range = 4.0;
@@ -87,7 +90,7 @@ vec4 ground(sampler2D tex, bool has_tex, vec4 tint, vec2 p) {
 
 void fragment() {
 	vec2 p = floor(world_px) + 0.5;
-	vec2 uv = (p / cell_px + 0.5) / field_cells;
+	vec2 uv = ((p - field_origin) / cell_px + 0.5) / field_cells;
 	vec4 f = texture(data, uv);
 	if (f.a >= 0.35) {
 		discard;  // water: the WaterView paints it
