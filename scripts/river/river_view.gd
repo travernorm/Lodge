@@ -1,8 +1,8 @@
 class_name RiverView
 extends Node2D
 ## Draws the river (step A2, split from stream_scene.gd): the ground (grass,
-## gravel, cut banks and point bars), the water in depth bands where no
-## WaterView paints it, the little current streaks, and boulders and logs.
+## gravel, cut banks and point bars) where no BankView paints it (REQ-0013),
+## the water in depth bands where no WaterView paints it, the little current streaks, and boulders and logs.
 ## Everything is drawn with primitives until real art replaces it.
 ##
 ## Reads the RiverField; changes nothing. The stream scene owns it, hands it
@@ -47,9 +47,10 @@ var _rng := RandomNumberGenerator.new()
 ## `stretch` null means the one-screen test stream, `screen` px across with
 ## banks at `banks` (top, bottom, px). `clear_water`: a WaterView paints the
 ## water underneath, so the ground leaves it transparent. `view` is the part
-## of the world on screen (px), where the first streaks start.
+## of the world on screen (px), where the first streaks start. `clear_land`: a
+## BankView paints the land underneath, so it's left transparent too.
 func setup(river: RiverField, stretch: Stretch, screen: Vector2, banks: Vector2, clear_water: bool,
-		view := Rect2()) -> void:
+		view := Rect2(), clear_land := false) -> void:
 	_river = river
 	_stretch = stretch
 	_screen = screen
@@ -59,7 +60,7 @@ func setup(river: RiverField, stretch: Stretch, screen: Vector2, banks: Vector2,
 	if stretch == null:
 		_water_tex = _make_water_texture()
 	elif not river is SectionField:
-		_water_tex = _make_stretch_texture(clear_water)
+		_water_tex = _make_stretch_texture(clear_water, clear_land)
 	else:
 		_water_tex = null  # a streamed section: RiverStreamer draws the ground per chunk
 	_streaks.clear()
@@ -142,9 +143,11 @@ func _make_water_texture() -> ImageTexture:
 
 ## The whole stretch as one picture (ChunkPainter): grass, gravel banks, cut
 ## banks on the outside of bends, point bars on the inside, and water in depth
-## bands.
-func _make_stretch_texture(clear_water: bool) -> ImageTexture:
-	var painter := ChunkPainter.new(_river, Rect2(Vector2.ZERO, _stretch.size_m), clear_water)
+## bands, leaving clear what a WaterView or BankView paints underneath.
+func _make_stretch_texture(clear_water: bool, clear_land: bool) -> ImageTexture:
+	if clear_water and clear_land:
+		return ImageTexture.create_from_image(Image.create(1, 1, false, Image.FORMAT_RGBA8))
+	var painter := ChunkPainter.new(_river, Rect2(Vector2.ZERO, _stretch.size_m), clear_water, clear_land)
 	painter.run()
 	var tex := painter.ground
 	painter.free()

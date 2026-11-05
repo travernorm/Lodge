@@ -68,6 +68,8 @@ var _parts_added := false
 @onready var _water: WaterView = get_node_or_null(^"Water")
 ## The tall grass on the bank (REQ-0012), drawn under the angler.
 @onready var _grass: GrassView = get_node_or_null(^"Grass")
+## Paints a stretch's land: shoreline, cut banks and ground (REQ-0013).
+@onready var _bank: BankView = get_node_or_null(^"Bank")
 
 
 ## The angler and the river view are made with the scene but only join the
@@ -114,10 +116,14 @@ func _ready() -> void:
 		camera.reset_smoothing()
 	if river is SectionField:
 		_setup_streamer()
-	elif stretch != null and _water != null:
-		_water.setup(river)
+	else:
+		if stretch != null and _water != null:
+			_water.setup(river)
+		if stretch != null and _bank != null:
+			_bank.setup(river)
 	_view.setup(river, stretch, VIEW, Vector2(BANK_TOP, BANK_BOTTOM),
-		stretch != null and _water != null and _water.is_active(), visible_rect())
+		stretch != null and _water != null and _water.is_active(), visible_rect(),
+		stretch != null and _bank != null and _bank.is_active())
 
 
 func _process(delta: float) -> void:
@@ -135,23 +141,30 @@ func _process(delta: float) -> void:
 
 
 ## A streamed section: the streamer draws the ground under everything and hands
-## each chunk to the water and grass views as it is ready.
+## each chunk to the water, bank and grass views as it is ready.
 func _setup_streamer() -> void:
 	_streamer = RiverStreamer.new()
 	add_child(_streamer)
 	move_child(_streamer, 0)
 	var water_on := _water != null and _water.is_active()
+	var land_on := _bank != null and _bank.is_active()
 	if _water != null:
 		_streamer.chunk_shown.connect(func(key: Vector2i, field: RiverField, area: Rect2, painter: ChunkPainter) -> void:
 			_water.add_chunk(key, field, Rect2(WorldScale.vec_to_px(area.position), WorldScale.vec_to_px(area.size)),
 				painter.field_img, painter.edge_img))
 		_streamer.chunk_hidden.connect(_water.drop_chunk)
+	if land_on:
+		_streamer.chunk_shown.connect(func(key: Vector2i, field: RiverField, area: Rect2, painter: ChunkPainter) -> void:
+			_bank.add_chunk(key, field, Rect2(WorldScale.vec_to_px(area.position), WorldScale.vec_to_px(area.size)),
+				painter.bank_img))
+		_streamer.chunk_hidden.connect(_bank.drop_chunk)
 	if _grass != null:
 		_streamer.chunk_shown.connect(func(key: Vector2i, field: RiverField, area: Rect2, _p: ChunkPainter) -> void:
 			_grass.add_chunk(key, field, area))
 		_streamer.chunk_hidden.connect(_grass.drop_chunk)
 	# The camera has not moved yet: build what is around the angler.
-	_streamer.setup(river as SectionField, water_on, Rect2(_walker.feet - VIEW, VIEW * 2.0))
+	_streamer.setup(river as SectionField, water_on, _bank.look if land_on else null,
+		Rect2(_walker.feet - VIEW, VIEW * 2.0))
 
 
 ## Current velocity (px/s) at a point on screen (px).

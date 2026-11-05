@@ -24,13 +24,17 @@ const BANDS: Array[Color] = [COL_SHALLOW, COL_RIFFLE, COL_WATER, COL_POOL, COL_D
 const CUTS: Array[float] = [0.1, 0.38, 0.62, 0.86]
 const DITHER: Array[float] = [-0.03, 0.01, 0.03, -0.01]
 
-## The ground picture, and the WaterView's field and edge images, once done.
+## The ground picture, the WaterView's field and edge images, and the
+## BankView's image (when it has a look), once done.
 var ground: ImageTexture
 var field_img: Image
 var edge_img: Image
+var bank_img: Image
 
 var _river: RiverField
 var _clear := false
+var _clear_land := false
+var _bank_look: BankLook
 ## What to paint (px, whole pixels) and where the field's grid starts (px).
 var _area := Rect2i()
 var _origin := Vector2i.ZERO
@@ -51,11 +55,15 @@ var _ground := PackedByteArray()
 
 
 ## `area` is the part of the world to paint (m); `clear_water` leaves the
-## water see-through for a WaterView underneath. `tuft_seed` scatters the grass
-## tufts.
-func _init(river: RiverField, area: Rect2, clear_water: bool, tuft_seed := 1979) -> void:
+## water see-through for a WaterView underneath, `clear_land` the land for a
+## BankView. `tuft_seed` scatters the grass tufts. With a `bank_look`, it also
+## bakes the BankView's image.
+func _init(river: RiverField, area: Rect2, clear_water: bool, clear_land := false,
+		tuft_seed := 1979, bank_look: BankLook = null) -> void:
 	_river = river
 	_clear = clear_water
+	_clear_land = clear_land
+	_bank_look = bank_look
 	_area = Rect2i(WorldScale.vec_to_px(area.position).round(), WorldScale.vec_to_px(area.size).round())
 	_origin = Vector2i(WorldScale.vec_to_px(Vector2(river.left, river.top)).round())
 	_rng.seed = tuft_seed
@@ -72,6 +80,8 @@ func _init(river: RiverField, area: Rect2, clear_water: bool, tuft_seed := 1979)
 		[_ground_row, _area.size.y],
 		[_finish, 1],
 	]
+	if bank_look != null:
+		_stages.insert(2, [_bank_image, 1])
 
 
 ## Paints up to `units` rows. True when everything is painted.
@@ -94,6 +104,10 @@ func done() -> bool:
 
 func run() -> void:
 	step(1 << 30)
+
+
+func _bank_image(_unit: int) -> void:
+	bank_img = BankView.data_image(_river, _bank_look)
 
 
 func _field_row(j: int) -> void:
@@ -137,6 +151,8 @@ func _ground_row(y: int) -> void:
 		var col := COL_GRASS
 		if _wet[g] >= 0.5 and _clear:
 			col = Color.TRANSPARENT  # the WaterView paints it, underneath
+		elif _wet[g] < 0.5 and _clear_land:
+			col = Color.TRANSPARENT  # the BankView paints it, underneath
 		elif _wet[g] >= 0.5:
 			var d := _depth[g] + DITHER[(y % 2) * 2 + (x % 2)]
 			var band := 0
@@ -163,7 +179,7 @@ func _ground_row(y: int) -> void:
 func _finish(_unit: int) -> void:
 	var img := Image.create_from_data(_area.size.x, _area.size.y, false, Image.FORMAT_RGBA8, _ground)
 	var pos := Vector2(_area.position)
-	for f in _river.features:
+	for f in [] if _clear_land else _river.features:
 		if not f is GravelBar:
 			continue
 		var c := WorldScale.vec_to_px((f as GravelBar).centre) - pos

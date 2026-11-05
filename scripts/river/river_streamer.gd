@@ -10,7 +10,7 @@ extends Node2D
 ## the part of the world on screen. Pixels on screen; the field is in metres.
 
 ## A chunk is built and painted: `field` is its RiverField, `area` its own
-## part of the world (m), `painter` holds its water images.
+## part of the world (m), `painter` holds its water and bank images.
 signal chunk_shown(key: Vector2i, field: RiverField, area: Rect2, painter: ChunkPainter)
 ## A chunk was forgotten.
 signal chunk_hidden(key: Vector2i)
@@ -27,17 +27,21 @@ const KEEP_M := 60.0
 
 var _section: SectionField
 var _clear := false
+## The BankView's look, when it paints the land (the ground leaves it clear).
+var _bank_look: BankLook
 ## Chunks being painted: Vector2i -> ChunkPainter.
 var _painting := {}
 ## Chunks on show: Vector2i -> [ground texture, area (px)].
 var _shown := {}
 
 
-## `clear_water`: a WaterView paints the water, so the ground leaves it clear.
-## Builds and paints the chunks on screen now, so the first frame is whole.
-func setup(section: SectionField, clear_water: bool, view: Rect2) -> void:
+## `clear_water`: a WaterView paints the water, so the ground leaves it clear;
+## `bank_look`: a BankView paints the land with it, likewise. Builds and paints
+## the chunks on screen now, so the first frame is whole.
+func setup(section: SectionField, clear_water: bool, bank_look: BankLook, view: Rect2) -> void:
 	_section = section
 	_clear = clear_water
+	_bank_look = bank_look
 	var view_m := _to_m(view)
 	section.want(view_m)
 	while section.busy():
@@ -92,7 +96,7 @@ func _start_painting() -> void:
 	for key: Vector2i in _section.built_keys():
 		if not _shown.has(key) and not _painting.has(key):
 			var area := _section.chunk_rect(key)
-			_painting[key] = ChunkPainter.new(_section.chunk(key), area, _clear, hash(key))
+			_painting[key] = ChunkPainter.new(_section.chunk(key), area, _clear, _bank_look != null, hash(key), _bank_look)
 
 
 func _show(key: Vector2i) -> void:
