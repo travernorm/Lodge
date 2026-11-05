@@ -68,7 +68,6 @@ const COL_ROCK_LIGHT := Color("8f8a78")
 const COL_ROCK_DARK := Color("4f4c43")
 const COL_FOAM := Color("c9dcd6")
 const COL_STREAK := Color("4f8290")
-const COL_CUT_BANK := Color("5b3e26")
 const COL_LOG := Color("5a442c")
 const COL_LOG_LIGHT := Color("7a5e3e")
 ## The old flat water: a colour per depth band, where each band starts, and a 2x2 dither.
@@ -94,6 +93,8 @@ var _rng := RandomNumberGenerator.new()
 var _angler: AnglerView
 ## The tall grass on the bank (REQ-0012), drawn under the angler.
 @onready var _grass: GrassView = get_node_or_null(^"Grass")
+## Paints a stretch's land: shoreline, cut banks and ground (REQ-0013).
+@onready var _bank: BankView = get_node_or_null(^"Bank")
 
 
 func _enter_tree() -> void:
@@ -127,6 +128,8 @@ func _ready() -> void:
 		camera.reset_smoothing()
 	if stretch != null and _water != null:
 		_water.setup(river)
+	if stretch != null and _bank != null:
+		_bank.setup(river)
 	_water_tex = _make_stretch_texture() if stretch != null else _make_water_texture()
 	for i in STREAK_COUNT:
 		_streaks.append(_random_water_point())
@@ -315,55 +318,32 @@ func _make_water_texture() -> ImageTexture:
 	return ImageTexture.create_from_image(img)
 
 
-## The whole stretch as one picture: grass, gravel banks, cut banks on the
-## outside of bends, point bars on the inside, and water in depth bands.
-## The field's grids are scaled up to pixels natively, then each pixel is
-## classified, so the picture takes a fraction of a second to make.
+## The stretch's water as one picture, in the old flat depth bands with a
+## 2x2 dither, or clear where the WaterView paints it. The land is clear too:
+## the BankView paints it (REQ-0013).
 func _make_stretch_texture() -> ImageTexture:
+	if _water != null and _water.is_active():
+		return ImageTexture.create_from_image(Image.create(1, 1, false, Image.FORMAT_RGBA8))
 	var size := Vector2i(world_size())
 	var depth_px := _layer_to_pixels(river.depth, size, 1.0)
 	var wet_px := _layer_to_pixels(PackedFloat32Array(Array(river.wet)), size, 1.0)
-	var shore_px := _layer_to_pixels(river.shore, size, 20.0)
-	var bend_px := _layer_to_pixels(river.bend, size, 1.0)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 1979
-	var clear_water := _water != null and _water.is_active()
 	var data := PackedByteArray()
 	data.resize(size.x * size.y * 4)
 	for y in size.y:
 		for x in size.x:
 			var idx := y * size.x + x
-			var col := COL_GRASS
-			if wet_px[idx] >= 0.5 and clear_water:
-				col = Color.TRANSPARENT  # the WaterView paints it, underneath
-			elif wet_px[idx] >= 0.5:
-				var d := depth_px[idx] + DITHER[(y % 2) * 2 + (x % 2)]
-				var band := 0
-				while band < CUTS.size() and d > CUTS[band]:
-					band += 1
-				col = BANDS[band]
-			else:
-				var shore := shore_px[idx]
-				var b := bend_px[idx]
-				if b > 0.25 and shore < 0.5 + 0.5 * b:
-					col = COL_CUT_BANK  # undercut earth on the outside of a bend
-				elif shore < 0.75 + 3.0 * maxf(-b, 0.0):
-					col = COL_GRAVEL  # the inside of a bend widens into a point bar
-				elif rng.randf() < 0.025:
-					col = COL_TUFT
+			if wet_px[idx] < 0.5:
+				continue  # left clear (zeros)
+			var d := depth_px[idx] + DITHER[(y % 2) * 2 + (x % 2)]
+			var band := 0
+			while band < CUTS.size() and d > CUTS[band]:
+				band += 1
+			var col := BANDS[band]
 			data[idx * 4] = col.r8
 			data[idx * 4 + 1] = col.g8
 			data[idx * 4 + 2] = col.b8
 			data[idx * 4 + 3] = col.a8
-	var img := Image.create_from_data(size.x, size.y, false, Image.FORMAT_RGBA8, data)
-	for g in stretch.features.filter(func(x: RiverFeature) -> bool: return x is GravelBar):
-		var c := WorldScale.vec_to_px(g.centre)
-		var r := WorldScale.to_px(g.radius)
-		for y in range(maxi(0, int(c.y - r)), mini(size.y, int(c.y + r) + 1)):
-			for x in range(maxi(0, int(c.x - r)), mini(size.x, int(c.x + r) + 1)):
-				if Vector2(x, y).distance_to(c) <= r and wet_px[y * size.x + x] < 0.5:
-					img.set_pixel(x, y, COL_GRAVEL)
-	return ImageTexture.create_from_image(img)
+	return ImageTexture.create_from_image(Image.create_from_data(size.x, size.y, false, Image.FORMAT_RGBA8, data))
 
 
 ## One of the field's per-cell layers scaled up to `size` pixels (bilinear),

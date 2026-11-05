@@ -59,18 +59,11 @@ func _test_scene() -> void:
 	_check(water.is_active(), "the scene's water view is active")
 	var tex: Texture2D = main.get(&"_water_tex")
 	var img := tex.get_image()
-	var p := WorldScale.vec_to_px(_deep_point(main.river))
-	_check(img.get_pixelv(p).a == 0.0, "stream scene leaves deep water clear for the view")
-	_check(img.get_pixelv(WorldScale.vec_to_px(main.stretch.angler_start)).a == 1.0, "stream scene still paints the bank")
+	# REQ-0013: the BankView paints the land now, so with both views active the
+	# stream scene's picture is clear everywhere, deep water included.
+	_check(img.is_invisible(), "stream scene leaves the water and the land clear for the views")
+	_check(main.get_node(^"Bank").is_active(), "the scene's bank view paints the land instead")
 	main.free()
-
-
-func _deep_point(river: RiverField) -> Vector2:
-	var best := 0
-	for i in river.depth.size():
-		if river.depth[i] > river.depth[best]:
-			best = i
-	return river.cell_pos(best % river.cols, best / river.cols)
 
 
 func _check(ok: bool, what: String) -> void:

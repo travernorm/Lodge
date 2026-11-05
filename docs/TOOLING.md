@@ -33,6 +33,20 @@ The water is painted by `WaterView` (`scripts/river/water_view.gd`) from a **wat
 
 To go back to the old flat colours, clear the `look` slot on the `Water` node. A new season or river can have its own look: duplicate the file in `data/looks/` and point the `Water` node at it.
 
+## Changing how the shoreline looks
+
+The land of a stretch (the wet line at the water, gravel, point bars, sand, the cut bank on the outside of bends, and the ground the grass grows on) is painted by `BankView` (`scripts/river/bank_view.gd`) from a **bank look**, `data/bank_looks/spring.tres` (REQ-0013).
+
+1. Open `scenes/main.tscn`. The bank shows in the editor viewport (the `Bank` node builds its own river from `preview_stretch`).
+2. Double-click `data/bank_looks/spring.tres` (or click the `Bank` node and open its `look`):
+   - **Cut Bank**: the face strip that repeats along the bank, grass lip at the top and mud at the bottom. Make it as wide as you like and about 16 px tall (`face_height_m` 2 m shows 16 px pixel for pixel). Today's is `assets/bank/cut_bank.png`.
+   - **Wet Stones, Gravel, Sand**: drag seamless 64x64 tiles in. Empty slots draw placeholder pebbles in the matching tint.
+   - **Colours**: tints for each ground (they multiply a texture), and the ground and tuft colours under the grass.
+   - **Widths**: the wet line, the gravel along a straight bank, how much wider a point bar gets, and the sand fringe, all in metres.
+   - **Cut bank**: how far round a bend the face starts and reaches full height, its height, and the grass lip kept where it tapers.
+   - **Edges**: how ragged the edges between grounds are.
+3. Save, and press Cmd+B to see it in the game.
+
 ## Controls are defined in code
 
 `tools/setup_input_map.gd` is the source of truth for the input map. To change a binding, edit that file and run:

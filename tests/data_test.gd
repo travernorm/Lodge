@@ -39,6 +39,7 @@ func _initialize() -> void:
 	_test_weather_looks(_load_dir("res://data/weather_looks", "WeatherLook"))
 	_test_grass_looks(_load_dir("res://data/grass_looks", "GrassLook"))
 	_test_cast_looks(_load_dir("res://data/cast_looks", "CastLook"))
+	_test_bank_looks(_load_dir("res://data/bank_looks", "BankLook"))
 	_test_catalog(flies, fish, insects, _load_dir("res://data/stretches", "Stretch"), rods)
 	_main.free()
 	if _failures == 0:
@@ -498,6 +499,32 @@ func _test_weather_looks(looks: Dictionary) -> void:
 	if view != null:
 		_check(view.look != null and looks.has(view.look.resource_path),
 			"scene: the weather look is a data/weather_looks file (%s)" % _path(view.look))
+
+
+## Every bank look has sane widths, a face strip that fits its height and no
+## see-through colours; the scene's bank uses one (REQ-0013).
+func _test_bank_looks(looks: Dictionary) -> void:
+	_check(not looks.is_empty(), "bank looks: data/bank_looks has a look")
+	for path in looks:
+		var look: BankLook = looks[path]
+		var stem: String = path.get_file().get_basename()
+		_check(look.cut_bend_full > look.cut_bend_start, "bank look %s: the face reaches full height past where it starts" % stem)
+		_check(look.face_height_m <= BankView.FACE_RANGE and look.gravel_width_m + look.point_bar_m <= BankView.SHORE_RANGE,
+			"bank look %s: face and gravel fit the baked ranges" % stem)
+		_check(look.sand_width_m < look.gravel_width_m, "bank look %s: the sand fringe is narrower than the gravel" % stem)
+		var opaque := true
+		for c in [look.wet_tint, look.gravel_tint, look.sand_tint, look.ground_tint, look.tuft_tint]:
+			opaque = opaque and c.a == 1.0
+		_check(opaque, "bank look %s: colours are opaque" % stem)
+		if look.cut_bank != null:
+			_check(look.cut_bank.get_height() > 0 and look.cut_bank.get_width() >= look.cut_bank.get_height(),
+				"bank look %s: the cut bank is a strip, wider than tall" % stem)
+	var view := _main.get_node_or_null(^"Bank") as BankView
+	_check(view != null, "scene: Main has a Bank node")
+	if view != null:
+		_check(view.look != null and looks.has(view.look.resource_path),
+			"scene: the bank look is a data/bank_looks file (%s)" % _path(view.look))
+		_check(view.show_behind_parent, "scene: the bank draws behind the stream scene, under logs and the angler")
 
 
 ## Every grass look has a wind for each weather, a storm the strongest, sane

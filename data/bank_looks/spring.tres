@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="BankLook" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/river/bank_look.gd" id="1_look"]
+[ext_resource type="Texture2D" path="res://assets/bank/cut_bank.png" id="2_face"]
+
+[resource]
+script = ExtResource("1_look")
+cut_bank = ExtResource("2_face")

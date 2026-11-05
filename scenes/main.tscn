@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/stream_scene.gd" id="1_stream"]
 [ext_resource type="Script" path="res://scripts/debug_overlay.gd" id="2_debug"]
@@ -12,6 +12,8 @@
 [ext_resource type="Resource" path="res://data/weather_looks/default.tres" id="14_weather_look"]
 [ext_resource type="Script" path="res://scripts/river/grass_view.gd" id="15_grass"]
 [ext_resource type="Resource" path="res://data/grass_looks/spring.tres" id="16_grass_look"]
+[ext_resource type="Script" path="res://scripts/river/bank_view.gd" id="17_bank"]
+[ext_resource type="Resource" path="res://data/bank_looks/spring.tres" id="18_bank_look"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_stream")
@@ -21,6 +23,12 @@ stretch = ExtResource("10_stretch")
 show_behind_parent = true
 script = ExtResource("11_water")
 look = ExtResource("12_look")
+preview_stretch = ExtResource("10_stretch")
+
+[node name="Bank" type="Node2D" parent="."]
+show_behind_parent = true
+script = ExtResource("17_bank")
+look = ExtResource("18_bank_look")
 preview_stretch = ExtResource("10_stretch")
 
 [node name="Grass" type="Node2D" parent="."]
