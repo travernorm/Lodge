@@ -21,6 +21,11 @@ static func make(p_centre: Vector2, p_radii: Vector2, p_density := 1.0) -> Grass
 	return g
 
 
+## Grass grows on the bank and never touches the current.
+func reach() -> Rect2:
+	return Rect2()
+
+
 func contains(p: Vector2) -> bool:
 	var d := (p - centre) / Vector2(maxf(radii.x, 0.01), maxf(radii.y, 0.01))
 	return d.length_squared() <= 1.0

@@ -55,7 +55,7 @@ static func grow(river: RiverField, look: GrassLook, rng: RandomNumberGenerator,
 	for feat in river.features:
 		if feat is GrassPatch and (feat as GrassPatch).density * look.density > 0.0:
 			patches.append(feat)
-	var world := Rect2(0.0, river.top, river.cols * RiverField.CELL, river.rows * RiverField.CELL)
+	var world := Rect2(river.left, river.top, river.cols * RiverField.CELL, river.rows * RiverField.CELL)
 	if patches.is_empty():
 		return GrassField.new()
 	var dist := WaterDistance.new(river, world)
@@ -97,7 +97,7 @@ static func is_land(river: RiverField, p: Vector2) -> bool:
 	if river.is_water(p) or river.is_solid(p):
 		return false
 	if not river.shore.is_empty():
-		var i := clampi(roundi(p.x / RiverField.CELL), 0, river.cols - 1)
+		var i := clampi(roundi((p.x - river.left) / RiverField.CELL), 0, river.cols - 1)
 		var j := clampi(roundi((p.y - river.top) / RiverField.CELL), 0, river.rows - 1)
 		if river.shore[j * river.cols + i] < SHORE_GAP_M + 3.0 * maxf(-river.bend[j * river.cols + i], 0.0):
 			return false

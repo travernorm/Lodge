@@ -20,6 +20,10 @@ func calm(p: Vector2) -> float:
 	return 1.0
 
 
+func reach() -> Rect2:
+	return Rect2(a, Vector2.ZERO).expand(b).grow(REACH * 2.5)
+
+
 ## Either end reaches the water.
 func river_points() -> PackedVector2Array:
 	return PackedVector2Array([a, b])
