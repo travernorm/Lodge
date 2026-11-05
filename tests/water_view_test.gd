@@ -57,7 +57,15 @@ func _test_scene() -> void:
 	await process_frame
 	var water := main.get_node(^"Water") as WaterView
 	_check(water.is_active(), "the scene's water view is active")
-	var tex: Texture2D = main.get(&"_water_tex")
+	var view: RiverView = null
+	for child in main.get_children():
+		if child is RiverView:
+			view = child
+	_check(view != null, "the stream scene has a RiverView (step A2)")
+	if view == null:
+		main.free()
+		return
+	var tex: Texture2D = view.ground_texture()
 	var img := tex.get_image()
 	var p := WorldScale.vec_to_px(_deep_point(main.river))
 	_check(img.get_pixelv(p).a == 0.0, "stream scene leaves deep water clear for the view")
