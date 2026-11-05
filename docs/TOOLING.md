@@ -135,7 +135,37 @@ How to fill a cell:
 * **New fields show up by themselves.** The columns are read from the scripts, so after adding an `@export` run `-- --export` to add its column. Ranges come from `@export_range`.
 * `-- --check` prints what an import would change and writes nothing. `-- --export` rewrites the sheets from `data/`.
 * `tests/content_test.gd` fails while the sheets and `data/` disagree, so they can't drift apart.
-* Stretches aren't in a sheet: spawn tables and river features are edited in the inspector.
+* Rivers have their own sheets; see "River sheets" below. A stretch that isn't from a river sheet (the demo) is edited in the inspector.
+
+## River sheets
+
+A river is written as distance markers, the way a guide describes it ("at 340 m, a log on river left"), in two sheets in `content/` (REQ-0014):
+
+* `rivers.csv`, one row per river: `id`, `name`, `width_m`, `start_heading_deg` (0 flows right, 90 flows down the screen), `fish_per_100m`, `spring_fed` (yes or no), `spawn` (`redband:0.6;brook:0.2`), `hatches_like` (a stretch whose hatch table the river shares), `grass_bank_m`, `notes`.
+* `river_markers.csv`, one row per thing along a river: `river`, `at_m` (metres downstream from the top), `length_m` (for things that run along the river), `kind`, `side` (`left`, `right` or `mid`, facing downstream), `offset_m` (in from that bank; on land, back from the water), `size_m`, `value`, `note`.
+
+| Kind | What it does | `value` |
+|---|---|---|
+| `section` | Starts a named section; each becomes `data/stretches/<river>_<section>.tres` | The name: `Upper Fall` |
+| `end` | Where the river's rows stop | |
+| `bend` | Turns the river over `length_m` | `left 60`, `right 90` |
+| `water` | Sets the depth over `length_m` | `riffle`, `run`, `pocket`, `pool`, `tail_out`, `plunge` |
+| `boulder`, `eddy`, `gravel_bar` | A feature in the water; `size_m` is its radius | eddy: strength (0 to 2) |
+| `log` | A fallen log from that bank, angled downstream; `size_m` is its length | |
+| `grass` | A patch of tall grass on that bank; `size_m` is its reach along the bank | density |
+| `angler_start` | Where the angler starts, on that bank | |
+| `waterfall`, `bridge`, `cabin`, `ford`, `trail`, `inflow`, `boat_launch`, `width`, `reach_break` | Planned: drawn on the plate and listed, built by REQ-0014 step 3 and later | |
+
+Then run:
+
+```sh
+godot --headless --path . --script res://tools/import_river.gd
+```
+
+Every row is checked first (an unknown kind or fish, a bend with no angle, a marker past the river's end), and nothing is written if any is wrong. It writes each section's stretch, rebuilds the catalog when a section is new, and draws a preview plate per section in `docs/rivers/`: a top-down map from the real river field with every marker labelled by its distance, planned kinds in red. `-- --check` writes nothing; `-- --plates` redraws the plates only.
+
+* The sheet is the source of truth for a generated stretch: an import overwrites it, so move things in the sheet, not in the inspector. `tests/river_import_test.gd` fails while a sheet and its stretch disagree.
+* From Google Sheets: File, Download, CSV, one tab per file, saved over the file in `content/`.
 
 The drift and fight feel constants sit at the top of `scripts/fishing/drift_model.gd` and `scripts/fishing/fight_model.gd`, each with a comment. They're in metres and metres per second.
 
