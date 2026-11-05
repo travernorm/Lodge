@@ -1,8 +1,8 @@
 class_name RiverView
 extends Node2D
 ## Draws the river (step A2, split from stream_scene.gd): the ground (grass,
-## gravel, cut banks and point bars), the water in depth bands where no
-## WaterView paints it, the little current streaks, and boulders and logs.
+## gravel, cut banks and point bars) where no BankView paints it (REQ-0013),
+## the water in depth bands where no WaterView paints it, the little current streaks, and boulders and logs.
 ## Everything is drawn with primitives until real art replaces it.
 ##
 ## Reads the RiverField; changes nothing. The stream scene owns it, hands it
@@ -53,16 +53,17 @@ var _rng := RandomNumberGenerator.new()
 ## `stretch` null means the one-screen test stream, `screen` px across with
 ## banks at `banks` (top, bottom, px). `clear_water`: a WaterView paints the
 ## water underneath, so the ground leaves it transparent. `view` is the part
-## of the world on screen (px), where the first streaks start.
+## of the world on screen (px), where the first streaks start. `clear_land`: a
+## BankView paints the land underneath, so it's left transparent too.
 func setup(river: RiverField, stretch: Stretch, screen: Vector2, banks: Vector2, clear_water: bool,
-		view := Rect2()) -> void:
+		view := Rect2(), clear_land := false) -> void:
 	_river = river
 	_stretch = stretch
 	_screen = screen
 	_banks = banks
 	_view = view if view.has_area() else Rect2(Vector2.ZERO, screen)
 	_rng.seed = 1979
-	_water_tex = _make_stretch_texture(clear_water) if stretch != null else _make_water_texture()
+	_water_tex = _make_stretch_texture(clear_water, clear_land) if stretch != null else _make_water_texture()
 	_streaks.clear()
 	_streak_life.clear()
 	for i in STREAK_COUNT:
@@ -145,7 +146,9 @@ func _make_water_texture() -> ImageTexture:
 ## outside of bends, point bars on the inside, and water in depth bands.
 ## The field's grids are scaled up to pixels natively, then each pixel is
 ## classified, so the picture takes a fraction of a second to make.
-func _make_stretch_texture(clear_water: bool) -> ImageTexture:
+func _make_stretch_texture(clear_water: bool, clear_land: bool) -> ImageTexture:
+	if clear_water and clear_land:
+		return ImageTexture.create_from_image(Image.create(1, 1, false, Image.FORMAT_RGBA8))
 	var size := Vector2i(WorldScale.vec_to_px(_stretch.size_m))
 	var depth_px := _layer_to_pixels(_river.depth, size, 1.0)
 	var wet_px := _layer_to_pixels(PackedFloat32Array(Array(_river.wet)), size, 1.0)
@@ -161,6 +164,8 @@ func _make_stretch_texture(clear_water: bool) -> ImageTexture:
 			var col := COL_GRASS
 			if wet_px[idx] >= 0.5 and clear_water:
 				col = Color.TRANSPARENT  # the WaterView paints it, underneath
+			elif wet_px[idx] < 0.5 and clear_land:
+				col = Color.TRANSPARENT  # the BankView paints it, underneath
 			elif wet_px[idx] >= 0.5:
 				var d := depth_px[idx] + DITHER[(y % 2) * 2 + (x % 2)]
 				var band := 0
@@ -181,7 +186,7 @@ func _make_stretch_texture(clear_water: bool) -> ImageTexture:
 			data[idx * 4 + 2] = col.b8
 			data[idx * 4 + 3] = col.a8
 	var img := Image.create_from_data(size.x, size.y, false, Image.FORMAT_RGBA8, data)
-	for g in _stretch.features.filter(func(x: RiverFeature) -> bool: return x is GravelBar):
+	for g in [] if clear_land else _stretch.features.filter(func(x: RiverFeature) -> bool: return x is GravelBar):
 		var c := WorldScale.vec_to_px(g.centre)
 		var r := WorldScale.to_px(g.radius)
 		for y in range(maxi(0, int(c.y - r)), mini(size.y, int(c.y + r) + 1)):

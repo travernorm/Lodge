@@ -65,6 +65,8 @@ var _parts_added := false
 @onready var _water: WaterView = get_node_or_null(^"Water")
 ## The tall grass on the bank (REQ-0012), drawn under the angler.
 @onready var _grass: GrassView = get_node_or_null(^"Grass")
+## Paints a stretch's land: shoreline, cut banks and ground (REQ-0013).
+@onready var _bank: BankView = get_node_or_null(^"Bank")
 
 
 ## The angler and the river view are made with the scene but only join the
@@ -106,8 +108,11 @@ func _ready() -> void:
 		camera.reset_smoothing()
 	if stretch != null and _water != null:
 		_water.setup(river)
+	if stretch != null and _bank != null:
+		_bank.setup(river)
 	_view.setup(river, stretch, VIEW, Vector2(BANK_TOP, BANK_BOTTOM),
-		stretch != null and _water != null and _water.is_active(), visible_rect())
+		stretch != null and _water != null and _water.is_active(), visible_rect(),
+		stretch != null and _bank != null and _bank.is_active())
 
 
 func _process(delta: float) -> void:
