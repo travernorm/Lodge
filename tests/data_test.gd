@@ -37,6 +37,7 @@ func _initialize() -> void:
 	_test_take_rules()
 	_test_water_looks()
 	_test_weather_looks(_load_dir("res://data/weather_looks", "WeatherLook"))
+	_test_grass_looks(_load_dir("res://data/grass_looks", "GrassLook"))
 	_test_cast_looks(_load_dir("res://data/cast_looks", "CastLook"))
 	_test_catalog(flies, fish, insects, _load_dir("res://data/stretches", "Stretch"), rods)
 	_main.free()
@@ -497,3 +498,30 @@ func _test_weather_looks(looks: Dictionary) -> void:
 	if view != null:
 		_check(view.look != null and looks.has(view.look.resource_path),
 			"scene: the weather look is a data/weather_looks file (%s)" % _path(view.look))
+
+
+## Every grass look has a wind for each weather, a storm the strongest, sane
+## push numbers and real sprites in its slots; the scene's grass uses one
+## (REQ-0012).
+func _test_grass_looks(looks: Dictionary) -> void:
+	_check(not looks.is_empty(), "grass looks: data/grass_looks has a look")
+	for path in looks:
+		var look: GrassLook = looks[path]
+		var stem: String = path.get_file().get_basename()
+		var winds := look.wind_by_weather
+		_check(winds.size() == Calendar.Weather.size(), "grass look %s: a wind for each weather" % stem)
+		var in_range := true
+		for w in winds:
+			in_range = in_range and w >= 0.0 and w <= 1.0
+		_check(in_range, "grass look %s: winds are 0 to 1" % stem)
+		if winds.size() == Calendar.Weather.size():
+			_check(winds[Calendar.Weather.STORM] >= Array(winds).max(),
+				"grass look %s: a storm blows hardest" % stem)
+		_check(look.push_radius_m > 0.0 and look.spring_seconds > 0.0 and look.height_m > 0.0,
+			"grass look %s: push radius, spring time and height are positive" % stem)
+		_check(not look.clumps.has(null), "grass look %s: no empty clump sprite slots" % stem)
+	var view := _main.get_node_or_null(^"Grass") as GrassView
+	_check(view != null, "scene: Main has a Grass node")
+	if view != null:
+		_check(view.look != null and looks.has(view.look.resource_path),
+			"scene: the grass look is a data/grass_looks file (%s)" % _path(view.look))

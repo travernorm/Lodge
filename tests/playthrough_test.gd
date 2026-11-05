@@ -14,6 +14,8 @@ extends SceneTree
 ##   * the weather debug key (R2 / F2) during a drift: every weather comes round,
 ##     the fish stay, the drift carries on, and with a debug view open it steps
 ##     through the weather look versions (REQ-0009)
+##   * the tall grass (REQ-0012): walking through bends it, and in the debug
+##     overlay's Grass view R2 / F2 steps the grass variants, not the weather
 ##   * the cast look versions (Square / M in practice with the line in): every
 ##     look comes round, each one casts and lands, and B shows the cutout arm
 ##
@@ -141,6 +143,10 @@ func _run() -> void:
 
 	# 2d. Weather: R2 / F2 during a drift (REQ-0009).
 	if not await _weather_pass():
+		return
+
+	# 2e. Tall grass (REQ-0012).
+	if not await _grass_pass():
 		return
 
 	# 3. Practice mode under every rule set: no bites, every landing is scored.
@@ -351,6 +357,54 @@ func _weather_pass() -> bool:
 	_trout.species.bite_chance = 1.0
 	print("  ok    weather: R2 / F2 stepped %d days through every weather in a drift, fish kept; %d look versions" % [
 		WeatherMix.DEBUG_STEPS.size(), WeatherMix.Version.size()])
+	return true
+
+
+## REQ-0012: the stretch grows grass, walking through it bends the clumps, and
+## in the debug overlay's Grass view R2 / F2 steps the grass variants round
+## while the weather and its look version stay put.
+func _grass_pass() -> bool:
+	var grass: Node = _main.get_node_or_null(^"Grass")
+	if grass == null or not grass.has_method(&"angler_at"):
+		_fail("main.tscn has no Grass node, or its script didn't load")
+		return false
+	if _overlay.View.GRASS != GrassView.DEBUG_VIEW or _overlay.View.GRASS != WeatherView.GRASS_DEBUG_VIEW:
+		_fail("GrassView.DEBUG_VIEW and WeatherView.GRASS_DEBUG_VIEW must match the overlay's Grass view")
+		return false
+	var field: GrassField = grass.field
+	if field.size() == 0:
+		_fail("The demo stretch grew no grass")
+		return false
+	var home: Vector2 = _main.angler_pos
+	var start := WorldScale.vec_to_m(home)
+	var nearest := 0
+	for i in field.size():
+		if field.pos[i].distance_to(start) < field.pos[nearest].distance_to(start):
+			nearest = i
+	_main.angler_pos = WorldScale.vec_to_px(field.pos[nearest] + Vector2(-1.0, 0.0))
+	await _walk(16.0)
+	if _failed or field.is_still():
+		_fail("Walking through the grass didn't bend it")
+		return false
+	_main.angler_pos = home
+	var weather: Calendar.Weather = _fishing.conditions.weather
+	var version: int = _main.get_node(^"Weather/WeatherView").version
+	var first: GrassField.Push = grass.push
+	while _overlay.view != _overlay.View.GRASS:
+		await _press_event(&"toggle_debug")
+	var seen := {}
+	for i in GrassField.Push.size():
+		await _press_event(Controls.DEBUG_WEATHER)
+		seen[grass.push] = true
+	await _cycle_debug_views_closed()
+	if seen.size() != GrassField.Push.size() or grass.push != first:
+		_fail("In the Grass view, R2 / F2 didn't step the grass variants round (saw %d)" % seen.size())
+		return false
+	if _fishing.conditions.weather != weather or _main.get_node(^"Weather/WeatherView").version != version:
+		_fail("In the Grass view, R2 / F2 also changed the weather")
+		return false
+	print("  ok    grass: %d clumps, walking bends them, R2 / F2 steps %d variants in the Grass view" % [
+		field.size(), GrassField.Push.size()])
 	return true
 
 

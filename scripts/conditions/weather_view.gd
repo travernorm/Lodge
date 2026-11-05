@@ -12,6 +12,7 @@ extends Node2D
 ## light and heavy Snow, Storm). The day really changes, so the hatch follows,
 ## but the fish stay. With the debug overlay open it steps through the three
 ## versions (WeatherMix.Version) instead. Either way the corner shows what's on.
+## In the debug overlay's Grass view the key belongs to the grass (REQ-0012).
 
 ## The debug key's next day. main.tscn connects it to the fishing node.
 signal day_requested(c: Conditions)
@@ -28,6 +29,8 @@ const CLOUD_SIZE_M := 12.0
 const CLOUD_DRIFT_MPS := Vector2(0.6, 0.25)
 ## How long a lightning flash takes to die away.
 const FLASH_SECONDS := 0.3
+## The debug overlay's Grass view, where R2 / F2 steps the grass (GrassView.DEBUG_VIEW).
+const GRASS_DEBUG_VIEW := 4
 
 @export var look: WeatherLook:
 	set(v):
@@ -53,6 +56,7 @@ var _from := WeatherMix.new()
 var _to := WeatherMix.new()
 var _fade := 1.0
 var _debug_open := false
+var _grass_view := false
 var _label_until := -1.0
 var _time := 0.0
 var _flash := 0.0
@@ -104,6 +108,7 @@ func show_conditions(c: Conditions) -> void:
 ## The debug overlay's view changed; open = any view showing.
 func set_debug_view(view: int) -> void:
 	_debug_open = view != 0
+	_grass_view = view == GRASS_DEBUG_VIEW
 	if _label != null:
 		_label.queue_redraw()
 
@@ -121,7 +126,7 @@ func is_fading() -> bool:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not event.is_action_pressed(Controls.DEBUG_WEATHER):
+	if _grass_view or not event.is_action_pressed(Controls.DEBUG_WEATHER):
 		return
 	get_viewport().set_input_as_handled()
 	if _debug_open:

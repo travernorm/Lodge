@@ -1,7 +1,7 @@
 extends Control
 ## Debug overlays. Select/View (Create on a PS5 pad, F1 on keyboard) cycles:
 ## hidden -> controller view -> read-the-water view -> water types view ->
-## hidden. Starts hidden.
+## grass view -> hidden. Starts hidden.
 ##
 ## Controller view:
 ## The top strip is a 2 second timeline of the L and R bumpers, which is how
@@ -17,6 +17,9 @@ extends Control
 ## Water types view tints the water by the kind an angler would name it
 ## (REQ-0010: riffle, run, pool, tail-out, pocket, seam, eddy), with a key, and
 ## labels each trout's lie with its water.
+##
+## Grass view (REQ-0012) draws nothing here: the GrassView shows its variant and
+## the wind, and R2 / F2 steps the grass variants instead of the weather looks.
 
 const HISTORY_SECONDS := 2.0
 const FONT_SIZE := 8
@@ -39,7 +42,7 @@ const COL_TYPES: Array[Color] = [
 	Color("f2a65a"), Color("d86ad0"), Color("e0503c"),
 ]
 
-enum View { HIDDEN, CONTROLS, WATER, TYPES }
+enum View { HIDDEN, CONTROLS, WATER, TYPES, GRASS }
 
 ## The view changed. main.tscn tells the weather view, whose debug key steps
 ## through its versions while any view is open.
@@ -113,6 +116,8 @@ func _draw() -> void:
 		return
 	if view == View.TYPES:
 		_draw_types()
+		return
+	if view == View.GRASS:
 		return
 	var font := ThemeDB.fallback_font
 	var w := size.x
