@@ -1,6 +1,6 @@
 # REQ-0012: Tall grass that sways
 
-Status: draft
+Status: approved by Traver 2026-11-05; built (feel experiment, waiting for Traver to pick a variant and for the clump sprites)
 
 ## Problem
 
@@ -33,7 +33,7 @@ Wind is the same in all three. Only the reaction to the angler differs, and Trav
 - **Wind.** A small pure model, `Wind` (`RefCounted`, seeded), turns the current `Conditions` (weather and its `intensity` 0 to 1) into a strength, a direction and gusts. Storm at full intensity is the strongest. Changing the weather with R2 / F2 changes the wind, easing over a few seconds.
 - **`GrassView`** draws the whole field as one batch with a shader that bends each blade's top: wind plus the push from the angler. It gets the angler's position through a signal from the river scene, so it doesn't reach into it.
 - **Art is texture slots.** The clump sprites come from Traver (PixelLab or Aseprite, on the spring palette). Until they arrive a plain placeholder blade stands in, and the PR says so clearly. No code-painted art is presented as the look.
-- **Variant toggle.** With the debug overlay open, a key cycles A, B and C, and the corner shows which one is on (as with the weather versions).
+- **Variant toggle.** The debug overlay gains a Grass view (View / F1 four times). There, R2 / F2 cycles A, B and C instead of the weather looks, and the top-left corner shows the variant and the wind strength.
 
 ## Out of scope
 

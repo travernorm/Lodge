@@ -91,6 +91,7 @@ The data folders today, each covered by `tests/data_test.gd`:
 * `data/stretches/`: `Stretch`, one per river location (today the demo freestone).
 * `data/looks/`: `WaterLook`, how the water is painted: the deep, mid and white water textures (in `assets/water/`), tints, and where each one shows by depth and speed. `WaterView` paints it from the river field A look can also set a palette (water colour by depth, the textures then add only their light and dark pattern), the riverbed seen through the shallows (sand and stones) and foam lines along banks and rocks. `water_clear.tres` is the game's look, `water_clear_crisp.tres` the same with pixel dithering, and `water_spring.tres` the first textured look.
 * `data/cast_tuning.tres`: casting numbers shared by every rule set.
+* `data/grass_looks/`: `GrassLook`, how the tall grass looks and moves (REQ-0012): clump sprites (a placeholder clump of blades until Traver's art), size and density, how it reacts to the angler (the variant on trial, push radius, lean, spring-back, trail, rustle) and the wind per weather. `GrassView` draws it in every `GrassPatch` of the stretch. `spring.tres` is the game's look.
 * `data/weather_looks/`: `WeatherLook`, how the weather and the time of day look on screen (REQ-0009): a `WeatherStyle` per weather (grade, rain or snow, cloud shadows, rain dimples, lightning) and a tint and brightness per slot. `WeatherView` paints it from the day's `Conditions`.
 * `data/calendar.tres`: `Calendar`, the year's rules (REQ-0007): how each slot lowers the air, how the water follows it, and how keen fish are in each slot and weather. Not in the catalog; the fishing node takes it as an export.
 * `data/water_types.tres`: `WaterTypeRules`, how the river's water is sorted into riffle, run, pool, tail-out, pocket, seam and eddy (REQ-0010), plus the `WaterType` enum and the stray weight for water a species doesn't list. Not in the catalog; code reaches it through `WaterTypeRules.shared()`.
@@ -179,8 +180,8 @@ var on_water: bool
 *Owned by the river hydraulics thread.*
 
 * **Owns:** one `RiverField` per stretch: velocity, depth, seams, lie scores, water and rock masks. Read-only to everyone else: `flow_at`, `depth_at`, `lie_at`, `is_water`, `pick_lie`. The field's `lie` is a feeding score (slow water with fast water close by). `RestingLies` (REQ-0011) scores resting water from the field's layers: deep, slow and covered, highest on the outside of a bend (the cut bank). It never writes to the field, and `score_at` is the better of the two.
-* **Data:** `Stretch`: shape, a spawn table (`SpawnEntry`: species, abundance, season window), how rich it is (`fish_per_100m`), a hatch table (`HatchEntry`: insect, season window, slots, weathers, strength), `spring_fed`, and a list of features (`RiverFeature`, one script per kind in `scripts/river/features/`: `Boulder`, `FallenLog`, `Eddy`, `GravelBar`). The field runs the features through hooks (`blocks`, `shape_flow`, `calm`, `swirl`, `prepare`) and names no kind, so a new kind is one new script and a new feature in a river is one entry (REQ-0004 C3). Views draw boulders and logs with their own art and outline any other kind from its `footprint()`. Built at load today; baked offline later (backlog). `tests/fixtures/demo_field.txt` records the demo stretch's water so `river_test` catches any unintended change; re-record it with `tools/record_field_fixture.gd` only when a change to the water is intended.
-* **Today:** `stream_scene.gd` (451 lines) builds the field, walks the angler, runs the camera, generates textures and draws the water (R9). `AnglerView` (`scripts/angler_view.gd`) draws the angler from Traver's sprite (`assets/angler/idle.png`, 8 views in a row in the fly sheets' order; `walk.png`, one row of walk frames per view, played while his feet move) and the rod; the stream scene owns it and tells it where the angler stands and faces. Fishing reads `river` and `stretch` from it by name (R3). **Target:** a `RiverView`, an `Angler` node and a camera owner, with the field and stretch handed to the session (step A2, agreed with the river thread).
+* **Data:** `Stretch`: shape, a spawn table (`SpawnEntry`: species, abundance, season window), how rich it is (`fish_per_100m`), a hatch table (`HatchEntry`: insect, season window, slots, weathers, strength), `spring_fed`, and a list of features (`RiverFeature`, one script per kind in `scripts/river/features/`: `Boulder`, `FallenLog`, `Eddy`, `GravelBar`, `GrassPatch`). The field runs the features through hooks (`blocks`, `shape_flow`, `calm`, `swirl`, `prepare`) and names no kind, so a new kind is one new script and a new feature in a river is one entry (REQ-0004 C3). Views draw boulders and logs with their own art and outline any other kind from its `footprint()`. Tall grass (REQ-0012): `GrassField` grows clumps in each `GrassPatch` on land and springs them away from the angler; `Wind` (from the day's `Conditions`) leans them; `GrassView` draws them, the stream scene putting it under the angler and telling it where he stands. Built at load today; baked offline later (backlog). `tests/fixtures/demo_field.txt` records the demo stretch's water so `river_test` catches any unintended change; re-record it with `tools/record_field_fixture.gd` only when a change to the water is intended.
+* **Today:** `stream_scene.gd` (449 lines) builds the field, walks the angler, runs the camera, generates textures and draws the water (R9). `AnglerView` (`scripts/angler_view.gd`) draws the angler from Traver's sprite (`assets/angler/idle.png`, 8 views in a row in the fly sheets' order; `walk.png`, one row of walk frames per view, played while his feet move) and the rod; the stream scene owns it and tells it where the angler stands and faces. Fishing reads `river` and `stretch` from it by name (R3). **Target:** a `RiverView`, an `Angler` node and a camera owner, with the field and stretch handed to the session (step A2, agreed with the river thread).
 
 ### 3.5 Flies and the fly box
 
@@ -378,6 +379,7 @@ Every script, its layer and its system. `architecture_test.gd` fails if a script
 | `scripts/conditions/weather_mix.gd` | `WeatherMix` | Model | Conditions (weather drawing) |
 | `scripts/conditions/weather_style.gd` | `WeatherStyle` | Data (look) | Conditions (weather drawing) |
 | `scripts/conditions/weather_view.gd` | `WeatherView` | View | Conditions (weather drawing) |
+| `scripts/conditions/wind.gd` | `Wind` | Model | Conditions (wind over the land) |
 | `scripts/conditions/weather_year.gd` | `WeatherYear` | Model (value) | Conditions (weather) |
 | `scripts/controls.gd` | `Controls` (autoload) | Service | Input |
 | `scripts/data/catalog.gd` | `Catalog` | Data (index) | All content |
@@ -397,7 +399,11 @@ Every script, its layer and its system. `architecture_test.gd` fails if a script
 | `scripts/river/features/boulder.gd` | `Boulder` | Data (river feature) | River |
 | `scripts/river/features/eddy.gd` | `Eddy` | Data (river feature) | River |
 | `scripts/river/features/fallen_log.gd` | `FallenLog` | Data (river feature) | River |
+| `scripts/river/features/grass_patch.gd` | `GrassPatch` | Data (river feature) | River (grass) |
 | `scripts/river/features/gravel_bar.gd` | `GravelBar` | Data (river feature) | River |
+| `scripts/river/grass_field.gd` | `GrassField` | Model | River (grass) |
+| `scripts/river/grass_look.gd` | `GrassLook` | Data (look) | River (grass drawing) |
+| `scripts/river/grass_view.gd` | `GrassView` | View | River (grass drawing) |
 | `scripts/river/hatch_entry.gd` | `HatchEntry` | Data (place) | River, fish |
 | `scripts/river/river_feature.gd` | `RiverFeature` | Data (base for river features) | River |
 | `scripts/river/resting_lies.gd` | `RestingLies` | Model | River (lies) |

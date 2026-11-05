@@ -92,6 +92,8 @@ var _rng := RandomNumberGenerator.new()
 @onready var _water: WaterView = get_node_or_null(^"Water")
 ## Draws the angler and the rod (scripts/angler_view.gd).
 var _angler: AnglerView
+## The tall grass on the bank (REQ-0012), drawn under the angler.
+@onready var _grass: GrassView = get_node_or_null(^"Grass")
 
 
 func _enter_tree() -> void:
@@ -117,6 +119,9 @@ func _ready() -> void:
 	add_to_group(&"stream")
 	_rng.seed = 1979
 	_angler = AnglerView.add_to(self)
+	if _grass != null:
+		_grass.setup(river)
+		move_child(_grass, 0)
 	if camera != null:
 		camera.make_current()
 		camera.reset_smoothing()
@@ -142,6 +147,8 @@ func _process(delta: float) -> void:
 			var target := _water_direction()
 			_facing = Vector2.from_angle(lerp_angle(_facing.angle(), target.angle(), minf(1.0, TURN_SPEED * delta)))
 		camera.position = _camera_target()
+	if _grass != null:
+		_grass.angler_at(angler_pos)
 	_update_streaks(delta)
 	queue_redraw()
 
@@ -315,7 +322,7 @@ func _make_water_texture() -> ImageTexture:
 func _make_stretch_texture() -> ImageTexture:
 	var size := Vector2i(world_size())
 	var depth_px := _layer_to_pixels(river.depth, size, 1.0)
-	var wet_px := _layer_to_pixels(_wet_floats(), size, 1.0)
+	var wet_px := _layer_to_pixels(PackedFloat32Array(Array(river.wet)), size, 1.0)
 	var shore_px := _layer_to_pixels(river.shore, size, 20.0)
 	var bend_px := _layer_to_pixels(river.bend, size, 1.0)
 	var rng := RandomNumberGenerator.new()
@@ -369,14 +376,6 @@ func _layer_to_pixels(layer: PackedFloat32Array, size: Vector2i, limit: float) -
 	var img := Image.create_from_data(river.cols, river.rows, false, Image.FORMAT_RF, vals.to_byte_array())
 	img.resize(size.x, size.y, Image.INTERPOLATE_BILINEAR)
 	return img.get_data().to_float32_array()
-
-
-func _wet_floats() -> PackedFloat32Array:
-	var out := PackedFloat32Array()
-	out.resize(river.wet.size())
-	for i in river.wet.size():
-		out[i] = river.wet[i]
-	return out
 
 
 ## The casting controller poses the rod during a cast; otherwise the right stick

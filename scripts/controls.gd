@@ -15,7 +15,8 @@ extends Node
 ##   L3 (click left stick)   practice_mode  casting practice range on/off
 ##   R3 (click right stick)  cycle_rules    switch casting rule set
 ##   Select/View     toggle_debug  cycle debug views (controller, read the water)
-##   R2 (R trigger)  debug_weather next weather; with a debug view open, next weather look version
+##   R2 (R trigger)  debug_weather next weather; with a debug view open, next weather look version;
+##                   in the Grass debug view, next grass variant
 ##
 ## Keyboard fallbacks (for working on a laptop): WASD move, IJKL rod, Q = L bumper,
 ## E = R bumper, M mend, Space interact / set hook, Backspace back, F change fly, R change rod, Esc pause, F1 debug,
