@@ -9,6 +9,8 @@ extends Node2D
 @export var tuning: CastTuning = preload("res://data/cast_tuning.tres")
 ## The casting rule set ("chassis") to start with. Practice mode can swap it live.
 @export var rules: CastRules = preload("res://data/cast_rules/count_false_casts.tres")
+## How the rod and arm move through the cast (a feel experiment, CastLook).
+@export var look: CastLook = preload("res://data/cast_looks/default.tres")
 
 const FEEDBACK_SECONDS := 1.8
 const AIM_SPEED := 1.6  # aim units per second at full stick
@@ -35,6 +37,8 @@ const COL_RING := Color(1, 1, 1, 0.8)
 
 var model: CastModel
 var fly_pos := Vector2.ZERO
+## The cast look version on trial. Starts as the look's style; practice mode steps it.
+var look_style := CastLook.Style.SNAP
 
 var _stream: Node2D
 var _fishing: Node
@@ -57,6 +61,7 @@ func _ready() -> void:
 	_stream = get_parent() as Node2D
 	_fishing = _stream.get_node_or_null(^"Fishing")
 	model = CastModel.new(tuning, 0, rules)
+	look_style = look.style
 	model.feedback.connect(show_message)
 	model.delivered.connect(_on_delivered)
 	model.landed.connect(_on_landed)
@@ -98,6 +103,9 @@ func allows_walking() -> bool:
 func rod_pose() -> Vector2:
 	var dir := model.aim_direction()
 	var turn := model.facing_angle
+	var deg := rod_tilt()
+	if deg != CastPose.NONE:
+		return CastPose.on_screen(look, deg - rod_bend(), dir, Vector2.RIGHT.rotated(turn))
 	match model.state:
 		CastModel.State.BACK, CastModel.State.GAP:
 			return (-dir + Vector2(0.6, 0.0).rotated(turn)).normalized()
@@ -113,6 +121,49 @@ func rod_pose() -> Vector2:
 			var target: Vector2 = _fishing.line_target() if _fishing != null else fly_pos
 			return ((target - _stream.hand_position()).normalized() + Vector2(0.0, -1.0).rotated(turn)).normalized()
 	return Vector2.ZERO
+
+
+## The rod's tilt for the cast look on trial (CastPose), or CastPose.NONE when
+## the old snap poses (or the stick) aim it.
+func rod_tilt() -> float:
+	if look_style == CastLook.Style.SNAP:
+		return CastPose.NONE
+	var deg := CastPose.tilt(look, model.state, model.stroke_progress(), model.flight_progress())
+	return CastPose.snapped(look, deg) if look_style == CastLook.Style.CUTOUT else deg
+
+
+## How far the rod's tip lags its butt right now, in degrees (version A only).
+func rod_bend() -> float:
+	return CastPose.bend(look, model.state, model.stroke_progress()) if look_style == CastLook.Style.SWEEP else 0.0
+
+
+## Where the rod's butt section points on screen (scaled like rod_pose()), or
+## ZERO when the cast isn't posing it. The tip (rod_pose) lags it while the rod bends.
+func rod_butt() -> Vector2:
+	var deg := rod_tilt()
+	if deg == CastPose.NONE:
+		return Vector2.ZERO
+	return CastPose.on_screen(look, deg, model.aim_direction(), Vector2.RIGHT.rotated(model.facing_angle))
+
+
+## Version B draws the cutout forearm while the rod is posed by the cast.
+func shows_arm() -> bool:
+	return look_style == CastLook.Style.CUTOUT and rod_tilt() != CastPose.NONE
+
+
+## Where the fly leaves the rod: the tip laid straight along the aim, whatever
+## the cast look draws, so the look on trial never moves where the fly lands.
+func _release_tip() -> Vector2:
+	var hand: Vector2 = _stream.hand_position()
+	var pose := rod_pose()
+	var rod_px := hand.distance_to(_stream.rod_tip()) / pose.length() if pose.length() > 0.01 else 0.0
+	return hand + model.aim_direction() * rod_px
+
+
+## Steps to the next cast look version and says which on screen.
+func next_look_style() -> void:
+	look_style = ((look_style + 1) % CastLook.Style.size()) as CastLook.Style
+	show_message("Cast look %s" % CastLook.style_name(look_style), 1.0)
 
 
 func debug_lines() -> PackedStringArray:
@@ -160,7 +211,7 @@ func show_message(text: String, quality: float) -> void:
 
 func _on_delivered(offset: Vector2, _quality: float) -> void:
 	_flight_from = _line_end(_stream.rod_tip(), 1.0)
-	_flight_to = _stream.rod_tip() + WorldScale.vec_to_px(offset)
+	_flight_to = _release_tip() + WorldScale.vec_to_px(offset)
 	_snagged = false
 
 

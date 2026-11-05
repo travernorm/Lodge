@@ -41,6 +41,8 @@ The longer the line, the longer each stroke needs, just like a real cast. Stroke
 
 Press **T** (or click the **left stick, L3**) for practice mode. Fish stop biting, and a target ring asks for a **Short**, **Middle** or **Long** cast in turn. The faint ruler by the rod marks where each distance band starts. Each landing is scored as a hit or a miss, the fly reels itself in, and the next target comes up. Press **T / L3** again to go back to fishing.
 
+The angler's cast animation is a feel experiment with three looks, named under the practice header: **Off** (today's three rod poses), **A: rod sweep** (the rod sweeps through each stroke and bends under the line) and **B: cutout arm** (a cutout forearm and the rod snap together to a few fixed angles; the arm is a stand-in until there's PixelLab art). The game starts on Off. In practice mode, with the line in, press **Square / M** for the next look; the look stays when you leave practice, and it never changes where the fly lands. The angles and bend are in `data/cast_looks/default.tres`.
+
 The **stroke log** (top right) shows every back (B) and forward (F) stroke of the cast as a bar. The bar's length is how long you held the bumper, the white tick is what the rules wanted, and the colour is the score (green perfect, yellow okay, red poor). The stroke you're holding right now grows in grey, so you can see your rhythm against the target as you cast.
 
 Press **Tab** (or click the **right stick, R3**) to switch between casting rule sets. They all use the same bumpers and overlap, but turn your rhythm into distance differently:
@@ -91,7 +93,7 @@ The bite numbers live in `data/take_rules/drift_past.tres`.
 | R bumper (R1) | E | Forward cast (overlap with L) |
 | Right stick | I J K L | Rod tip: mend, set the hook, strip |
 | Left stick / D-pad | W A S D | Walk the bank (the camera follows) |
-| X (Square on DualSense) or right stick loop | M | Mend the line (each mend feeds out line, more for a bigger bow) |
+| X (Square on DualSense) or right stick loop | M | Mend the line (each mend feeds out line, more for a bigger bow); in practice mode with the line in, next cast look |
 | A or right stick flick up | Space | Set the hook |
 | Right stick hold | Space or I J K L | Pressure while fighting |
 | Y | F | Change fly (when reeled in) |

@@ -16,6 +16,8 @@ extends SceneTree
 ##     through the weather look versions (REQ-0009)
 ##   * the tall grass (REQ-0012): walking through bends it, and in the debug
 ##     overlay's Grass view R2 / F2 steps the grass variants, not the weather
+##   * the cast look versions (Square / M in practice with the line in): every
+##     look comes round, each one casts and lands, and B shows the cutout arm
 ##
 ##   godot --headless --path . --script res://tests/playthrough_test.gd
 ##
@@ -151,6 +153,8 @@ func _run() -> void:
 	await _tap(&"practice_mode")
 	if not _practice.active or _fishing.enabled:
 		_fail("Practice didn't turn on")
+		return
+	if not await _cast_look_pass():
 		return
 	for i in rule_count:
 		if not _practice.select_rules(i):
@@ -510,6 +514,42 @@ func _cast_once(false_casts: int) -> void:
 		await _wait(_cast.model.ideal_stroke_time())
 	Input.action_release(&"cast_forward")
 	await _wait(_cast.model.tuning.flight_time + 0.1)
+
+
+## In practice with the line in, Square / M steps through every cast look and
+## back round. Each look casts and lands; during B's cast the angler shows the
+## cutout forearm and the rod tip sits on one of B's fixed angles.
+func _cast_look_pass() -> bool:
+	var start: int = _cast.look_style
+	var angler: AnglerView = _main._angler
+	for k in CastLook.Style.size():
+		var scored := _practice_attempts()
+		var saw_arm := [false]
+		var watch := func():
+			if angler.shows_arm():
+				saw_arm[0] = true
+		process_frame.connect(watch)
+		await _cast_once(0)
+		process_frame.disconnect(watch)
+		if _practice_attempts() != scored + 1:
+			_fail("Cast look %s: the cast didn't land" % CastLook.style_name(_cast.look_style))
+			return false
+		if saw_arm[0] != (_cast.look_style == CastLook.Style.CUTOUT):
+			_fail("Cast look %s: the cutout arm showed %s" % [CastLook.style_name(_cast.look_style), saw_arm[0]])
+			return false
+		if not await _wait_for(func(): return _cast.model.state == CastModel.State.IDLE, 3.0):
+			_fail("Practice didn't reel the line back in")
+			return false
+		var before: int = _cast.look_style
+		await _tap(&"mend")
+		if _cast.look_style != (before + 1) % CastLook.Style.size():
+			_fail("Square / M in practice didn't step the cast look (still %d)" % _cast.look_style)
+			return false
+	if _cast.look_style != start:
+		_fail("The cast looks didn't come back round")
+		return false
+	print("  ok    cast looks: %d versions stepped with Square / M, each cast and landed" % CastLook.Style.size())
+	return true
 
 
 func _practice_attempts() -> int:

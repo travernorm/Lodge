@@ -415,7 +415,7 @@ func _draw() -> void:
 
 	for f in river.features: _draw_feature(f)
 	if _angler != null:
-		_angler.show_angler(angler_pos, _facing, hand_position(), rod_tip())
+		_angler.show_angler(angler_pos, _facing, hand_position(), rod_tip(), _cast.rod_butt() * ROD_LENGTH if _cast != null else Vector2.ZERO, _cast != null and _cast.shows_arm())
 
 
 ## Boulders and logs have art; other kinds above ground show their footprint.
