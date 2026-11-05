@@ -12,7 +12,7 @@ As a player, I want to wade through tall bank grass that parts around me and spr
 
 ## Feel goals
 
-- **Tall and soft.** Clumps of long blades, taller than the angler's knees, in the style of Traver's reference images: dense tufts with lighter tips, a few seed heads.
+- **Tall and soft.** Clumps of long, broad, tapered blades that curve over at the tip, taller than the angler's knees, as in Traver's reference: dark green at the base fading to bright green at the tip, overlapping in a dense tuft. The reference also shows a short, flattened version of the same blades, which is the look of grass that has been walked over (variant B).
 - **It notices you.** Blades near the angler lean away as they walk through, then spring back over about a second, with a little overshoot. Standing still, the grass settles.
 - **The wind is readable.** Calm days have almost no motion, just a faint breath. In a Storm the whole field bends one way and waves of gusts roll across it. Rain sits in between.
 - **It never hides the fishing.** Grass grows on the land only, never over the water, the fly or the rise rings. The angler's legs may be hidden in it, the body never.
@@ -25,7 +25,7 @@ Wind is the same in all three. Only the reaction to the angler differs, and Trav
 | Variant | What you see when walking through |
 |---|---|
 | **A. Lean** | Blades within about 1 m lean away from the angler while they are close and spring straight again as they leave. Simplest. |
-| **B. Part and trail** | As A, but the blades stay bent for a moment after the angler passes, so a short trail shows where they walked, then it fades back. |
+| **B. Part and trail** | As A, but the blades flatten (the reference's short clump) and stay down for a moment after the angler passes, so a short trail shows where they walked, then they stand back up. |
 | **C. Rustle** | Blades don't lean far; they shake and shiver as the angler brushes past, like a sound you can see. |
 
 - **Where it grows.** A new `GrassPatch` river feature (like a boulder or a gravel bar) marks an area of bank in metres, with a density. The demo stretch gets a few patches along the near bank and one meadow by the bend. Grass never grows on water or gravel.
@@ -72,7 +72,7 @@ Grass that slows walking, scares fish or hides the angler from fish; grass on th
 
 ## Open questions
 
-1. **Reference images.** The two links didn't open from the build machine. Could Traver drop them into the thread as uploads, so the look can be matched?
-2. **Who makes the clumps?** Recommended: Traver makes 3 or 4 clump sprites in PixelLab (about 0.6 to 1 m tall, so roughly 6 to 8 px wide and 10 to 14 px tall at today's 320×200), plus an optional seed-head variant. A placeholder blade fills in until then.
-3. **Wind on calm days.** Traver asked for wind in storms. Should Sunny and Overcast get a faint breeze, or be perfectly still?
+1. **Reference.** Answered: Traver uploaded the reference (kept outside the repo, as it isn't licensed for the game). Tall curved blades, plus a short flattened set.
+2. **Who makes the clumps?** Answered: Traver is making them in PixelLab (3 or 4 tall clumps, about 8×14 px at 320×200, plus a flattened clump). A placeholder blade fills in until then.
+3. **Wind on calm days.** Answered: yes, Sunny and Overcast get a faint breeze; Storm is the strongest.
 4. **Resolution.** The game still renders at 320×200 ×4. Sizes here are in metres, so they carry over if that changes to 640×400.
