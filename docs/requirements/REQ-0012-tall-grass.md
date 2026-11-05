@@ -46,7 +46,7 @@ Grass that slows walking, scares fish or hides the angler from fish; grass on th
 | Casting | No | No | playthrough_test unchanged |
 | River | Yes: new `GrassPatch` feature, demo stretch gains patches | Grass placement | data_test loads the stretch and every grass look; new grass_test checks no grass lies on water |
 | Fishing | No | No | playthrough_test unchanged |
-| Weather / Conditions | Read only: `Wind` reads `Conditions` | Wind strength | new wind_test: calm < rain < storm, seeded gusts repeat |
+| Weather / Conditions | Read only: `Wind` reads `Conditions` | Wind strength | new wind_test: sunny < rain < storm, seeded gusts repeat |
 | Angler / river scene | Emits the angler's position | Grass push | new grass_test: blades near the angler lean, far ones don't, they recover |
 | UI and modes | Debug overlay shows the grass variant | | playthrough_test cycles the variants |
 | Input | Reuses an existing debug key with the overlay open; no new binding unless Traver wants one | | input parity check |
@@ -57,7 +57,7 @@ Grass that slows walking, scares fish or hides the angler from fish; grass on th
 ## Acceptance criteria
 
 - Grass appears only inside `GrassPatch` areas on land (automated).
-- With Calm conditions the wind strength is near zero; Storm at intensity 1 is the maximum; rain is in between (automated).
+- On a Sunny day the wind strength is near zero; Storm at intensity 1 is the maximum; Rain is in between (automated).
 - The same seed gives the same gusts (automated).
 - Blades within the push radius lean away from the angler and return to rest within the spring-back time once the angler leaves (automated, on the model).
 - 60 fps on the Deck with the demo stretch's grass on screen (playtest).
