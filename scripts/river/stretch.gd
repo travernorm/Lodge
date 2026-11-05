@@ -36,6 +36,10 @@ extends Resource
 @export_range(0.1, 20.0) var fish_per_100m := 2.7
 ## The insects in this water, and when each one hatches.
 @export var hatches: Array[HatchEntry] = []
+## Build the river in chunks around the camera (REQ-0014, SectionField)
+## instead of all at load: for long sections like the Upper Fall. The river
+## importer sets it for every section it writes.
+@export var streamed := false
 ## Spring-fed water stays in the 40s and 50s all year instead of following
 ## the air (REQ-0007).
 @export var spring_fed := false

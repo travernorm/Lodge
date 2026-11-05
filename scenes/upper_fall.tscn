@@ -1,0 +1,7 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/main.tscn" id="1_main"]
+[ext_resource type="Resource" path="res://data/stretches/fall_river_upper_fall.tres" id="2_upper"]
+
+[node name="Main" instance=ExtResource("1_main")]
+stretch = ExtResource("2_upper")

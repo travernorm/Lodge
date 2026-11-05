@@ -68,6 +68,16 @@ func _init(fld: RiverField, channel: RiverChannel) -> void:
 		if i0 <= i1 and j0 <= j1:
 			_segments.append(k)
 			_boxes.append(Rect2i(i0, j0, i1 - i0, j1 - j0))
+	if _segments.is_empty():
+		# No river within reach: dry land, nothing to lay.
+		fld.shore.fill(INF)
+		fld.velocity.fill(Vector2.ZERO)
+		fld.depth.fill(0.0)
+		fld.seam.fill(0.0)
+		fld.lie.fill(0.0)
+		fld.bend.fill(0.0)
+		_stages = [[_finish, 1]]
+		return
 	_stages = [
 		[_nearest_row, fld.rows],
 		[_fill_row, fld.rows],

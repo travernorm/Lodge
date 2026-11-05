@@ -9,6 +9,9 @@ render_mode unshaded;
 uniform sampler2D field : filter_linear, repeat_disable;
 uniform vec2 field_cells = vec2(1.0);
 uniform float cell_px = 2.0;
+// Where the field texture's first cell sits (world px): 0 for a whole
+// stretch, the chunk's corner for a chunk of a section (REQ-0014).
+uniform vec2 field_origin = vec2(0.0);
 uniform float flow_range = 10.0;
 uniform float water_speed = 1.0;
 
@@ -169,7 +172,7 @@ float foam_line(float dist, float w, vec2 p) {
 
 void fragment() {
 	vec2 p = floor(world_px) + 0.5;
-	vec4 f = texture(field, (p / cell_px + 0.5) / field_cells);
+	vec4 f = texture(field, ((p - field_origin) / cell_px + 0.5) / field_cells);
 	if (f.a < 0.35) {
 		discard;
 	}
@@ -207,7 +210,7 @@ void fragment() {
 		float lum = dot(wash.rgb, vec3(0.3, 0.5, 0.2));
 		w_white *= mix(1.0, smoothstep(0.45, 0.85, lum), wash_clear);
 		c = mix(c, wash, w_white);
-		vec4 e = texture(edges, (p / cell_px + 0.5) / field_cells) * edge_range;
+		vec4 e = texture(edges, ((p - field_origin) / cell_px + 0.5) / field_cells) * edge_range;
 		float foam = bank_foam * foam_line(e.r, bank_foam_w, p);
 		foam = max(foam, rock_foam * foam_line(e.g, rock_foam_w, p + vec2(5.0, 3.0)));
 		c.rgb = mix(c.rgb, foam_tint.rgb, foam);

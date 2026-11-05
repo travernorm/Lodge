@@ -2,11 +2,13 @@ extends SceneTree
 ## Headless tests for a river built in chunks (REQ-0014, SectionField): the
 ## chunks match a whole build of the same stretch, seams included; they build
 ## a little per step without long pauses; far chunks can be dropped and come
-## back the same; and lies are picked across chunk edges.
+## back the same; lies are picked across chunk edges; and the Upper Fall scene
+## streams its chunks around the walking angler.
 ##   godot --headless --path . --script res://tests/section_test.gd
 
 const STRETCH := "res://data/stretches/demo_freestone.tres"
 const UPPER_FALL := "res://data/stretches/fall_river_upper_fall.tres"
+const SCENE := "res://scenes/upper_fall.tscn"
 ## How close a chunk's water must be to the whole build's. Features far from a
 ## chunk are left out of it (RiverFeature.reach()), which moves the current by
 ## well under 2%.
@@ -31,6 +33,10 @@ func _initialize() -> void:
 	_test_drop_and_rebuild(sec)
 	_test_lies_across_chunks(sec)
 	_test_long_section(load(UPPER_FALL))
+	_test_scene_streams.call_deferred()
+
+
+func _finish() -> void:
 	if _failures == 0:
 		print("Section tests passed.")
 		quit(0)
@@ -164,6 +170,56 @@ func _test_long_section(st: Stretch) -> void:
 		if sec.bounds().has_point(sec.centre[k]) and not sec.is_solid(sec.centre[k]) and not sec.is_water(sec.centre[k]):
 			dry += 1
 	_check(dry == 0, "the river is wet along its whole centreline, boulders aside (%d dry points)" % dry)
+
+
+## The Upper Fall scene streams: the chunks on screen are painted at load,
+## walking down the bank at walking speed shows each new chunk before it is on
+## screen, the water and grass views get every chunk, and far chunks go.
+func _test_scene_streams() -> void:
+	var main: Node = (load(SCENE) as PackedScene).instantiate()
+	root.add_child(main)
+	await process_frame
+	var river: SectionField = main.river
+	var streamer: RiverStreamer = main.get(&"_streamer")
+	_check(streamer != null, "a streamed stretch gets a streamer")
+	_check(_on_screen_shown(main, river, streamer), "the chunks on screen are painted at load")
+	var water: WaterView = main.get_node(^"Water")
+	var grass: GrassView = main.get_node(^"Grass")
+	var k := float(river.nearest_centre(WorldScale.vec_to_m(main.angler_pos)))
+	var start_key := river.key_of(WorldScale.vec_to_m(main.angler_pos))
+	var unpainted := 0
+	var keys_seen := {}
+	for frame in 60 * 12:
+		k = minf(k + Angler.SPEED / WorldScale.PX_PER_M / 60.0, river.centre.size() - 1)
+		var c := river.centre[int(k)]
+		var left := Vector2(river.centre_dir[int(k)].y, -river.centre_dir[int(k)].x)
+		main.angler_pos = WorldScale.vec_to_px(c + left * (river.channel.half_width + 2.5))
+		await process_frame
+		if not _on_screen_shown(main, river, streamer):
+			unpainted += 1
+		keys_seen[river.key_of(WorldScale.vec_to_m(main.angler_pos))] = true
+	_check(keys_seen.size() >= 3, "the walk crosses chunk seams (%d chunks)" % keys_seen.size())
+	_check(unpainted == 0, "walking at walking speed, every chunk on screen is painted (%d frames short)" % unpainted)
+	var shown := streamer.shown_keys()
+	_check(water.get_child_count() >= shown.size(), "the water view paints every chunk on show")
+	_check(grass.chunks.size() == shown.size(), "the grass view has every chunk on show (%d of %d)" % [grass.chunks.size(), shown.size()])
+	_check(not river.is_built(start_key) or river.chunk_rect(start_key).intersects(
+		Rect2(WorldScale.vec_to_m(main.visible_rect().position), WorldScale.vec_to_m(main.visible_rect().size)).grow(RiverStreamer.KEEP_M)),
+		"chunks far behind are dropped")
+	main.queue_free()
+	await process_frame
+	_finish()
+
+
+func _on_screen_shown(main: Node, river: SectionField, streamer: RiverStreamer) -> bool:
+	var view: Rect2 = main.visible_rect()
+	var m := Rect2(WorldScale.vec_to_m(view.position), WorldScale.vec_to_m(view.size)).intersection(river.bounds())
+	var shown := streamer.shown_keys()
+	for key in [river.key_of(m.position), river.key_of(m.end - Vector2(0.01, 0.01)),
+			river.key_of(Vector2(m.position.x, m.end.y - 0.01)), river.key_of(Vector2(m.end.x - 0.01, m.position.y))]:
+		if not key in shown:
+			return false
+	return true
 
 
 func _check(ok: bool, what: String) -> void:

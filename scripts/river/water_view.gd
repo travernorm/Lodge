@@ -33,6 +33,10 @@ const EDGE_RANGE := 3.0
 
 var _mat := ShaderMaterial.new()
 var _size := Vector2.ZERO
+## The part of the world it paints (px) for a whole field.
+var _area := Rect2()
+## Chunks of a section it paints, by key: Vector2i -> Node2D.
+var _chunks := {}
 var _palette_tex := GradientTexture1D.new()
 
 
@@ -50,24 +54,60 @@ func is_active() -> bool:
 	return look != null and look.is_complete()
 
 
-## Called by the stream scene once its river is built.
+## Called by the stream scene once its river is built (a whole field).
 func setup(river: RiverField) -> void:
 	_size = Vector2(river.width, river.bottom - river.top) * WorldScale.PX_PER_M
-	_mat.set_shader_parameter(&"field", ImageTexture.create_from_image(field_image(river)))
-	_mat.set_shader_parameter(&"edges", ImageTexture.create_from_image(edge_image(river)))
-	_mat.set_shader_parameter(&"edge_range", EDGE_RANGE)
-	_mat.set_shader_parameter(&"field_cells", Vector2(river.cols, river.rows))
-	_mat.set_shader_parameter(&"cell_px", RiverField.CELL * WorldScale.PX_PER_M)
-	_mat.set_shader_parameter(&"flow_range", flow_range())
-	_mat.set_shader_parameter(&"water_speed", RiverField.WATER_SPEED)
-	_mat.set_shader_parameter(&"px_per_m", WorldScale.PX_PER_M)
+	_area = Rect2(WorldScale.vec_to_px(Vector2(river.left, river.top)), _size)
+	_set_field(_mat, river, field_image(river), edge_image(river))
 	queue_redraw()
+
+
+## Streaming (REQ-0014): paints one chunk of a section, `area` (px) being the
+## chunk's own part of the world, from images a ChunkPainter made. Each chunk
+## draws on a child of its own with a copy of the material.
+func add_chunk(key: Vector2i, river: RiverField, area: Rect2, field_img: Image, edge_img: Image) -> void:
+	drop_chunk(key)
+	var part := Node2D.new()
+	var mat := _mat.duplicate() as ShaderMaterial
+	_set_field(mat, river, field_img, edge_img)
+	part.material = mat
+	part.draw.connect(func() -> void:
+		if is_active():
+			part.draw_rect(area, Color.WHITE))
+	add_child(part)
+	_chunks[key] = part
+
+
+func drop_chunk(key: Vector2i) -> void:
+	if _chunks.has(key):
+		(_chunks[key] as Node).queue_free()
+		_chunks.erase(key)
+
+
+func _set_field(mat: ShaderMaterial, river: RiverField, field_img: Image, edge_img: Image) -> void:
+	mat.set_shader_parameter(&"field_origin", WorldScale.vec_to_px(Vector2(river.left, river.top)))
+	mat.set_shader_parameter(&"field", ImageTexture.create_from_image(field_img))
+	mat.set_shader_parameter(&"edges", ImageTexture.create_from_image(edge_img))
+	mat.set_shader_parameter(&"edge_range", EDGE_RANGE)
+	mat.set_shader_parameter(&"field_cells", Vector2(river.cols, river.rows))
+	mat.set_shader_parameter(&"cell_px", RiverField.CELL * WorldScale.PX_PER_M)
+	mat.set_shader_parameter(&"flow_range", flow_range())
+	mat.set_shader_parameter(&"water_speed", RiverField.WATER_SPEED)
+	mat.set_shader_parameter(&"px_per_m", WorldScale.PX_PER_M)
+
+
+## Sets a shader value on the main material and every chunk's copy.
+func _set_param(name: StringName, value: Variant) -> void:
+	_mat.set_shader_parameter(name, value)
+	for part: Node2D in _chunks.values():
+		(part.material as ShaderMaterial).set_shader_parameter(name, value)
+		part.queue_redraw()
 
 
 ## Rain dimples on the water, 0 to 1 (REQ-0009 version C). main.tscn connects
 ## the weather view's rain_on_water here.
 func set_rain(amount: float) -> void:
-	_mat.set_shader_parameter(&"rain", clampf(amount, 0.0, 1.0))
+	_set_param(&"rain", clampf(amount, 0.0, 1.0))
 
 
 ## Largest current the field texture can hold (m/s).
@@ -80,15 +120,21 @@ static func flow_range() -> float:
 static func field_image(river: RiverField) -> Image:
 	var data := PackedByteArray()
 	data.resize(river.cols * river.rows * 4)
+	for j in river.rows:
+		field_row(river, data, j)
+	return Image.create_from_data(river.cols, river.rows, false, Image.FORMAT_RGBA8, data)
+
+
+## One row of field_image() into `data` (cols * rows * 4 bytes).
+static func field_row(river: RiverField, data: PackedByteArray, j: int) -> void:
 	var k := 0.5 / flow_range()
 	var has_wet := not river.wet.is_empty()
-	for idx in river.cols * river.rows:
+	for idx in range(j * river.cols, (j + 1) * river.cols):
 		var v := river.velocity[idx]
 		data[idx * 4] = clampi(roundi((0.5 + v.x * k) * 255.0), 0, 255)
 		data[idx * 4 + 1] = clampi(roundi((0.5 + v.y * k) * 255.0), 0, 255)
 		data[idx * 4 + 2] = clampi(roundi(river.depth[idx] * 255.0), 0, 255)
 		data[idx * 4 + 3] = 255 if (not has_wet or river.wet[idx] == 1) else 0
-	return Image.create_from_data(river.cols, river.rows, false, Image.FORMAT_RGBA8, data)
 
 
 ## How far each cell is from the edges, one texel per cell: R = from the bank,
@@ -101,26 +147,36 @@ static func edge_image(river: RiverField) -> Image:
 	bank.resize(n)
 	rock.resize(n)
 	rock.fill(EDGE_RANGE)
-	var reach := ceili(EDGE_RANGE / RiverField.CELL)
 	for j in river.rows:
-		for i in river.cols:
-			var idx := j * river.cols + i
-			var p := river.cell_pos(i, j)
-			if river.shore.is_empty():
-				bank[idx] = minf(p.y - river.top, river.bottom - p.y)
-			else:
-				bank[idx] = -river.shore[idx]
-			if (river.wet.is_empty() or river.wet[idx] == 1) and river.is_solid(p):
-				# Stamp this rock cell's distance onto its neighbours.
-				for dj in range(-reach, reach + 1):
-					for di in range(-reach, reach + 1):
-						var ii := i + di
-						var jj := j + dj
-						if ii < 0 or jj < 0 or ii >= river.cols or jj >= river.rows:
-							continue
-						var d := Vector2(di, dj).length() * RiverField.CELL
-						var k := jj * river.cols + ii
-						rock[k] = minf(rock[k], d)
+		edge_row(river, bank, rock, j)
+	return edge_image_from(river, bank, rock)
+
+
+## One row of edge_image(): the bank distance for the row, and each rock cell
+## in it stamps its distance onto its neighbours in `rock`.
+static func edge_row(river: RiverField, bank: PackedFloat32Array, rock: PackedFloat32Array, j: int) -> void:
+	var reach := ceili(EDGE_RANGE / RiverField.CELL)
+	for i in river.cols:
+		var idx := j * river.cols + i
+		var p := river.cell_pos(i, j)
+		if river.shore.is_empty():
+			bank[idx] = minf(p.y - river.top, river.bottom - p.y)
+		else:
+			bank[idx] = -river.shore[idx]
+		if (river.wet.is_empty() or river.wet[idx] == 1) and river.is_solid(p):
+			for dj in range(-reach, reach + 1):
+				for di in range(-reach, reach + 1):
+					var ii := i + di
+					var jj := j + dj
+					if ii < 0 or jj < 0 or ii >= river.cols or jj >= river.rows:
+						continue
+					var d := Vector2(di, dj).length() * RiverField.CELL
+					var k := jj * river.cols + ii
+					rock[k] = minf(rock[k], d)
+
+
+static func edge_image_from(river: RiverField, bank: PackedFloat32Array, rock: PackedFloat32Array) -> Image:
+	var n := river.cols * river.rows
 	var data := PackedByteArray()
 	data.resize(n * 4)
 	for idx in n:
@@ -148,7 +204,7 @@ static func mean_colour(tex: Texture2D) -> Color:
 
 func _draw() -> void:
 	if is_active() and _size != Vector2.ZERO:
-		draw_rect(Rect2(Vector2.ZERO, _size), Color.WHITE)
+		draw_rect(_area, Color.WHITE)
 
 
 func _apply_look() -> void:
@@ -174,10 +230,10 @@ func _apply_look() -> void:
 			[&"bank_foam", look.bank_foam], [&"bank_foam_w", look.bank_foam_width_m],
 			[&"rock_foam", look.rock_foam], [&"rock_foam_w", look.rock_foam_width_m],
 			[&"foam_surge", look.foam_surge]]:
-		_mat.set_shader_parameter(p[0], p[1])
+		_set_param(p[0], p[1])
 	if look.palette != null:
 		_palette_tex.gradient = look.palette
-		_mat.set_shader_parameter(&"palette", _palette_tex)
+		_set_param(&"palette", _palette_tex)
 	queue_redraw()
 
 
