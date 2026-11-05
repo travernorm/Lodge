@@ -22,8 +22,9 @@ const COL_TEXT := Color("f4efe0")
 const FRONT_REACH_M := Vector2(1.6, 1.5)
 ## The debug overlay's Grass view (its View.GRASS; playthrough_test checks they match).
 const DEBUG_VIEW := 4
-## Placeholder clump: how many blades.
+## Placeholder clumps: how many blades, and how many different clumps.
 const BLADES := 5
+const PLACEHOLDERS := 4
 
 @export var look: GrassLook
 ## Seeds where the clumps grow and the day's wind.
@@ -38,6 +39,8 @@ var _angler := Vector2.INF
 var _panel := false
 var _front: Node2D
 var _rng := RandomNumberGenerator.new()
+## The clumps drawn when the look has no sprites, baked once in setup().
+var _placeholders: Array[Texture2D] = []
 
 
 func _ready() -> void:
@@ -54,7 +57,11 @@ func setup(river: RiverField) -> void:
 	if look == null:
 		return
 	_rng.seed = grass_seed
-	field = GrassField.grow(river, look, _rng, maxi(look.clumps.size(), 1))
+	if look.clumps.is_empty():
+		_placeholders = []
+		for k in PLACEHOLDERS:
+			_placeholders.append(_bake_placeholder(k))
+	field = GrassField.grow(river, look, _rng, maxi(look.clumps.size(), PLACEHOLDERS))
 	wind = Wind.new(_rng)
 	wind.ease_seconds = look.wind_ease_seconds
 	wind.gust_size_m = look.gust_size_m
@@ -117,7 +124,9 @@ func _draw_clumps(ci: CanvasItem, front: bool) -> void:
 		return
 	var tall := WorldScale.to_px(look.height_m) + 8.0
 	var view := (get_canvas_transform().affine_inverse() * get_viewport_rect()).grow(tall)
-	for i in field.size():
+	var from := field.first_at(WorldScale.to_m(view.position.y))
+	var to := field.first_at(WorldScale.to_m(view.end.y))
+	for i in range(from, to):
 		var base := WorldScale.vec_to_px(field.pos[i]).floor()
 		if view.has_point(base) and _in_front(i) == front:
 			_draw_clump(ci, i, base)
@@ -135,36 +144,48 @@ func _in_front(i: int) -> bool:
 func _draw_clump(ci: CanvasItem, i: int, base: Vector2) -> void:
 	var s := field.sway(i, wind, look)
 	var squash := 1.0 - field.flat[i]
+	var sprites: Array[Texture2D] = look.clumps if not look.clumps.is_empty() else _placeholders
 	var tex: Texture2D = null
-	if not look.clumps.is_empty():
-		tex = look.clumps[field.kind[i] % look.clumps.size()]
+	if not sprites.is_empty():
+		tex = sprites[field.kind[i] % sprites.size()]
 	if look.flat_clump != null and field.flat[i] > 0.5 * look.flatten:
 		tex = look.flat_clump
 		squash = 1.0
+	if tex == null:
+		return
 	ci.draw_set_transform_matrix(Transform2D(Vector2.RIGHT, Vector2(-s, squash), base))
-	if tex != null:
-		var sz := tex.get_size()
-		ci.draw_texture(tex, Vector2(-floorf(sz.x * 0.5), -sz.y))
-	else:
-		_draw_blades(ci, i)
+	var sz := tex.get_size()
+	ci.draw_texture(tex, Vector2(-floorf(sz.x * 0.5), -sz.y))
 
 
 ## Placeholder until Traver's clump sprites arrive: a few blades, dark at the
-## root and bright at the tip, curling outward.
-func _draw_blades(ci: CanvasItem, i: int) -> void:
-	var h := WorldScale.to_px(look.height_m)
-	var w := WorldScale.to_px(look.width_m)
-	var ph := field.phase[i]
+## root and bright at the tip, curling outward, painted once into a texture so
+## each clump is a single draw.
+func _bake_placeholder(k: int) -> Texture2D:
+	var h := roundi(WorldScale.to_px(look.height_m))
+	var w := roundi(WorldScale.to_px(look.width_m))
+	var img := Image.create(w + 4, h + 1, false, Image.FORMAT_RGBA8)
+	var mid := w / 2 + 2
 	var mid_tint := look.base_tint.lerp(look.tip_tint, 0.4)
+	var ph := k * 1.7 + 0.4
 	for b in BLADES:
 		var t := (b + 0.5) / BLADES - 0.5
-		var x0 := roundf(t * w * 0.5)
+		var x0 := mid + roundf(t * w * 0.5)
 		var bh := roundf(h * (0.7 + 0.3 * absf(sin(ph * 3.0 + b * 1.9))))
-		var tip := Vector2(roundf(x0 + t * w * 0.9 + signf(t + 0.01) * absf(sin(ph + b))), -bh)
-		var knee := Vector2(roundf(lerpf(x0, tip.x, 0.25)), roundf(-bh * 0.55))
-		ci.draw_line(Vector2(x0, 0.0), knee, mid_tint, 1.0)
-		ci.draw_line(knee, tip, look.tip_tint, 1.0)
-		ci.draw_rect(Rect2(x0, -1.0, 1.0, 1.0), look.base_tint)
+		var tip := Vector2(x0 + roundf(t * w * 0.9 + signf(t + 0.01) * absf(sin(ph + b))), h - bh)
+		var knee := Vector2(roundf(lerpf(x0, tip.x, 0.25)), roundf(h - bh * 0.55))
+		_paint_line(img, Vector2(x0, h), knee, mid_tint)
+		_paint_line(img, knee, tip, look.tip_tint)
+		_paint_line(img, Vector2(x0, h), Vector2(x0, h), look.base_tint)
+	return ImageTexture.create_from_image(img)
+
+
+static func _paint_line(img: Image, a: Vector2, b: Vector2, col: Color) -> void:
+	var n := maxi(ceili(maxf(absf(b.x - a.x), absf(b.y - a.y))), 1)
+	for q in n + 1:
+		var p := Vector2i(a.lerp(b, float(q) / n).round())
+		if p.x >= 0 and p.y >= 0 and p.x < img.get_width() and p.y < img.get_height():
+			img.set_pixelv(p, col)
 
 
 func _draw_panel() -> void:

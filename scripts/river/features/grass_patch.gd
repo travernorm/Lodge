@@ -28,3 +28,14 @@ func contains(p: Vector2) -> bool:
 
 func bounds() -> Rect2:
 	return Rect2(centre - radii, radii * 2.0)
+
+
+## Where to look for places to grow, inside the river field's `world` (m).
+func area(_world: Rect2) -> Rect2:
+	return bounds()
+
+
+## True where this patch has grass, given how far `p` is from the water (m).
+## GrassField has already checked it's land.
+func grows_at(p: Vector2, _from_water: float) -> bool:
+	return contains(p)

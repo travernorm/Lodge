@@ -42,13 +42,16 @@ func _test_grows_on_land() -> void:
 		if feat is GrassPatch:
 			patches.append(feat)
 	_check(patches.size() > 0 and f.size() > 100, "grow: the demo stretch has %d patches and %d clumps" % [patches.size(), f.size()])
+	var world := Rect2(0.0, _river.top, _river.cols * RiverField.CELL, _river.rows * RiverField.CELL)
+	var dist := GrassField.WaterDistance.new(_river, world)
 	var in_patch := true
 	var dry := true
 	var sorted := true
 	var kinds := true
 	for i in f.size():
 		var p := f.pos[i]
-		in_patch = in_patch and patches.any(func(g: GrassPatch) -> bool: return g.contains(p))
+		var d := dist.at(p)
+		in_patch = in_patch and patches.any(func(g: GrassPatch) -> bool: return g.grows_at(p, d))
 		dry = dry and GrassField.is_land(_river, p) and not _river.is_water(p)
 		sorted = sorted and (i == 0 or f.pos[i - 1].y <= p.y)
 		kinds = kinds and f.kind[i] < 3
@@ -57,10 +60,46 @@ func _test_grows_on_land() -> void:
 	_check(sorted, "grow: clumps are in drawing order, top of the screen first")
 	_check(kinds, "grow: each clump picks one of the sprites")
 	for g in patches:
+		if g is GrassBank:
+			continue
 		var n := 0
 		for i in f.size():
 			n += 1 if g.contains(f.pos[i]) else 0
-		_check(n > 10, "grow: the patch at %s has grass (%d clumps)" % [g.centre, n])
+		var expected := PI * g.radii.x * g.radii.y * g.density * _look.density
+		_check(n > 10 and n < expected * 1.15, "grow: the patch at %s has grass, not doubled where the bank overlaps it (%d clumps, about %d by area)" % [g.centre, n, expected])
+	var bank: GrassBank = null
+	for g in patches:
+		if g is GrassBank:
+			bank = g
+	_check(bank != null, "bank: the demo stretch has grass along its banks")
+	if bank != null:
+		var within := true
+		var both_sides := {}
+		for i in f.size():
+			if patches.any(func(g: GrassPatch) -> bool: return not g is GrassBank and g.contains(f.pos[i])):
+				continue
+			within = within and dist.at(f.pos[i]) <= bank.width_m + 0.01
+			var k := _river.nearest_centre(f.pos[i])
+			if k >= 0 and k < _river.centre_dir.size():
+				both_sides[signf(_river.centre_dir[k].cross(f.pos[i] - _river.centre[k]))] = true
+		_check(within, "bank: bank grass stays within %.0f m of the water" % bank.width_m)
+		_check(both_sides.size() == 2, "bank: it grows on both banks")
+		var land := 0
+		var grassy := 0
+		for y in range(1, int(_stretch.size_m.y), 2):
+			for x in range(1, int(_stretch.size_m.x), 2):
+				var p := Vector2(x, y)
+				if GrassField.is_land(_river, p) and dist.at(p) <= bank.width_m - 1.0:
+					land += 1
+					grassy += 1 if _clump_near(f, p, 1.2) else 0
+		_check(land > 0 and grassy > land * 0.9, "bank: the bank is mostly grass (%d of %d sample points)" % [grassy, land])
+
+
+func _clump_near(f: GrassField, p: Vector2, r: float) -> bool:
+	for i in range(f.first_at(p.y - r), f.first_at(p.y + r)):
+		if f.pos[i].distance_to(p) <= r:
+			return true
+	return false
 
 
 func _test_seeded() -> void:
@@ -99,6 +138,14 @@ func _test_lean() -> void:
 	_check(crossed, "lean: it swings back past upright (a little overshoot)")
 	_run(f, 3.0, Vector2(30, 5), GrassField.Push.LEAN)
 	_check(f.is_still(), "lean: three seconds after he leaves, the grass is still")
+	var big := _grow()
+	var t0 := Time.get_ticks_usec()
+	_run(big, 1.0, big.pos[big.size() / 2], GrassField.Push.LEAN)
+	var per_step := (Time.get_ticks_usec() - t0) / 60.0
+	_check(not big.is_still(), "lean: on the full stretch, the clumps by the angler move")
+	_run(big, 4.0, Vector2(-50, -50), GrassField.Push.LEAN)
+	_check(big.is_still(), "lean: and settle once he leaves")
+	print("  info  a step over %d clumps takes %.0f us here (only the ones near him are visited)" % [big.size(), per_step])
 
 
 ## B: walked-over clumps lie flat for trail_seconds, then stand back up.
