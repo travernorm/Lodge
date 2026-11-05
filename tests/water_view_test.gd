@@ -57,7 +57,15 @@ func _test_scene() -> void:
 	await process_frame
 	var water := main.get_node(^"Water") as WaterView
 	_check(water.is_active(), "the scene's water view is active")
-	var tex: Texture2D = main.get(&"_water_tex")
+	var view: RiverView = null
+	for child in main.get_children():
+		if child is RiverView:
+			view = child
+	_check(view != null, "the stream scene has a RiverView (step A2)")
+	if view == null:
+		main.free()
+		return
+	var tex: Texture2D = view.ground_texture()
 	var img := tex.get_image()
 	# REQ-0013: the BankView paints the land now, so with both views active the
 	# stream scene's picture is clear everywhere, deep water included.

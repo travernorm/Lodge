@@ -26,13 +26,13 @@ As a player, I want the river's edge to look like a real bank, wet stones at the
 
 ## Scope
 
-- **`BankView`**: a new view (layer: views, beside `WaterView` and `GrassView`) that draws all of a stretch's land: the wet line, gravel, point bars, sand, the cut bank, the gravel bars, and the plain ground the grass grows on. One quad with a shader, like `WaterView`, drawn behind the stream scene and after the water, so logs and the angler stay on top. It reads the field's existing `shore` and `bend` layers and the `GravelBar` features through `setup`, baked to a texture once, so nothing is simulated live.
+- **`BankView`**: a new view (layer: views, beside `WaterView` and `GrassView`) that draws all of a stretch's land: the wet line, gravel, point bars, sand, the cut bank, the gravel bars, and the plain ground the grass grows on. One quad with a shader, like `WaterView`, drawn behind the stream scene and its `RiverView` and after the water, so logs and the angler stay on top. It reads the field's existing `shore` and `bend` layers and the `GravelBar` features through `setup`, baked to a texture once, so nothing is simulated live.
 - **`BankZones`** (model): the rules for where each ground goes (face height from `bend`, gravel reach with point bars and gravel bars, and the order face, wet, gravel, sand, ground). The view bakes its widths per field cell and the shader does the same comparison per pixel with a ragged-edge wobble.
 - **Texture slots, not code-painted art.** The shader tiles small seamless textures picked per pixel by zone: **wet stones**, **dry gravel**, **sand**, and the **cut bank** strip, with ragged noise edges between them. Traver made the cut bank in PixelLab (64×64, shrunk to a 64×16 strip, `assets/bank/cut_bank.png`). The other three slots are empty for now and draw placeholder pebbles in a tint, and the PR says so clearly.
 - **The face strip** repeats along the bank: across it by distance from the water (mud at the waterline, the grass lip at the top), along it by x on a bank that runs across the screen and y on one that runs up it. Where the face tapers off at the ends of a bend, the grass lip stays whole and the middle rows drop out.
 - **`BankLook`** resource in `data/bank_looks/spring.tres`: the four textures, tints (also the placeholder colours), the ground and tuft colours, zone widths in metres (wet line, gravel, point bar, sand fringe), where the face starts and reaches full height on `bend`, its height and lip, and edge raggedness. Traver tunes it in the Inspector, like the water and grass looks; the Bank node previews the demo stretch in the editor.
 - **One look.** The soft and crisp pair was for blended texture joins; with hard ragged edges between grounds there's nothing to compare, so there's one look (answer to question 3, Claude's call; easy to add a second file later).
-- **The stream scene stops painting the land.** `_make_stretch_texture` paints only the old flat water, and nothing at all when the clear water is on. `stream_scene.gd` goes from 449 to 430 lines and its R9 cap from 451 to 430.
+- **The river view stops painting the land.** With a BankView in the scene, `RiverView` (split out of the stream scene in REQ-0014 step 2) leaves a stretch's land clear, and paints nothing at all when the clear water is on too.
 
 ## Out of scope
 
@@ -43,7 +43,7 @@ Rocks, logs, reeds and cattails on the bank as separate sprites; seasonal looks 
 | System | Changes? | Depends on the change? | How it's checked |
 |---|---|---|---|
 | Casting | No | No | `playthrough_test` unchanged |
-| River | Yes: new `BankView`, `BankZones` and `BankLook`; the stream scene stops painting the land | Water view (unchanged, draws underneath), grass view (grows where gravel isn't; unchanged) | new `bank_test`: zones land where the field says (wet next to water, cut bank only on outside bends, no bank pixels over water); `data_test` loads every bank look; `water_view_test`, `grass_test` unchanged |
+| River | Yes: new `BankView`, `BankZones` and `BankLook`; `RiverView` stops painting the land | Water view (unchanged, draws underneath), grass view (grows where gravel isn't; unchanged) | new `bank_test`: zones land where the field says (wet next to water, cut bank only on outside bends, no bank pixels over water); `data_test` loads every bank look; `water_view_test`, `grass_test` unchanged |
 | Fishing | No | No | `playthrough_test` unchanged |
 | Weather look | No: the grade already tints everything drawn below it | | `weather_view_test` unchanged |
 | UI and modes | No | | |
@@ -55,7 +55,7 @@ Rocks, logs, reeds and cattails on the bank as separate sprites; seasonal looks 
 - Every land pixel the stream scene used to paint gravel or cut bank is drawn by `BankView`, and no `BankView` pixel lies on water (automated).
 - The wet line sits against the water, and the cut bank only appears where `bend` says outside of a bend (automated).
 - The look comes only from `BankLook` data; swapping the `.tres` changes it with no code change (automated: both looks load and render).
-- `stream_scene.gd` gets shorter and its R9 cap goes down (automated).
+- The river view leaves the land clear for the bank view (automated, `water_view_test`).
 - All suites pass in `tools/run_tests.sh`.
 - In-engine screenshots of a riffle, the bend and a point bar, with Traver's textures if they're in, in the PR (playtest).
 

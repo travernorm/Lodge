@@ -1,6 +1,6 @@
 # REQ-0014: Rivers in sections (the Upper Fall)
 
-Status: approved by Traver 2026-11-05 (with the recommended answers). Step 1, the river importer, is built.
+Status: approved by Traver 2026-11-05 (with the recommended answers). Step 1 (the river importer) merged in PR #60; step 2 (the split) is built.
 
 Plan and review behind it: [River world: architecture review and authoring workflow](https://claude.ai/artifact/VvvhbTgccer9SNRCr27RXR).
 

@@ -5,7 +5,9 @@ extends RefCounted
 ##
 ## Two ways to build it: build() for a straight reach between two banks (the
 ## original test screen), and build_stretch() for a Stretch whose river winds in
-## any direction, with bends, cut banks, logs and eddies.
+## any direction, with bends, cut banks, logs and eddies. The hydraulic rules
+## that fill the layers live in RiverFieldBuilder (river_field_builder.gd); this
+## file keeps the layers and the read-only queries.
 ##
 ## This is the stand-in for a baked river. It builds the grid from simple
 ## hydraulic rules instead of a solver, but it stores and serves the same layers
@@ -86,6 +88,7 @@ var thalweg := PackedVector2Array()
 var centre := PackedVector2Array()
 var centre_dir := PackedVector2Array()
 
+## Inputs and per-build state, written only by RiverFieldBuilder.
 var _thalweg_y: Callable
 var _thalweg_depth: Callable
 ## Per feature: the number its prepare() returned this build.
@@ -118,11 +121,7 @@ func build(p_top: float, p_bottom: float, p_width: float, thalweg_y: Callable,
 	_near_n = PackedFloat32Array()
 	shore = PackedFloat32Array()
 	bend = PackedFloat32Array()
-	_allocate()
-	_prepare_features()
-	_build_flow()
-	_build_seams()
-	_build_lies()
+	RiverFieldBuilder.straight(self)
 	thalweg = PackedVector2Array()
 	var x := 0.0
 	while x <= width:
@@ -137,20 +136,7 @@ func build_stretch(p_stretch: Stretch) -> void:
 	bottom = stretch.size_m.y
 	width = stretch.size_m.x
 	features = stretch.features
-	_allocate()
-	_build_channel()
-	_build_seams()
-	_build_lies()
-
-
-func _allocate() -> void:
-	cols = int(ceilf(width / CELL - 0.001)) + 1
-	rows = int(ceilf((bottom - top) / CELL - 0.001)) + 1
-	var n := cols * rows
-	velocity.resize(n)
-	depth.resize(n)
-	seam.resize(n)
-	lie.resize(n)
+	RiverFieldBuilder.winding(self)
 
 
 # --- Reading the field ------------------------------------------------------
@@ -287,306 +273,12 @@ func _clear_of(p: Vector2, avoid: PackedVector2Array, gap: float) -> bool:
 	return true
 
 
-# --- Building ---------------------------------------------------------------
-
-func _build_flow() -> void:
-	# Total flow is set by the first column: WATER_SPEED over the thalweg.
-	var k0 := WATER_SPEED / pow(_thalweg_depth.call(0.0), DEPTH_SPEED_EXP)
-	var q := k0 * _section_sum(0.0)
-	for i in cols:
-		var x := i * CELL
-		# Same flow through every section: v = k * d^(2/3), q = sum(v * d) = k * sum(d^(5/3)).
-		var k := q / _section_sum(x)
-		for j in rows:
-			var p := cell_pos(i, j)
-			var d := _bed_depth(p)
-			var idx := j * cols + i
-			depth[idx] = d
-			velocity[idx] = _apply_features(p, Vector2(k * pow(d, DEPTH_SPEED_EXP), 0.0))
-
-
-## Depth of the bed at p: deepest on the thalweg, shelving to the banks.
-func _bed_depth(p: Vector2) -> float:
-	var ty: float = _thalweg_y.call(p.x)
-	var td: float = _thalweg_depth.call(p.x)
-	var reach := (ty - top) if p.y < ty else (bottom - ty)
-	var n := clampf(absf(p.y - ty) / maxf(reach, CELL * 0.5), 0.0, 1.0)
-	return td * maxf(EDGE_DEPTH, 1.0 - n * n)
-
-
-func _section_sum(x: float) -> float:
-	var s := 0.0
-	for j in rows:
-		s += pow(_bed_depth(Vector2(x, top + j * CELL)), 1.0 + DEPTH_SPEED_EXP)
-	return s
-
-
-## Runs every feature over the current v at p: obstacles bend it, then it is
-## calmed and the swirls are added (see RiverFeature).
-func _apply_features(p: Vector2, v: Vector2) -> Vector2:
-	for f in features:
-		v = f.shape_flow(p, v)
-	var keep := 1.0
-	for f in features:
-		keep *= f.calm(p)
-	return v * keep + eddy_swirl(p)
-
-
-func _prepare_features() -> void:
-	_feature_state.resize(features.size())
-	for n in features.size():
-		_feature_state[n] = features[n].prepare(self)
-
-
-# --- Winding channel (Stretch) ----------------------------------------------
-
-## Lays the river along the stretch's centreline. Every cell finds its nearest
-## point on the centreline: how far along the river it is and how far across.
-## Across the channel the bed is parabolic around the thalweg, which bends
-## push toward the outside bank. The current runs along the centreline, with
-## the same flow through every cross-section.
-func _build_channel() -> void:
-	var c := _resample(_catmull_rom(stretch.centreline, 24), CHANNEL_STEP)
-	var n := c.size()
-	var w := stretch.half_width
-	var tang := PackedVector2Array()
-	var curv := PackedFloat32Array()
-	var cum := PackedFloat32Array()
-	tang.resize(n)
-	curv.resize(n)
-	cum.resize(n)
-	for k in n:
-		tang[k] = (c[mini(k + 1, n - 1)] - c[maxi(k - 1, 0)]).normalized()
-		cum[k] = 0.0 if k == 0 else cum[k - 1] + c[k].distance_to(c[k - 1])
-	for k in n:
-		var a := tang[maxi(k - 1, 0)]
-		var b := tang[mini(k + 1, n - 1)]
-		var ds := c[maxi(k - 1, 0)].distance_to(c[mini(k + 1, n - 1)])
-		curv[k] = a.angle_to(b) / maxf(ds, 0.001)  # + = turning clockwise on screen
-	curv = _box_smooth(curv, roundi(CURVE_SMOOTH / CHANNEL_STEP))
-
-	# Per centreline point: thalweg offset (+ = right of the flow), depth and
-	# the speed factor that keeps the flow the same through every section.
-	var offs := PackedFloat32Array()
-	var tds := PackedFloat32Array()
-	var ks := PackedFloat32Array()
-	offs.resize(n)
-	tds.resize(n)
-	ks.resize(n)
-	var q := 0.0
-	for k in n:
-		offs[k] = clampf(-curv[k] * w * w * stretch.bend_shift * 0.9, -MAX_THALWEG_SHIFT * w, MAX_THALWEG_SHIFT * w)
-		tds[k] = stretch.depth_at_fraction(cum[k] / cum[n - 1])
-		var sum := 0.0
-		var across := -w
-		while across <= w:
-			sum += pow(_profile(across, w, offs[k], tds[k]), 1.0 + DEPTH_SPEED_EXP)
-			across += CELL
-		if k == 0:
-			q = WATER_SPEED / pow(tds[0], DEPTH_SPEED_EXP) * sum
-		ks[k] = q / sum
-
-	# Nearest centreline segment for every cell within reach of the river.
-	var total := cols * rows
-	var best := PackedFloat32Array()
-	var near_k := PackedInt32Array()
-	var near_t := PackedFloat32Array()
-	var near_n := PackedFloat32Array()
-	best.resize(total)
-	best.fill(INF)
-	near_k.resize(total)
-	near_k.fill(-1)
-	near_t.resize(total)
-	near_n.resize(total)
-	var reach := w + 3.0
-	for k in n - 1:
-		var a := c[k]
-		var d := c[k + 1] - a
-		var l2 := maxf(d.length_squared(), 0.000001)
-		var i0 := maxi(0, floori((minf(a.x, a.x + d.x) - reach) / CELL))
-		var i1 := mini(cols - 1, ceili((maxf(a.x, a.x + d.x) + reach) / CELL))
-		var j0 := maxi(0, floori((minf(a.y, a.y + d.y) - reach - top) / CELL))
-		var j1 := mini(rows - 1, ceili((maxf(a.y, a.y + d.y) + reach - top) / CELL))
-		for j in range(j0, j1 + 1):
-			var py := top + j * CELL
-			for i in range(i0, i1 + 1):
-				var ap := Vector2(i * CELL, py) - a
-				var t := clampf(ap.dot(d) / l2, 0.0, 1.0)
-				var dist2 := (ap - d * t).length_squared()
-				var idx := j * cols + i
-				if dist2 < best[idx]:
-					best[idx] = dist2
-					near_k[idx] = k
-					near_t[idx] = t
-					near_n[idx] = sqrt(dist2) * (1.0 if d.cross(ap) >= 0.0 else -1.0)
-
-	wet.resize(total)
-	shore.resize(total)
-	bend.resize(total)
-	for idx in total:
-		var k := near_k[idx]
-		velocity[idx] = Vector2.ZERO
-		depth[idx] = 0.0
-		wet[idx] = 0
-		if k < 0:
-			shore[idx] = INF
-			bend[idx] = 0.0
-			continue
-		var t := near_t[idx]
-		var across := near_n[idx]
-		var off := lerpf(offs[k], offs[k + 1], t)
-		shore[idx] = absf(across) - w
-		bend[idx] = clampf(off / (MAX_THALWEG_SHIFT * w), -1.0, 1.0) * signf(across)
-		if absf(across) > w:
-			continue
-		var d := _profile(across, w, off, lerpf(tds[k], tds[k + 1], t))
-		var dir := tang[k].lerp(tang[k + 1], t).normalized()
-		wet[idx] = 1
-		depth[idx] = d
-		velocity[idx] = dir * lerpf(ks[k], ks[k + 1], t) * pow(d, DEPTH_SPEED_EXP)
-
-	centre = c
-	centre_dir = tang
-	_near_k = near_k
-	_near_n = near_n
-	_prepare_features()
-	for j in rows:
-		for i in cols:
-			var idx := j * cols + i
-			if wet[idx] == 0:
-				continue
-			velocity[idx] = _apply_features(cell_pos(i, j), velocity[idx])
-
-	thalweg = PackedVector2Array()
-	for k in n:
-		var tp := c[k] + Vector2(-tang[k].y, tang[k].x) * offs[k]
-		if tp.x >= 0.0 and tp.y >= top and tp.x <= width and tp.y <= bottom:
-			thalweg.append(tp)
-
-
-## Depth across the channel: `across` (m, + = right of the flow) from the
-## centreline, half-width w, thalweg offset off, thalweg depth td.
-func _profile(across: float, w: float, off: float, td: float) -> float:
-	var rel := (across - off) / (w - off if across > off else w + off)
-	return td * maxf(EDGE_DEPTH, 1.0 - rel * rel)
-
-
-
 ## The swirl the features (eddies) add at p (m/s).
 func eddy_swirl(p: Vector2) -> Vector2:
 	var v := Vector2.ZERO
 	for n in features.size():
 		v += features[n].swirl(p, _feature_state[n] if n < _feature_state.size() else 1.0)
 	return v
-
-
-static func _catmull_rom(pts: PackedVector2Array, per_segment: int) -> PackedVector2Array:
-	var out := PackedVector2Array()
-	var m := pts.size()
-	if m < 2:
-		return pts
-	for i in m - 1:
-		var p0 := pts[maxi(i - 1, 0)]
-		var p1 := pts[i]
-		var p2 := pts[i + 1]
-		var p3 := pts[mini(i + 2, m - 1)]
-		for s_i in per_segment:
-			var u := float(s_i) / per_segment
-			out.append(0.5 * ((2.0 * p1) + (p2 - p0) * u + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * u * u
-				+ (3.0 * p1 - p0 - 3.0 * p2 + p3) * u * u * u))
-	out.append(pts[m - 1])
-	return out
-
-
-## Evenly spaced points (`step` m apart) along a polyline.
-static func _resample(pts: PackedVector2Array, step: float) -> PackedVector2Array:
-	var out := PackedVector2Array([pts[0]])
-	var carry := 0.0
-	for i in pts.size() - 1:
-		var a := pts[i]
-		var seg := pts[i + 1] - a
-		var l := seg.length()
-		var along := step - carry
-		while along <= l:
-			out.append(a + seg * (along / l))
-			along += step
-		carry = l - (along - step)
-	if out[-1].distance_to(pts[-1]) > step * 0.25:
-		out.append(pts[-1])
-	return out
-
-
-static func _box_smooth(a: PackedFloat32Array, r: int) -> PackedFloat32Array:
-	var out := PackedFloat32Array()
-	out.resize(a.size())
-	for k in a.size():
-		var s := 0.0
-		var c := 0
-		for o in range(-r, r + 1):
-			var kk := k + o
-			if kk >= 0 and kk < a.size():
-				s += a[kk]
-				c += 1
-		out[k] = s / c
-	return out
-
-
-func _build_seams() -> void:
-	var sp := _speeds()
-	var full := SEAM_FULL * WATER_SPEED
-	for j in rows:
-		var jm := maxi(j - 1, 0) * cols
-		var jp := mini(j + 1, rows - 1) * cols
-		for i in cols:
-			var idx := j * cols + i
-			if depth[idx] <= SEAM_DEPTH.x:
-				seam[idx] = 0.0
-				continue
-			var sx := (sp[j * cols + mini(i + 1, cols - 1)] - sp[j * cols + maxi(i - 1, 0)]) / (2.0 * CELL)
-			var sy := (sp[jp + i] - sp[jm + i]) / (2.0 * CELL)
-			seam[idx] = clampf(Vector2(sx, sy).length() / full, 0.0, 1.0) \
-				* smoothstep(SEAM_DEPTH.x, SEAM_DEPTH.y, depth[idx])
-
-
-func _build_lies() -> void:
-	# Fastest water within FOOD_REACH, as a separable max filter.
-	var reach := roundi(FOOD_REACH / CELL)
-	var hold_speed := HOLD_SPEED * WATER_SPEED
-	var food_speed := FOOD_SPEED * WATER_SPEED
-	var sp := _speeds()
-	var row_max := PackedFloat32Array()
-	row_max.resize(cols * rows)
-	for j in rows:
-		var row := j * cols
-		for i in cols:
-			var m := 0.0
-			for ii in range(maxi(i - reach, 0), mini(i + reach, cols - 1) + 1):
-				m = maxf(m, sp[row + ii])
-			# Past the edges the nearest cell repeats; it can't raise the max.
-			row_max[row + i] = m
-	for j in rows:
-		for i in cols:
-			var idx := j * cols + i
-			# Too shallow or too fast to hold in: no lie, whatever the food.
-			if depth[idx] <= DEPTH_NEEDED.x or sp[idx] >= hold_speed.y \
-					or (not wet.is_empty() and wet[idx] == 0) or is_solid(cell_pos(i, j)):
-				lie[idx] = 0.0
-				continue
-			var near := 0.0
-			for jj in range(maxi(j - reach, 0), mini(j + reach, rows - 1) + 1):
-				near = maxf(near, row_max[jj * cols + i])
-			var hold := 1.0 - smoothstep(hold_speed.x, hold_speed.y, sp[idx])
-			var food := smoothstep(food_speed.x, food_speed.y, near)
-			var deep := smoothstep(DEPTH_NEEDED.x, DEPTH_NEEDED.y, depth[idx])
-			lie[idx] = hold * food * deep
-
-
-func _speeds() -> PackedFloat32Array:
-	var sp := PackedFloat32Array()
-	sp.resize(velocity.size())
-	for idx in velocity.size():
-		sp[idx] = velocity[idx].length()
-	return sp
 
 
 # --- Sampling ---------------------------------------------------------------

@@ -7,7 +7,7 @@ extends Node2D
 ## RiverField; this view bakes, per field cell, how far it is from the water and
 ## how far the face and the gravel reach there (BankZones), and a shader picks
 ## the ground per pixel. Drawn behind the stream scene, after the water, so logs
-## and the angler stay on top; the stream scene leaves its land clear.
+## and the angler stay on top; its RiverView leaves the land clear.
 ##
 ## In the editor it builds its own field from preview_stretch, so the bank shows
 ## in the viewport and changes live as the look is edited.
