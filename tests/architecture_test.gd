@@ -91,7 +91,7 @@ const DEBT_UNSEEDED := {
 const DEBT_LOOSE := {}
 ## R9 debt: line caps above MAX_LINES. Steps A and A2 bring them down.
 const DEBT_LINES := {
-	"res://scripts/fishing/fishing_controller.gd": 614,  # F1: step A (stocking moved to FishGenerator, REQ-0007)
+	"res://scripts/fishing/fishing_controller.gd": 568,  # F1: step A (HUD drawing moved to FishingHud, REQ-0014)
 }
 
 var _failures := 0

@@ -36,8 +36,6 @@ signal conditions_changed(conditions: Conditions)
 ## The bite rules: each trout rolls as the fly drifts past it.
 @export var take_rules: DriftPastRules = preload("res://data/take_rules/drift_past.tres")
 
-const CARD_SECONDS := 3.5
-const ODDS_SECONDS := 3.0  # how long the last roll's odds stay on screen
 const SET_ANIM_TIME := 0.3  # rod snaps up and back, then settles
 const REEL_DELAY := 0.15  # pause after a missed set before the line comes in
 const REEL_SPEED := 18.75  # m/s the fly comes back on a reel-in
@@ -49,14 +47,6 @@ const COL_LINE_TIGHT := Color("f2a65a")
 const COL_LINE_DANGER := Color("e8553a")
 const COL_WAKE := Color(1, 1, 1, 0.6)
 const COL_RING := Color(1, 1, 1, 0.85)
-const COL_PANEL := Color(0, 0, 0, 0.55)
-const COL_TEXT := Color("f4efe0")
-const COL_DIM := Color(0.96, 0.94, 0.88, 0.6)
-const COL_BAR_BG := Color(1, 1, 1, 0.15)
-const COL_TENSION_OK := Color("8fd16a")
-const COL_TENSION_HIGH := Color("f2c35a")
-const COL_TENSION_DANGER := Color("e8553a")
-const COL_STAMINA := Color("6ec3e0")
 
 var phase := Phase.NONE
 ## Off in casting practice: landings don't start a drift and fish don't bite.
@@ -74,6 +64,8 @@ var catches: Array[Dictionary] = []
 var _gestures := StickGestures.new()
 var _rng := RandomNumberGenerator.new()
 var _generator: FishGenerator
+## A streamed section (REQ-0014) stocks each chunk as it comes into reach.
+var _stocker: ChunkStocker
 var _stream: Node2D
 var _river: RiverField
 var _cast: Node
@@ -104,6 +96,8 @@ func _ready() -> void:
 	_cast.model.rod = tackle.rod()
 	_river = _stream.get(&"river")
 	_generator = FishGenerator.for_stretch(_stream.get(&"stretch"), _river, calendar)
+	if _river is SectionField and _generator != null:
+		_stocker = ChunkStocker.new(_generator.stretch, calendar)
 	stock(fixed_conditions, fixed_seed if fixed_seed != 0 else Time.get_ticks_usec())
 
 
@@ -116,7 +110,30 @@ func stock(day: Conditions, p_seed: int) -> void:
 	conditions = day if day != null else weather.roll(roller, _generator != null and _generator.stretch.spring_fed)
 	_rng.seed = roller.randi()
 	fish.assign((_generator.generate(conditions, roller) if _generator else []).map(func(p): return Fish.from_plan(p, _rng)))
+	if _stocker != null:
+		_add_fish(_stocker.all_plans(conditions, day_seed))
 	conditions_changed.emit(conditions)
+
+
+## A chunk of a streamed section came into reach (REQ-0014): stock it for today.
+func add_chunk(key: Vector2i, field: RiverField, area: Rect2) -> void:
+	if _stocker != null:
+		_stocker.add(key, field, area)
+		_add_fish(_stocker.plans_for(key, conditions, day_seed))
+
+
+## A chunk went out of reach: its fish go too (the hooked one stays on the line).
+func drop_chunk(key: Vector2i) -> void:
+	if _stocker == null:
+		return
+	var area := _stocker.area_of(key)
+	fish.assign(fish.filter(func(f: Fish) -> bool: return f == hooked or not area.has_point(f.lie)))
+	_stocker.remove(key)
+
+
+func _add_fish(plans: Array[FishPlan]) -> void:
+	for p in plans:
+		fish.append(Fish.from_plan(p, _rng))
 
 
 ## New slot or weather, same water (REQ-0008): fish stay; hatch and activity change.
@@ -406,6 +423,8 @@ func _ring_at(at: Vector2, start: float) -> void:
 func _land_fish() -> void:
 	var record := {"species": hooked.species, "length_in": hooked.length_in, "fly": current_fly()}
 	catches.append(record)
+	if _stocker != null:
+		_stocker.mark_caught(hooked.lie, day_seed)
 	_card_lines = PackedStringArray([
 		hooked.species.display_name,
 		"%.1f in  on a %s" % [hooked.length_in, current_fly().display_name],
@@ -452,12 +471,17 @@ func _draw() -> void:
 				_draw_fly(_cast.fly_pos)
 	_draw_rings()
 	draw_set_transform(_stream.screen_origin())  # HUD: fixed on screen
-	_draw_hud()
+	var view: Vector2 = _stream.VIEW
+	_box_view.show_box(tackle, _stream.screen_origin(), view)  # fly box, bottom left
+	var seen := {}
+	for f in fish:
+		seen[f.species.id] = true
+	FishingHud.draw_log(self, view, catches.size(), species_caught(), seen.size())
 	if phase == Phase.FIGHT:
-		_draw_fight_meter()
+		FishingHud.draw_fight_meter(self, view, fight)
 	else:
-		_draw_odds()
-	_draw_card()
+		FishingHud.draw_odds(self, view, _odds_text, _time - _odds_at)
+	FishingHud.draw_card(self, view, _card_lines, _time - _card_at)
 	draw_set_transform(Vector2.ZERO)
 
 
@@ -541,73 +565,3 @@ func _draw_rings() -> void:
 		var t := clampf(age / RING_SECONDS, 0.0, 1.0)
 		draw_arc(Vector2(r.x, r.y), 1.0 + 9.0 * t, 0.0, TAU, 16, Color(COL_RING, COL_RING.a * (1.0 - t)), 1.0)
 	_rings = alive
-
-
-func _draw_hud() -> void:
-	var font := ThemeDB.fallback_font
-	var view: Vector2 = _stream.VIEW
-	_box_view.show_box(tackle, _stream.screen_origin(), view)  # fly box, bottom left
-	# Catch log, bottom right.
-	var log_text := "%d caught" % catches.size()
-	if _unique_species() > 1:
-		log_text += "  %d/%d species" % [species_caught(), _unique_species()]
-	var w := font.get_string_size(log_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
-	var log_box := Rect2(view.x - w - 10, view.y - 17, w + 6, 13)
-	draw_rect(log_box, COL_PANEL)
-	draw_string(font, log_box.position + Vector2(3, 10), log_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, COL_TEXT)
-
-
-func _unique_species() -> int:
-	var seen := {}
-	for f in fish:
-		seen[f.species.id] = true
-	return seen.size()
-
-
-func _draw_fight_meter() -> void:
-	var font := ThemeDB.fallback_font
-	var view: Vector2 = _stream.VIEW
-	var bar := Rect2(roundf(view.x * 0.5 - 50), 4, 100, 5)
-	draw_rect(bar.grow(2), COL_PANEL)
-	draw_rect(bar, COL_BAR_BG)
-	var col := COL_TENSION_OK
-	if fight.tension > 0.85:
-		col = COL_TENSION_DANGER
-	elif fight.tension > 0.6:
-		col = COL_TENSION_HIGH
-	draw_rect(Rect2(bar.position, Vector2(roundf(bar.size.x * clampf(fight.tension, 0, 1)), bar.size.y)), col)
-	var stamina := Rect2(bar.position + Vector2(0, 7), Vector2(roundf(bar.size.x * fight.stamina), 2))
-	draw_rect(stamina, COL_STAMINA)
-	draw_string(font, bar.position + Vector2(bar.size.x + 5, 6), "tension", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, COL_TEXT)
-
-
-## The last roll's odds, top centre, so the rules are never hidden.
-func _draw_odds() -> void:
-	var age := _time - _odds_at
-	if age > ODDS_SECONDS or _odds_text == "":
-		return
-	var font := ThemeDB.fallback_font
-	var view: Vector2 = _stream.VIEW
-	var alpha := clampf((ODDS_SECONDS - age) / 0.4, 0.0, 1.0)
-	var width := minf(font.get_string_size(_odds_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x, view.x - 16)
-	var lines := ceili(font.get_string_size(_odds_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x / (view.x - 16))
-	var rect := Rect2(roundf((view.x - width) * 0.5) - 3, 2, width + 6, 10 * lines + 1)
-	draw_rect(rect, Color(COL_PANEL, COL_PANEL.a * alpha))
-	draw_multiline_string(font, rect.position + Vector2(3, 9), _odds_text, HORIZONTAL_ALIGNMENT_LEFT,
-		width, 8, lines, Color(COL_TEXT, alpha))
-
-
-func _draw_card() -> void:
-	var age := _time - _card_at
-	if age > CARD_SECONDS or _card_lines.is_empty():
-		return
-	var font := ThemeDB.fallback_font
-	var view: Vector2 = _stream.VIEW
-	var rect := Rect2(40, 66, view.x - 80, 52)
-	var alpha := clampf((CARD_SECONDS - age) / 0.4, 0.0, 1.0)
-	draw_rect(rect, Color(0.08, 0.1, 0.09, 0.85 * alpha))
-	draw_rect(rect, Color(COL_TEXT, 0.6 * alpha), false, 1.0)
-	draw_string(font, rect.position + Vector2(6, 12), _card_lines[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color("f2c35a", alpha))
-	draw_string(font, rect.position + Vector2(6, 22), _card_lines[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(COL_TEXT, alpha))
-	draw_multiline_string(font, rect.position + Vector2(6, 33), _card_lines[2], HORIZONTAL_ALIGNMENT_LEFT,
-		rect.size.x - 12, 8, 2, Color(COL_DIM, COL_DIM.a * alpha))

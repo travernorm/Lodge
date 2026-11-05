@@ -70,6 +70,8 @@ var _parts_added := false
 @onready var _grass: GrassView = get_node_or_null(^"Grass")
 ## Paints a stretch's land: shoreline, cut banks and ground (REQ-0013).
 @onready var _bank: BankView = get_node_or_null(^"Bank")
+## Stocks each chunk of a streamed section with fish as it comes into reach.
+@onready var _fishing: Node = get_node_or_null(^"Fishing")
 
 
 ## The angler and the river view are made with the scene but only join the
@@ -162,6 +164,10 @@ func _setup_streamer() -> void:
 		_streamer.chunk_shown.connect(func(key: Vector2i, field: RiverField, area: Rect2, _p: ChunkPainter) -> void:
 			_grass.add_chunk(key, field, area))
 		_streamer.chunk_hidden.connect(_grass.drop_chunk)
+	if _fishing != null:
+		_streamer.chunk_shown.connect(func(key: Vector2i, field: RiverField, area: Rect2, _p: ChunkPainter) -> void:
+			_fishing.add_chunk(key, field, area))
+		_streamer.chunk_hidden.connect(_fishing.drop_chunk)
 	# The camera has not moved yet: build what is around the angler.
 	_streamer.setup(river as SectionField, water_on, _bank.look if land_on else null,
 		Rect2(_walker.feet - VIEW, VIEW * 2.0))
