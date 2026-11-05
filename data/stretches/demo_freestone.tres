@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="Stretch" load_steps=44 format=3]
+[gd_resource type="Resource" script_class="Stretch" load_steps=46 format=3]
 
 [ext_resource type="Script" path="res://scripts/river/stretch.gd" id="1_7rl41"]
 [ext_resource type="Script" path="res://scripts/river/spawn_entry.gd" id="2_spawn"]
@@ -18,6 +18,7 @@
 [ext_resource type="Resource" path="res://data/insects/mahogany.tres" id="16_mahogany"]
 [ext_resource type="Resource" path="res://data/insects/callibaetis.tres" id="17_callibaetis"]
 [ext_resource type="Script" path="res://scripts/river/features/grass_patch.gd" id="18_grass"]
+[ext_resource type="Script" path="res://scripts/river/features/grass_bank.gd" id="19_grass_bank"]
 
 [sub_resource type="Resource" id="spawn_redband"]
 script = ExtResource("2_spawn")
@@ -178,6 +179,11 @@ centre = Vector2(78, 26)
 radii = Vector2(11, 8)
 density = 1.0
 
+[sub_resource type="Resource" id="grass_banks"]
+script = ExtResource("19_grass_bank")
+width_m = 14.0
+density = 1.0
+
 [resource]
 script = ExtResource("1_7rl41")
 size_m = Vector2(120, 75)
@@ -185,7 +191,7 @@ centreline = PackedVector2Array(-7.5, 18, 21, 19.5, 43.5, 30, 60, 45, 75, 55.5, 
 half_width = 8.0
 depth_keys = PackedVector2Array(0, 0.3, 0.1, 0.4, 0.15, 0.43, 0.2, 0.33, 0.25, 0.4, 0.3, 0.67, 0.35, 0.94, 0.4, 0.81, 0.45, 0.48, 0.5, 0.33, 0.55, 0.32, 0.6, 0.53, 0.65, 1, 0.7, 0.83, 0.75, 0.4, 0.8, 0.3, 1, 0.3)
 bend_shift = 1.0
-features = Array[ExtResource("9_feature")]([SubResource("boulder_1"), SubResource("boulder_2"), SubResource("boulder_3"), SubResource("boulder_4"), SubResource("log_1"), SubResource("log_2"), SubResource("eddy_1"), SubResource("grass_start"), SubResource("grass_near_bank"), SubResource("grass_meadow")])
+features = Array[ExtResource("9_feature")]([SubResource("boulder_1"), SubResource("boulder_2"), SubResource("boulder_3"), SubResource("boulder_4"), SubResource("log_1"), SubResource("log_2"), SubResource("eddy_1"), SubResource("grass_start"), SubResource("grass_near_bank"), SubResource("grass_meadow"), SubResource("grass_banks")])
 angler_start = Vector2(10, 7.5)
 spawn = Array[ExtResource("2_spawn")]([SubResource("spawn_redband"), SubResource("spawn_cutthroat"), SubResource("spawn_brook")])
 fish_per_100m = 2.7
