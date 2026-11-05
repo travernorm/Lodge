@@ -1,6 +1,6 @@
 # REQ-0014: Rivers in sections (the Upper Fall)
 
-Status: draft (2026-11-05), waiting for Traver's approval
+Status: approved by Traver 2026-11-05 (with the recommended answers). Step 1, the river importer, is built.
 
 Plan and review behind it: [River world: architecture review and authoring workflow](https://claude.ai/artifact/VvvhbTgccer9SNRCr27RXR).
 
@@ -33,8 +33,8 @@ Built in three PRs, in this order. Each leaves the game playable.
 
 **PR 1: River importer and preview plates (tool, no game code).**
 - `content/rivers.csv` (one row per river) and `content/river_markers.csv` (one row per distance marker), as in the plan's template. Distances are metres downstream; river left and right face downstream.
-- `tools/import_river.gd` with `--check` (lists problems by river and distance: a feature off the water, overlapping features, a bad kind) and an export that writes Inspector tweaks back to the sheet, like `tools/import_content.gd`.
-- It writes one `Stretch` per section in `data/stretches/` and a preview plate per section (a top-down map labelled by distance) to `docs/requirements/img/` for review.
+- `tools/import_river.gd` with `--check` (lists problems by river and distance: a feature off the water, overlapping features, a bad kind) with the sheet as the source of truth for a generated stretch (moves are made in the sheet; an export from the Inspector back to the sheet can follow if it's missed).
+- It writes one `Stretch` per section in `data/stretches/` and a preview plate per section (a top-down map labelled by distance) to `docs/rivers/` for review. Planned kinds (waterfall, bridge, cabin, ford, trail ...) are drawn on the plate in red and built by step 3.
 
 **PR 2: Split before growing (refactor, no change on screen).**
 - `river_field.gd` split into a builder and the read-only queries (pays down its R9 cap).
@@ -79,8 +79,8 @@ Wading, fords and depth in metres (REQ-0015). The Deschutes, inflows, width keys
 
 DualSense and keyboard: start under the falls, cross the bridge, cast Short, Middle and Long from both banks and from the deck, land a fish in two different chunks, walk the whole Upper Fall watching for hitches at seams, pass into the Lower Fall and back. Browser build: the same walk, watching for hitches.
 
-## Open questions
+## Open questions (answered by Traver, 2026-11-05: "This works")
 
-1. How long is the Upper Fall? Recommended: about 500 m of river, half of the Fall River.
-2. Who writes the Upper Fall rows? Recommended: Traver writes them in the sheet; Claude can seed a first draft from the plan's template for Traver to edit.
-3. Is the old demo stretch fine as the placeholder Lower Fall until its rows exist? Recommended: yes.
+1. How long is the Upper Fall? About 500 m of river, half of the Fall River.
+2. Who writes the Upper Fall rows? Traver, in the sheet; Claude seeded a first draft (`content/river_markers.csv`) for Traver to edit.
+3. Is the old demo stretch fine as the placeholder Lower Fall until its rows exist? Yes.
