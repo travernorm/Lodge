@@ -4,7 +4,8 @@ extends Node2D
 ## While it's on, fish don't bite. A target marks Short, Middle or Long in
 ## turn, every cast is scored against it, and a stroke log shows how long you
 ## held each bumper against what the rules wanted. Tab (R3) swaps the casting
-## rule set, so different rhythms can be compared back to back.
+## rule set, so different rhythms can be compared back to back. Square (M)
+## with the line in steps the cast look (CastLook versions, a feel experiment).
 
 ## Rule sets to cycle through with Tab / R3.
 @export var chassis: Array[CastRules] = [
@@ -93,6 +94,9 @@ func _process(delta: float) -> void:
 		set_active(not active)
 	if Input.is_action_just_pressed(Controls.CYCLE_RULES):
 		select_rules(_rules_index + 1)
+	# Feel experiment: mend does nothing with the line in, so here it steps the cast look.
+	if active and Input.is_action_just_pressed(Controls.MEND) and _cast.model.state == CastModel.State.IDLE:
+		_cast.next_look_style()
 	if active and _landed_at >= 0.0 and _time - _landed_at > AUTO_REEL_DELAY:
 		_landed_at = -1.0
 		if active and _cast.model.state == CastModel.State.LANDED:
@@ -194,10 +198,11 @@ func _draw_header() -> void:
 	draw_rect(Rect2(0, 0, w, 32), COL_PANEL)
 	var rules := current_rules()
 	draw_string(font, Vector2(4, 9), "PRACTICE  %s" % rules.display_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, COL_GOOD)
-	var keys := "Tab/R3 rules  T/L3 exit"
+	var keys := "Tab/R3 rules  Sq/M look  T/L3 exit"
 	var kw := font.get_string_size(keys, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
 	draw_string(font, Vector2(w - kw - 4, 9), keys, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, COL_DIM)
 	draw_multiline_string(font, Vector2(4, 18), rules.description, HORIZONTAL_ALIGNMENT_LEFT, w - 8, 8, 2, COL_DIM)
+	draw_string(font, Vector2(4, 41), "Look %s" % CastLook.style_name(_cast.look_style), HORIZONTAL_ALIGNMENT_LEFT, -1, 8, COL_GOOD)
 
 
 ## Each stroke of the current (or last) cast as a bar: its length is how long

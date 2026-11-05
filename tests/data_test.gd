@@ -37,6 +37,7 @@ func _initialize() -> void:
 	_test_take_rules()
 	_test_water_looks()
 	_test_weather_looks(_load_dir("res://data/weather_looks", "WeatherLook"))
+	_test_cast_looks(_load_dir("res://data/cast_looks", "CastLook"))
 	_test_catalog(flies, fish, insects, _load_dir("res://data/stretches", "Stretch"), rods)
 	_main.free()
 	if _failures == 0:
@@ -429,6 +430,22 @@ func _test_water_looks() -> void:
 	if water != null:
 		_check(water.look != null and looks.has(water.look.resource_path),
 			"scene: the water look is a data/looks file (%s)" % _path(water.look))
+
+
+## Every cast look keeps its stops in order, and the scene's cast node uses one.
+func _test_cast_looks(looks: Dictionary) -> void:
+	_check(not looks.is_empty(), "there is at least one cast look")
+	for path in looks:
+		var look: CastLook = looks[path]
+		var stem: String = path.get_file().get_basename()
+		_check(look.back_stop_deg < look.forward_stop_deg, "cast look %s: the back stop is behind the forward stop" % stem)
+		_check(look.forward_stop_deg <= look.follow_through_deg, "cast look %s: the follow-through is at or below the forward stop" % stem)
+		_check(not look.snap_angles_deg.is_empty(), "cast look %s: version B has angles to snap to" % stem)
+	var cast := _main.get_node_or_null(^"Cast")
+	_check(cast != null, "scene: Main has a Cast node")
+	if cast != null:
+		_check(cast.look != null and looks.has(cast.look.resource_path),
+			"scene: the cast look is a data/cast_looks file (%s)" % _path(cast.look))
 
 
 ## data/catalog.tres lists every fish, fly, rod, insect and stretch file exactly
