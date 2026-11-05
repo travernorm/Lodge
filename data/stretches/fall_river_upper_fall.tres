@@ -1,235 +1,250 @@
-[gd_resource type="Resource" script_class="Stretch" load_steps=53 format=3]
+[gd_resource type="Resource" script_class="Stretch" load_steps=57 format=3]
 
-[ext_resource type="Script" path="res://scripts/river/river_feature.gd" id="1_te5bs"]
-[ext_resource type="Script" path="res://scripts/river/features/eddy.gd" id="2_s5i5w"]
-[ext_resource type="Script" path="res://scripts/river/features/boulder.gd" id="3_u4g87"]
-[ext_resource type="Script" path="res://scripts/river/features/grass_patch.gd" id="4_hr6dp"]
-[ext_resource type="Script" path="res://scripts/river/features/gravel_bar.gd" id="5_ku1xb"]
-[ext_resource type="Script" path="res://scripts/river/features/fallen_log.gd" id="6_d4exg"]
-[ext_resource type="Script" path="res://scripts/river/features/grass_bank.gd" id="7_qknlw"]
-[ext_resource type="Script" path="res://scripts/river/hatch_entry.gd" id="8_8l00w"]
-[ext_resource type="Resource" path="res://data/insects/caddis.tres" id="9_sm1p3"]
-[ext_resource type="Script" path="res://scripts/conditions/season_window.gd" id="10_kyue7"]
-[ext_resource type="Resource" path="res://data/insects/pmd.tres" id="11_t14ht"]
-[ext_resource type="Resource" path="res://data/insects/baetis.tres" id="12_ebexk"]
-[ext_resource type="Resource" path="res://data/insects/march_brown.tres" id="13_c8cxf"]
-[ext_resource type="Resource" path="res://data/insects/mahogany.tres" id="14_ybe8t"]
-[ext_resource type="Resource" path="res://data/insects/callibaetis.tres" id="15_txl1i"]
-[ext_resource type="Script" path="res://scripts/river/stretch.gd" id="16_jxp4k"]
-[ext_resource type="Script" path="res://scripts/river/spawn_entry.gd" id="17_274kx"]
-[ext_resource type="Resource" path="res://data/fish/redband.tres" id="18_4hg7p"]
-[ext_resource type="Resource" path="res://data/fish/cutthroat.tres" id="19_u1ope"]
-[ext_resource type="Resource" path="res://data/fish/brook.tres" id="20_3qcpu"]
+[ext_resource type="Script" path="res://scripts/river/river_feature.gd" id="1_rqt80"]
+[ext_resource type="Script" path="res://scripts/river/features/waterfall.gd" id="2_b4k5y"]
+[ext_resource type="Script" path="res://scripts/river/features/bridge.gd" id="3_nd3sl"]
+[ext_resource type="Script" path="res://scripts/river/features/eddy.gd" id="4_c1pkc"]
+[ext_resource type="Script" path="res://scripts/river/features/boulder.gd" id="5_e5qnq"]
+[ext_resource type="Script" path="res://scripts/river/features/grass_patch.gd" id="6_72mp3"]
+[ext_resource type="Script" path="res://scripts/river/features/gravel_bar.gd" id="7_45fcf"]
+[ext_resource type="Script" path="res://scripts/river/features/fallen_log.gd" id="8_ifx0k"]
+[ext_resource type="Script" path="res://scripts/river/features/grass_bank.gd" id="9_uxxau"]
+[ext_resource type="Script" path="res://scripts/river/hatch_entry.gd" id="10_qgw8q"]
+[ext_resource type="Resource" path="res://data/insects/caddis.tres" id="11_n2ypb"]
+[ext_resource type="Script" path="res://scripts/conditions/season_window.gd" id="12_0oghi"]
+[ext_resource type="Resource" path="res://data/insects/pmd.tres" id="13_ltiw2"]
+[ext_resource type="Resource" path="res://data/insects/baetis.tres" id="14_5tpyh"]
+[ext_resource type="Resource" path="res://data/insects/march_brown.tres" id="15_la26d"]
+[ext_resource type="Resource" path="res://data/insects/mahogany.tres" id="16_s5syl"]
+[ext_resource type="Resource" path="res://data/insects/callibaetis.tres" id="17_m1bj7"]
+[ext_resource type="Script" path="res://scripts/river/stretch.gd" id="18_bxppf"]
+[ext_resource type="Script" path="res://scripts/river/spawn_entry.gd" id="19_wtc8f"]
+[ext_resource type="Resource" path="res://data/fish/redband.tres" id="20_vdhjm"]
+[ext_resource type="Resource" path="res://data/fish/cutthroat.tres" id="21_o364e"]
+[ext_resource type="Resource" path="res://data/fish/brook.tres" id="22_0dk3i"]
 
-[sub_resource type="Resource" id="Resource_mqutq"]
-script = ExtResource("2_s5i5w")
-centre = Vector2(99, 34)
+[sub_resource type="Resource" id="Resource_fy1dx"]
+script = ExtResource("2_b4k5y")
+a = Vector2(105, 3)
+b = Vector2(83, 3)
+down = Vector2(-4.37114e-08, 1)
+foam_m = 6.0
+
+[sub_resource type="Resource" id="Resource_yci83"]
+script = ExtResource("3_nd3sl")
+a = Vector2(104, 11)
+b = Vector2(84, 11)
+width_m = 3.0
+
+[sub_resource type="Resource" id="Resource_cmdah"]
+script = ExtResource("4_c1pkc")
+centre = Vector2(99, 13)
 radius = 3.0
 strength = 0.45
 
-[sub_resource type="Resource" id="Resource_0cdew"]
-script = ExtResource("2_s5i5w")
-centre = Vector2(89, 36)
+[sub_resource type="Resource" id="Resource_p0yhb"]
+script = ExtResource("4_c1pkc")
+centre = Vector2(89, 15)
 radius = 3.0
 strength = 0.45
 
-[sub_resource type="Resource" id="Resource_yn5li"]
-script = ExtResource("3_u4g87")
-centre = Vector2(94, 64)
+[sub_resource type="Resource" id="Resource_6o5os"]
+script = ExtResource("5_e5qnq")
+centre = Vector2(94, 43)
 radius = 0.9
 
-[sub_resource type="Resource" id="Resource_pnu7j"]
-script = ExtResource("3_u4g87")
-centre = Vector2(99, 76)
+[sub_resource type="Resource" id="Resource_m5vwd"]
+script = ExtResource("5_e5qnq")
+centre = Vector2(99, 55)
 radius = 0.7
 
-[sub_resource type="Resource" id="Resource_u2kr5"]
-script = ExtResource("4_hr6dp")
-centre = Vector2(80, 84)
+[sub_resource type="Resource" id="Resource_hjktc"]
+script = ExtResource("6_72mp3")
+centre = Vector2(80, 63)
 radii = Vector2(8, 4)
 density = 1.0
 
-[sub_resource type="Resource" id="Resource_permj"]
-script = ExtResource("3_u4g87")
-centre = Vector2(66.0169, 153.01)
+[sub_resource type="Resource" id="Resource_yxq1s"]
+script = ExtResource("5_e5qnq")
+centre = Vector2(66.0169, 132.01)
 radius = 0.9
 
-[sub_resource type="Resource" id="Resource_d87kq"]
-script = ExtResource("3_u4g87")
-centre = Vector2(63.4239, 162.365)
+[sub_resource type="Resource" id="Resource_qash7"]
+script = ExtResource("5_e5qnq")
+centre = Vector2(63.4239, 141.365)
 radius = 0.7
 
-[sub_resource type="Resource" id="Resource_2so5j"]
-script = ExtResource("3_u4g87")
-centre = Vector2(51.3123, 158.822)
+[sub_resource type="Resource" id="Resource_502wc"]
+script = ExtResource("5_e5qnq")
+centre = Vector2(51.3123, 137.822)
 radius = 0.8
 
-[sub_resource type="Resource" id="Resource_7yub7"]
-script = ExtResource("3_u4g87")
-centre = Vector2(46.8658, 169.08)
+[sub_resource type="Resource" id="Resource_e588a"]
+script = ExtResource("5_e5qnq")
+centre = Vector2(46.8658, 148.08)
 radius = 1.0
 
-[sub_resource type="Resource" id="Resource_6u3eu"]
-script = ExtResource("5_ku1xb")
-centre = Vector2(30.0646, 196.777)
+[sub_resource type="Resource" id="Resource_io7nc"]
+script = ExtResource("7_45fcf")
+centre = Vector2(30.0646, 175.777)
 radius = 5.0
 
-[sub_resource type="Resource" id="Resource_df37l"]
-script = ExtResource("6_d4exg")
-a = Vector2(16.9947, 199.853)
-b = Vector2(22.357, 204.352)
+[sub_resource type="Resource" id="Resource_dswx5"]
+script = ExtResource("8_ifx0k")
+a = Vector2(16.9947, 178.853)
+b = Vector2(22.357, 183.352)
 
-[sub_resource type="Resource" id="Resource_3v0a4"]
-script = ExtResource("2_s5i5w")
-centre = Vector2(30.9181, 211.725)
+[sub_resource type="Resource" id="Resource_xjmmy"]
+script = ExtResource("4_c1pkc")
+centre = Vector2(30.9181, 190.725)
 radius = 3.0
 strength = 0.45
 
-[sub_resource type="Resource" id="Resource_8ce12"]
-script = ExtResource("3_u4g87")
-centre = Vector2(61.3713, 319.677)
+[sub_resource type="Resource" id="Resource_2a2p3"]
+script = ExtResource("5_e5qnq")
+centre = Vector2(61.3713, 298.677)
 radius = 1.0
 
-[sub_resource type="Resource" id="Resource_45k2i"]
-script = ExtResource("6_d4exg")
-a = Vector2(46.299, 370.832)
-b = Vector2(51.8221, 373.176)
+[sub_resource type="Resource" id="Resource_71ydc"]
+script = ExtResource("8_ifx0k")
+a = Vector2(46.299, 349.832)
+b = Vector2(51.8221, 352.176)
 
-[sub_resource type="Resource" id="Resource_hellh"]
-script = ExtResource("2_s5i5w")
-centre = Vector2(63.4646, 380.662)
+[sub_resource type="Resource" id="Resource_rn2tm"]
+script = ExtResource("4_c1pkc")
+centre = Vector2(63.4646, 359.662)
 radius = 3.0
 strength = 0.45
 
-[sub_resource type="Resource" id="Resource_pi8vm"]
-script = ExtResource("4_hr6dp")
-centre = Vector2(100.393, 428.624)
+[sub_resource type="Resource" id="Resource_ht81j"]
+script = ExtResource("6_72mp3")
+centre = Vector2(100.393, 407.624)
 radii = Vector2(8, 4)
 density = 1.0
 
-[sub_resource type="Resource" id="Resource_egylw"]
-script = ExtResource("7_qknlw")
+[sub_resource type="Resource" id="Resource_8oolg"]
+script = ExtResource("9_uxxau")
 width_m = 14.0
 centre = Vector2(0, 0)
 radii = Vector2(4, 2)
 density = 1.0
 
 [sub_resource type="Resource" id="window_caddis"]
-script = ExtResource("10_kyue7")
+script = ExtResource("12_0oghi")
 from_season = 0
 from_day = 15
 to_season = 2
 to_day = 20
 
-[sub_resource type="Resource" id="Resource_rayes"]
-script = ExtResource("8_8l00w")
-insect = ExtResource("9_sm1p3")
+[sub_resource type="Resource" id="Resource_gegag"]
+script = ExtResource("10_qgw8q")
+insect = ExtResource("11_n2ypb")
 window = SubResource("window_caddis")
 slots = 24
 weathers = 7
 strength = 0.8
 
 [sub_resource type="Resource" id="window_pmd"]
-script = ExtResource("10_kyue7")
+script = ExtResource("12_0oghi")
 from_season = 0
 from_day = 15
 to_season = 1
 to_day = 30
 
-[sub_resource type="Resource" id="Resource_e1efd"]
-script = ExtResource("8_8l00w")
-insect = ExtResource("11_t14ht")
+[sub_resource type="Resource" id="Resource_7p3nm"]
+script = ExtResource("10_qgw8q")
+insect = ExtResource("13_ltiw2")
 window = SubResource("window_pmd")
 slots = 2
 weathers = 7
 strength = 0.7
 
 [sub_resource type="Resource" id="window_baetis"]
-script = ExtResource("10_kyue7")
+script = ExtResource("12_0oghi")
 from_season = 2
 from_day = 1
 to_season = 0
 to_day = 30
 
-[sub_resource type="Resource" id="Resource_ekxi6"]
-script = ExtResource("8_8l00w")
-insect = ExtResource("12_ebexk")
+[sub_resource type="Resource" id="Resource_qpmmr"]
+script = ExtResource("10_qgw8q")
+insect = ExtResource("14_5tpyh")
 window = SubResource("window_baetis")
 slots = 8
 weathers = 6
 strength = 0.6
 
 [sub_resource type="Resource" id="window_march_brown"]
-script = ExtResource("10_kyue7")
+script = ExtResource("12_0oghi")
 from_season = 0
 from_day = 11
 to_season = 0
 to_day = 30
 
-[sub_resource type="Resource" id="Resource_l522x"]
-script = ExtResource("8_8l00w")
-insect = ExtResource("13_c8cxf")
+[sub_resource type="Resource" id="Resource_108da"]
+script = ExtResource("10_qgw8q")
+insect = ExtResource("15_la26d")
 window = SubResource("window_march_brown")
 slots = 14
 weathers = 6
 strength = 0.5
 
 [sub_resource type="Resource" id="window_mahogany"]
-script = ExtResource("10_kyue7")
+script = ExtResource("12_0oghi")
 from_season = 2
 from_day = 1
 to_season = 2
 to_day = 20
 
-[sub_resource type="Resource" id="Resource_wujto"]
-script = ExtResource("8_8l00w")
-insect = ExtResource("14_ybe8t")
+[sub_resource type="Resource" id="Resource_3xumj"]
+script = ExtResource("10_qgw8q")
+insect = ExtResource("16_s5syl")
 window = SubResource("window_mahogany")
 slots = 8
 weathers = 6
 strength = 0.5
 
 [sub_resource type="Resource" id="window_callibaetis"]
-script = ExtResource("10_kyue7")
+script = ExtResource("12_0oghi")
 from_season = 1
 from_day = 1
 to_season = 2
 to_day = 10
 
-[sub_resource type="Resource" id="Resource_qdjnl"]
-script = ExtResource("8_8l00w")
-insect = ExtResource("15_txl1i")
+[sub_resource type="Resource" id="Resource_luaei"]
+script = ExtResource("10_qgw8q")
+insect = ExtResource("17_m1bj7")
 window = SubResource("window_callibaetis")
 slots = 2
 weathers = 7
 strength = 0.4
 
-[sub_resource type="Resource" id="Resource_trvnr"]
-script = ExtResource("17_274kx")
-species = ExtResource("18_4hg7p")
+[sub_resource type="Resource" id="Resource_fobqg"]
+script = ExtResource("19_wtc8f")
+species = ExtResource("20_vdhjm")
 abundance = 0.6
 
-[sub_resource type="Resource" id="Resource_5iv8m"]
-script = ExtResource("17_274kx")
-species = ExtResource("19_u1ope")
+[sub_resource type="Resource" id="Resource_w6m1a"]
+script = ExtResource("19_wtc8f")
+species = ExtResource("21_o364e")
 abundance = 0.2
 
-[sub_resource type="Resource" id="Resource_b8pbs"]
-script = ExtResource("17_274kx")
-species = ExtResource("20_3qcpu")
+[sub_resource type="Resource" id="Resource_cdo5k"]
+script = ExtResource("19_wtc8f")
+species = ExtResource("22_0dk3i")
 abundance = 0.2
 
 [resource]
-script = ExtResource("16_jxp4k")
-size_m = Vector2(129, 486)
-centreline = PackedVector2Array(94, -36, 94, -26, 94, -16, 94, -6, 94, 4, 94, 14, 94, 24, 94, 34, 94, 44, 94, 54, 94, 64, 94, 74, 94, 84, 94, 94, 94, 104, 94, 114, 92.41, 123.84, 88.07, 132.81, 81.34, 140.15, 73.68, 146.58, 66.02, 153.01, 58.36, 159.44, 50.7, 165.87, 43.04, 172.29, 35.38, 178.72, 28.96, 186.34, 25.21, 195.57, 24.5, 205.5, 26.89, 215.17, 32.16, 223.62, 38.58, 231.28, 45.01, 238.94, 51.44, 246.61, 57.87, 254.27, 64.3, 261.93, 69.82, 270.24, 73.54, 279.5, 75.32, 289.33, 75.07, 299.31, 72.81, 309.03, 68.63, 318.1, 63.63, 326.76, 58.63, 335.42, 54.67, 344.58, 52.7, 354.36, 52.8, 364.34, 54.98, 374.09, 59.13, 383.16, 64.13, 391.82, 69.13, 400.48, 74.13, 409.14, 79.13, 417.8, 84.13, 426.46, 89.13, 435.12, 94.13, 443.78, 99.13, 452.44, 104.13, 461.1, 109.13, 469.76, 114.13, 478.43, 119.13, 487.09, 124.13, 495.75, 129.13, 504.41, 134.13, 513.07)
+script = ExtResource("18_bxppf")
+size_m = Vector2(129, 465)
+centreline = PackedVector2Array(94, -57, 94, -47, 94, -37, 94, -27, 94, -17, 94, -7, 94, 3, 94, 13, 94, 23, 94, 33, 94, 43, 94, 53, 94, 63, 94, 73, 94, 83, 94, 93, 92.41, 102.84, 88.07, 111.81, 81.34, 119.15, 73.68, 125.58, 66.02, 132.01, 58.36, 138.44, 50.7, 144.87, 43.04, 151.29, 35.38, 157.72, 28.96, 165.34, 25.21, 174.57, 24.5, 184.5, 26.89, 194.17, 32.16, 202.62, 38.58, 210.28, 45.01, 217.94, 51.44, 225.61, 57.87, 233.27, 64.3, 240.93, 69.82, 249.24, 73.54, 258.5, 75.32, 268.33, 75.07, 278.31, 72.81, 288.03, 68.63, 297.1, 63.63, 305.76, 58.63, 314.42, 54.67, 323.58, 52.7, 333.36, 52.8, 343.34, 54.98, 353.09, 59.13, 362.16, 64.13, 370.82, 69.13, 379.48, 74.13, 388.14, 79.13, 396.8, 84.13, 405.46, 89.13, 414.12, 94.13, 422.78, 99.13, 431.44, 104.13, 440.1, 109.13, 448.76, 114.13, 457.43, 119.13, 466.09, 124.13, 474.75, 129.13, 483.41, 134.13, 492.07)
 half_width = 8.0
 depth_keys = PackedVector2Array(0, 0.45, 0.105, 1, 0.117, 1, 0.129, 1, 0.155, 0.5, 0.181, 0.5, 0.208, 0.5, 0.242, 0.3, 0.266, 0.3, 0.29, 0.3, 0.327, 0.45, 0.347, 0.45, 0.366, 0.45, 0.419, 0.95, 0.444, 0.95, 0.468, 0.95, 0.494, 0.35, 0.508, 0.35, 0.523, 0.35, 0.552, 0.3, 0.581, 0.3, 0.61, 0.3, 0.645, 0.5, 0.669, 0.5, 0.694, 0.5, 0.729, 0.95, 0.758, 0.95, 0.787, 0.95, 0.819, 0.35, 0.839, 0.35, 0.858, 0.35, 1, 0.45)
 bend_shift = 1.0
-features = Array[ExtResource("1_te5bs")]([SubResource("Resource_mqutq"), SubResource("Resource_0cdew"), SubResource("Resource_yn5li"), SubResource("Resource_pnu7j"), SubResource("Resource_u2kr5"), SubResource("Resource_permj"), SubResource("Resource_d87kq"), SubResource("Resource_2so5j"), SubResource("Resource_7yub7"), SubResource("Resource_6u3eu"), SubResource("Resource_df37l"), SubResource("Resource_3v0a4"), SubResource("Resource_8ce12"), SubResource("Resource_45k2i"), SubResource("Resource_hellh"), SubResource("Resource_pi8vm"), SubResource("Resource_egylw")])
-angler_start = Vector2(83, 59)
-spawn = Array[ExtResource("17_274kx")]([SubResource("Resource_trvnr"), SubResource("Resource_5iv8m"), SubResource("Resource_b8pbs")])
+features = Array[ExtResource("1_rqt80")]([SubResource("Resource_fy1dx"), SubResource("Resource_yci83"), SubResource("Resource_cmdah"), SubResource("Resource_p0yhb"), SubResource("Resource_6o5os"), SubResource("Resource_m5vwd"), SubResource("Resource_hjktc"), SubResource("Resource_yxq1s"), SubResource("Resource_qash7"), SubResource("Resource_502wc"), SubResource("Resource_e588a"), SubResource("Resource_io7nc"), SubResource("Resource_dswx5"), SubResource("Resource_xjmmy"), SubResource("Resource_2a2p3"), SubResource("Resource_71ydc"), SubResource("Resource_rn2tm"), SubResource("Resource_ht81j"), SubResource("Resource_8oolg")])
+angler_start = Vector2(83, 14)
+spawn = Array[ExtResource("19_wtc8f")]([SubResource("Resource_fobqg"), SubResource("Resource_w6m1a"), SubResource("Resource_cdo5k")])
 fish_per_100m = 2.7
-hatches = Array[ExtResource("8_8l00w")]([SubResource("Resource_rayes"), SubResource("Resource_e1efd"), SubResource("Resource_ekxi6"), SubResource("Resource_l522x"), SubResource("Resource_wujto"), SubResource("Resource_qdjnl")])
+hatches = Array[ExtResource("10_qgw8q")]([SubResource("Resource_gegag"), SubResource("Resource_7p3nm"), SubResource("Resource_qpmmr"), SubResource("Resource_108da"), SubResource("Resource_3xumj"), SubResource("Resource_luaei")])
 streamed = true
 spring_fed = true

@@ -1,8 +1,9 @@
 class_name Angler
 extends Node2D
 ## The angler on the bank (step A2, split from stream_scene.gd): where he
-## stands, walking along the bank without stepping into the water, and turning
-## to face the river. His sprite and rod are drawn by an AnglerView child.
+## stands, walking along the bank and over bridges without stepping into the
+## water (Footing), and turning to face the river. His sprite and rod are
+## drawn by an AnglerView child.
 ##
 ## The stream scene owns him: it hands him the river with setup(), the stick
 ## each frame with step(), and the rod to draw with show_rod(). He reads the
@@ -69,12 +70,15 @@ func show_rod(tip: Vector2, butt: Vector2, arm: bool) -> void:
 	view.show_angler(feet, facing, hand_position(), tip, butt, arm)
 
 
-## The direction from his hand to the middle of the nearest river.
+## The direction from his hand to the middle of the nearest river; on a
+## bridge deck, downstream.
 func water_direction() -> Vector2:
 	var me := WorldScale.vec_to_m(hand_position())
 	var k := _river.nearest_centre(me)
 	if k < 0:
 		return Vector2.UP
+	if Footing.on_deck(_river, WorldScale.vec_to_m(feet)):
+		return _river.centre_dir[k]
 	var dir := _river.centre[k] - me
 	return dir.normalized() if dir.length() > 0.01 else Vector2.UP
 
@@ -91,6 +95,6 @@ func _walkable(p: Vector2) -> bool:
 	if p.x < 8.0 or p.y < 20.0 or p.x > _world.x - 8.0 or p.y > _world.y - 4.0:
 		return false
 	for o in [Vector2(-3, 0), Vector2(3, 0), Vector2(0, -4)]:
-		if _river.is_water(WorldScale.vec_to_m(p + o)):
+		if not Footing.can_stand(_river, WorldScale.vec_to_m(p + o)):
 			return false
 	return true

@@ -168,7 +168,9 @@ A river is written as distance markers, the way a guide describes it ("at 340 m,
 | `log` | A fallen log from that bank, angled downstream; `size_m` is its length | |
 | `grass` | A patch of tall grass on that bank; `size_m` is its reach along the bank | density |
 | `angler_start` | Where the angler starts, on that bank | |
-| `waterfall`, `bridge`, `cabin`, `ford`, `trail`, `inflow`, `boat_launch`, `width`, `reach_break` | Planned: drawn on the plate and listed, built by REQ-0014 step 3 and later | |
+| `waterfall` | A waterfall across the river: everything above it is cliff (no walking, casting or fish); `size_m` is how far its white water reaches below (default 8) | |
+| `bridge` | A footbridge across the river, walkable and fishable from; `size_m` is the deck's width (default 2.5) | |
+| `cabin`, `ford`, `trail`, `inflow`, `boat_launch`, `width`, `reach_break` | Planned: drawn on the plate and listed, built later | |
 
 Then run:
 

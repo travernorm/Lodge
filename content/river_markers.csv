@@ -1,12 +1,12 @@
 river,at_m,length_m,kind,side,offset_m,size_m,value,note
 fall_river,0,,section,,,,Upper Fall,Opens at the foot of the falls
-fall_river,0,,waterfall,mid,,16,,Placeholder: tall falls inspired by Tumalo Falls; we see its base
+fall_river,0,,waterfall,mid,,6,,Placeholder: tall falls inspired by Tumalo Falls; we see its base
 fall_river,0,25,water,,,,plunge,Plunge pool under the falls
 fall_river,10,,eddy,left,3,3,,
 fall_river,12,,eddy,right,3,3,,
-fall_river,25,,bridge,mid,,3,footbridge,Walking bridge just below the falls
-fall_river,30,,cabin,right,15,,,The cabin
-fall_river,35,,angler_start,right,3,,,Tutorial starts at the cabin
+fall_river,8,,bridge,mid,,3,footbridge,Walking bridge just below the falls (close enough that the first screen shows both)
+fall_river,12,,cabin,right,15,,,The cabin
+fall_river,11,,angler_start,right,3,,,Tutorial starts at the cabin
 fall_river,25,55,water,,,,run,Tutorial run: slow and readable
 fall_river,40,,boulder,mid,,0.9,,
 fall_river,52,,boulder,left,3,0.7,,

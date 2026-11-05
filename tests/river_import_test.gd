@@ -83,12 +83,33 @@ func _test_banks() -> void:
 	_check(not f.is_water(st.angler_start), "the angler starts on dry land")
 
 
-## Kinds that later steps build are reported and drawn, never turned into features.
+## Kinds that later steps build are reported and drawn, never turned into
+## features; a waterfall and a bridge (REQ-0014 step 3) become features across
+## the river.
 func _test_planned_kinds() -> void:
-	var p := _plan([RIVER_ROW], ["test_creek,0,,section,,,,Test,", "test_creek,10,,bridge,mid,,3,footbridge,",
-		"test_creek,0,,waterfall,mid,,10,,", "test_creek,60,,end,,,,,"])
+	var p := _plan([RIVER_ROW], ["test_creek,0,,section,,,,Test,", "test_creek,10,,cabin,right,15,,,",
+		"test_creek,20,,ford,,,,,", "test_creek,60,,end,,,,,"])
 	_check(p.errors.is_empty() and p.notes.size() == 2, "planned kinds are notes, not errors %s %s" % [p.errors, p.notes])
 	_check(not p.sections.is_empty() and p.sections[0].stretch.features.is_empty(), "planned kinds add no feature yet")
+	p = _plan([RIVER_ROW], ["test_creek,0,,section,,,,Test,", "test_creek,10,,bridge,mid,,3,footbridge,",
+		"test_creek,0,,waterfall,mid,,10,,", "test_creek,60,,end,,,,,"])
+	_check(p.errors.is_empty() and p.notes.is_empty(), "a waterfall and a bridge are built kinds %s %s" % [p.errors, p.notes])
+	var feats: Array = p.sections[0].stretch.features if not p.sections.is_empty() else []
+	var fall: Waterfall = null
+	var bridge: Bridge = null
+	for f in feats:
+		if f is Waterfall:
+			fall = f
+		elif f is Bridge:
+			bridge = f
+	_check(fall != null and is_equal_approx(fall.foam_m, 10.0), "the waterfall becomes a Waterfall with 10 m of white water")
+	_check(bridge != null and is_equal_approx(bridge.width_m, 3.0), "the bridge becomes a 3 m wide Bridge")
+	if fall != null and bridge != null:
+		var width := 10.0  # test_creek is 10 m wide
+		_check(fall.a.distance_to(fall.b) > width and bridge.a.distance_to(bridge.b) > width,
+			"both reach from bank to bank (%.1f, %.1f m)" % [fall.a.distance_to(fall.b), bridge.a.distance_to(bridge.b)])
+		_check(fall.down.dot((bridge.a.lerp(bridge.b, 0.5) - fall.a.lerp(fall.b, 0.5)).normalized()) > 0.9,
+			"the falls face downstream, toward the bridge")
 
 
 func _test_bad_rows() -> void:

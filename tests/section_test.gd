@@ -33,6 +33,7 @@ func _initialize() -> void:
 	_test_drop_and_rebuild(sec)
 	_test_lies_across_chunks(sec)
 	_test_long_section(load(UPPER_FALL))
+	_test_falls_and_bridge(load(UPPER_FALL))
 	_test_scene_streams.call_deferred()
 
 
@@ -170,6 +171,58 @@ func _test_long_section(st: Stretch) -> void:
 		if sec.bounds().has_point(sec.centre[k]) and not sec.is_solid(sec.centre[k]) and not sec.is_water(sec.centre[k]):
 			dry += 1
 	_check(dry == 0, "the river is wet along its whole centreline, boulders aside (%d dry points)" % dry)
+
+
+## The Upper Fall opens under a waterfall with a footbridge below it: nothing
+## above the lip can be walked on, fished or cast to; the deck can be walked
+## across from bank to bank over running water.
+func _test_falls_and_bridge(st: Stretch) -> void:
+	var sec := SectionField.new()
+	sec.setup(st)
+	var fall: Waterfall = null
+	var bridge: Bridge = null
+	for f in st.features:
+		if f is Waterfall:
+			fall = f
+		elif f is Bridge:
+			bridge = f
+	_check(fall != null and bridge != null, "the Upper Fall has a waterfall and a footbridge")
+	if fall == null or bridge == null:
+		return
+	var lip := fall.a.lerp(fall.b, 0.5)
+	var blocked := 0
+	var tried := 0
+	for across in range(-12, 13, 3):
+		for up in [2.0, 4.0, 6.0]:
+			var p: Vector2 = lip - fall.down * up + Vector2(-fall.down.y, fall.down.x) * across
+			if sec.bounds().has_point(p):
+				tried += 1
+				if not sec.is_water(p) and not Footing.can_stand(sec, p) and sec.lie_at(p) == 0.0:
+					blocked += 1
+	_check(tried > 0 and blocked == tried, "above the lip is no water, no footing and no lies (%d of %d)" % [blocked, tried])
+	var below := lip + fall.down * (Waterfall.FALL_M + 2.0)
+	_check(sec.is_water(below), "the plunge pool below the falls is water")
+	var mid := bridge.a.lerp(bridge.b, 0.5)
+	_check(sec.is_water(mid) and sec.flow_at(mid).length() > 0.1, "the river runs under the bridge")
+	_check(Footing.can_stand(sec, mid) and Footing.on_deck(sec, mid), "the angler can stand on the deck over the water")
+	_check(not Footing.can_stand(sec, mid + (bridge.b - bridge.a).orthogonal().normalized() * (bridge.width_m + 1.0)),
+		"beside the deck is water again")
+	# Walk him across, from the left-bank end to the right-bank end.
+	var walker := Angler.new()
+	var start := WorldScale.vec_to_px(bridge.a + (bridge.b - bridge.a).normalized() * 0.5)
+	walker.setup(sec, WorldScale.vec_to_px(st.size_m), true, start)
+	var dir := (bridge.b - bridge.a).normalized()
+	var wet_steps := 0
+	for frame in 60 * 6:
+		walker.step(1.0 / 60.0, dir, true)
+		var m := WorldScale.vec_to_m(walker.feet)
+		if sec.is_water(m) and not Footing.on_deck(sec, m):
+			wet_steps += 1
+	var end_m := WorldScale.vec_to_m(walker.feet)
+	_check(end_m.distance_to(bridge.b) < end_m.distance_to(bridge.a) and not sec.is_water(end_m),
+		"he walks across the bridge to the far bank (ends %.1f m from it)" % end_m.distance_to(bridge.b))
+	_check(wet_steps == 0, "he never steps into the water on the way")
+	walker.free()
 
 
 ## The Upper Fall scene streams: the chunks on screen are painted at load,
