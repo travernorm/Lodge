@@ -99,7 +99,7 @@ The data folders today, each covered by `tests/data_test.gd`:
 * `data/climates/`: `Climate`, one per region (REQ-0008; today `central_oregon.tres`): each season's highs, weather odds and persistence (how long spells last), how far the high wanders a day, how each weather lowers it, when storms hit, and how hard rain, snow and storms fall. A new region is a new file. Not in the catalog; the fishing node takes one as an export until regions exist.
 * `data/catalog.tres`: the index of every fish, fly, insect and stretch (generated, see below).
 
-The content sheets in `content/` (`insects.csv`, `flies.csv`, `rods.csv`, `fish.csv`) are the spreadsheet view of the archetype folders: one row per file, one column per exported field. `tools/import_content.gd` checks every cell and writes the `.tres` files; the game never reads the sheets (the folder has a `.gdignore`), and `tests/content_test.gd` keeps them in step with `data/`. See TOOLING.md, "Content sheets".
+The content sheets in `content/` (`insects.csv`, `flies.csv`, `rods.csv`, `fish.csv`) are the spreadsheet view of the archetype folders: one row per file, one column per exported field. `tools/import_content.gd` checks every cell and writes the `.tres` files; the game never reads the sheets (the folder has a `.gdignore`), and `tests/content_test.gd` keeps them in step with `data/`. See TOOLING.md, "Content sheets". The river sheets (`rivers.csv`, `river_markers.csv`, REQ-0014) write one `Stretch` per named section through `tools/import_river.gd`, with a preview plate per section in `docs/rivers/`; `tests/river_import_test.gd` keeps them in step. See TOOLING.md, "River sheets".
 
 ### References and ids
 

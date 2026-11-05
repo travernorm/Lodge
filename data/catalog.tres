@@ -1,34 +1,35 @@
-[gd_resource type="Resource" script_class="Catalog" load_steps=25 format=3]
+[gd_resource type="Resource" script_class="Catalog" load_steps=26 format=3]
 
-[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1_moqhc"]
-[ext_resource type="Resource" path="res://data/fish/brook.tres" id="2_segcu"]
-[ext_resource type="Resource" path="res://data/fish/cutthroat.tres" id="3_vgy1w"]
-[ext_resource type="Resource" path="res://data/fish/redband.tres" id="4_vm12s"]
-[ext_resource type="Script" path="res://scripts/tackle/fly_pattern.gd" id="5_k35hk"]
-[ext_resource type="Resource" path="res://data/tackle/flies/parachute_adams.tres" id="6_8xocv"]
-[ext_resource type="Resource" path="res://data/tackle/flies/elk_hair_caddis.tres" id="7_v8xui"]
-[ext_resource type="Resource" path="res://data/tackle/flies/royal_wulff.tres" id="8_xjdi1"]
-[ext_resource type="Resource" path="res://data/tackle/flies/pale_morning_dun.tres" id="9_s5vje"]
-[ext_resource type="Script" path="res://scripts/fishing/insect.gd" id="10_omkxp"]
-[ext_resource type="Resource" path="res://data/insects/attractor.tres" id="11_jlxkg"]
-[ext_resource type="Resource" path="res://data/insects/baetis.tres" id="12_rucks"]
-[ext_resource type="Resource" path="res://data/insects/caddis.tres" id="13_e3qek"]
-[ext_resource type="Resource" path="res://data/insects/callibaetis.tres" id="14_1ixy8"]
-[ext_resource type="Resource" path="res://data/insects/mahogany.tres" id="15_3wlsy"]
-[ext_resource type="Resource" path="res://data/insects/march_brown.tres" id="16_ntlxh"]
-[ext_resource type="Resource" path="res://data/insects/pmd.tres" id="17_76mc6"]
-[ext_resource type="Script" path="res://scripts/tackle/fly_rod.gd" id="18_b15sh"]
-[ext_resource type="Resource" path="res://data/tackle/rods/dads_glass_4wt.tres" id="19_y0e36"]
-[ext_resource type="Resource" path="res://data/tackle/rods/graphite_5wt.tres" id="20_xsqst"]
-[ext_resource type="Resource" path="res://data/tackle/rods/fast_7wt.tres" id="21_gckfu"]
-[ext_resource type="Script" path="res://scripts/data/catalog.gd" id="22_svdm6"]
-[ext_resource type="Script" path="res://scripts/river/stretch.gd" id="23_psonk"]
-[ext_resource type="Resource" path="res://data/stretches/demo_freestone.tres" id="24_mc1bb"]
+[ext_resource type="Script" path="res://scripts/fishing/fish_species.gd" id="1_aurq8"]
+[ext_resource type="Resource" path="res://data/fish/brook.tres" id="2_kohv4"]
+[ext_resource type="Resource" path="res://data/fish/cutthroat.tres" id="3_v1qqp"]
+[ext_resource type="Resource" path="res://data/fish/redband.tres" id="4_dpo08"]
+[ext_resource type="Script" path="res://scripts/tackle/fly_pattern.gd" id="5_mxiwc"]
+[ext_resource type="Resource" path="res://data/tackle/flies/parachute_adams.tres" id="6_vb1dw"]
+[ext_resource type="Resource" path="res://data/tackle/flies/elk_hair_caddis.tres" id="7_lmq2b"]
+[ext_resource type="Resource" path="res://data/tackle/flies/royal_wulff.tres" id="8_h86eh"]
+[ext_resource type="Resource" path="res://data/tackle/flies/pale_morning_dun.tres" id="9_o3twc"]
+[ext_resource type="Script" path="res://scripts/fishing/insect.gd" id="10_anbet"]
+[ext_resource type="Resource" path="res://data/insects/attractor.tres" id="11_yytfi"]
+[ext_resource type="Resource" path="res://data/insects/baetis.tres" id="12_4378g"]
+[ext_resource type="Resource" path="res://data/insects/caddis.tres" id="13_2ln8n"]
+[ext_resource type="Resource" path="res://data/insects/callibaetis.tres" id="14_usf0t"]
+[ext_resource type="Resource" path="res://data/insects/mahogany.tres" id="15_rlc4v"]
+[ext_resource type="Resource" path="res://data/insects/march_brown.tres" id="16_dsckm"]
+[ext_resource type="Resource" path="res://data/insects/pmd.tres" id="17_3c1u4"]
+[ext_resource type="Script" path="res://scripts/tackle/fly_rod.gd" id="18_rv66t"]
+[ext_resource type="Resource" path="res://data/tackle/rods/dads_glass_4wt.tres" id="19_lab76"]
+[ext_resource type="Resource" path="res://data/tackle/rods/graphite_5wt.tres" id="20_s48yx"]
+[ext_resource type="Resource" path="res://data/tackle/rods/fast_7wt.tres" id="21_eat60"]
+[ext_resource type="Script" path="res://scripts/data/catalog.gd" id="22_i0nud"]
+[ext_resource type="Script" path="res://scripts/river/stretch.gd" id="23_bj4dg"]
+[ext_resource type="Resource" path="res://data/stretches/demo_freestone.tres" id="24_w2ysp"]
+[ext_resource type="Resource" path="res://data/stretches/fall_river_upper_fall.tres" id="25_xykla"]
 
 [resource]
-script = ExtResource("22_svdm6")
-flies = Array[ExtResource("5_k35hk")]([ExtResource("6_8xocv"), ExtResource("7_v8xui"), ExtResource("8_xjdi1"), ExtResource("9_s5vje")])
-rods = Array[ExtResource("18_b15sh")]([ExtResource("19_y0e36"), ExtResource("20_xsqst"), ExtResource("21_gckfu")])
-fish = Array[ExtResource("1_moqhc")]([ExtResource("2_segcu"), ExtResource("3_vgy1w"), ExtResource("4_vm12s")])
-insects = Array[ExtResource("10_omkxp")]([ExtResource("11_jlxkg"), ExtResource("12_rucks"), ExtResource("13_e3qek"), ExtResource("14_1ixy8"), ExtResource("15_3wlsy"), ExtResource("16_ntlxh"), ExtResource("17_76mc6")])
-stretches = Array[ExtResource("23_psonk")]([ExtResource("24_mc1bb")])
+script = ExtResource("22_i0nud")
+flies = Array[ExtResource("5_mxiwc")]([ExtResource("6_vb1dw"), ExtResource("7_lmq2b"), ExtResource("8_h86eh"), ExtResource("9_o3twc")])
+rods = Array[ExtResource("18_rv66t")]([ExtResource("19_lab76"), ExtResource("20_s48yx"), ExtResource("21_eat60")])
+fish = Array[ExtResource("1_aurq8")]([ExtResource("2_kohv4"), ExtResource("3_v1qqp"), ExtResource("4_dpo08")])
+insects = Array[ExtResource("10_anbet")]([ExtResource("11_yytfi"), ExtResource("12_4378g"), ExtResource("13_2ln8n"), ExtResource("14_usf0t"), ExtResource("15_rlc4v"), ExtResource("16_dsckm"), ExtResource("17_3c1u4")])
+stretches = Array[ExtResource("23_bj4dg")]([ExtResource("24_w2ysp"), ExtResource("25_xykla")])

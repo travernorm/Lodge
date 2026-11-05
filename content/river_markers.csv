@@ -1,0 +1,39 @@
+river,at_m,length_m,kind,side,offset_m,size_m,value,note
+fall_river,0,,section,,,,Upper Fall,Opens at the foot of the falls
+fall_river,0,,waterfall,mid,,16,,Placeholder: tall falls inspired by Tumalo Falls; we see its base
+fall_river,0,25,water,,,,plunge,Plunge pool under the falls
+fall_river,10,,eddy,left,3,3,,
+fall_river,12,,eddy,right,3,3,,
+fall_river,25,,bridge,mid,,3,footbridge,Walking bridge just below the falls
+fall_river,30,,cabin,right,15,,,The cabin
+fall_river,35,,angler_start,right,3,,,Tutorial starts at the cabin
+fall_river,25,55,water,,,,run,Tutorial run: slow and readable
+fall_river,40,,boulder,mid,,0.9,,
+fall_river,52,,boulder,left,3,0.7,,
+fall_river,60,,grass,right,6,8,,
+fall_river,80,50,water,,,,riffle,
+fall_river,90,30,bend,,,,right 50,
+fall_river,135,40,water,,,,pocket,Boulder garden
+fall_river,140,,boulder,mid,,0.9,,
+fall_river,148,,boulder,left,2.5,0.7,,
+fall_river,155,,boulder,right,3,0.8,,
+fall_river,165,,boulder,mid,,1.0,,
+fall_river,180,50,bend,,,,left 90,
+fall_river,190,50,water,,,,pool,Cut-bank pool on the outside of the bend
+fall_river,200,,gravel_bar,left,3,5,,Point bar on the inside
+fall_river,205,,log,right,,7,,Log off the cut bank
+fall_river,218,,eddy,left,3,3,,
+fall_river,240,30,water,,,,tail_out,
+fall_river,270,60,water,,,,riffle,
+fall_river,280,60,bend,,,,right 70,
+fall_river,300,,ford,mid,,6,,Knee-deep crossing (wading comes later)
+fall_river,330,50,water,,,,run,
+fall_river,345,,boulder,right,2.5,1.0,,
+fall_river,360,50,bend,,,,left 60,
+fall_river,380,60,water,,,,pool,
+fall_river,395,,log,right,,6,,
+fall_river,410,,eddy,left,3,3,,
+fall_river,440,40,water,,,,tail_out,
+fall_river,470,,grass,left,5,8,,
+fall_river,495,,trail,right,4,,,Trail down to the Lower Fall (the demo stretch for now)
+fall_river,500,,end,,,,,
