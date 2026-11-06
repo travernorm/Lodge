@@ -51,19 +51,24 @@ var _types := PackedByteArray()
 var _reach_cells: Array[PackedInt32Array] = []
 var _reach_cumulative: Array[PackedFloat32Array] = []
 var _reach_len := PackedFloat32Array()
+## Stocking one area of a section rather than the whole stretch.
+var _area_mode := false
 
 
 ## Scans the river field once for lies. With no field there are no lies, so
-## generate() gives no fish.
+## generate() gives no fish. With an `area` (m), only that part of the river is
+## stocked, with fish_per_100m over the river's length inside it: one chunk of
+## a streamed section (REQ-0014).
 func _init(p_stretch: Stretch, field: RiverField, p_calendar: Calendar,
-		p_rules: WaterTypeRules = null) -> void:
+		p_rules: WaterTypeRules = null, area := Rect2()) -> void:
 	stretch = p_stretch
 	calendar = p_calendar
 	water_rules = p_rules if p_rules != null else WaterTypeRules.shared()
 	if field == null or stretch == null:
 		return
 	resting = RestingLies.new(field)
-	var bounds := Rect2(Vector2.ZERO, stretch.size_m)
+	var bounds := area if area.has_area() else Rect2(Vector2.ZERO, stretch.size_m)
+	_area_mode = area.has_area()
 	_measure_reaches(field, bounds)
 	var total := 0.0
 	for j in field.rows:
@@ -133,7 +138,7 @@ func generate(c: Conditions, rng: RandomNumberGenerator) -> Array[FishPlan]:
 	var entries := eligible(stretch.spawn, c)
 	if entries.is_empty():
 		return out
-	var lies := _pick_lies(stretch.fish_count(), lie_rng)
+	var lies := _pick_lies(_area_count(lie_rng) if _area_mode else stretch.fish_count(), lie_rng)
 	# Best lie first, with a little luck: (cell, noisy score). Each lie picks
 	# a species that suits its water, and the best lies get the biggest ranks.
 	var keyed: Array[Vector2] = []
@@ -153,6 +158,16 @@ func generate(c: Conditions, rng: RandomNumberGenerator) -> Array[FishPlan]:
 		out.append(plan)
 	out.sort_custom(func(a: FishPlan, b: FishPlan) -> bool: return a.length_in > b.length_in)
 	return out
+
+
+## How many fish an area holds: fish_per_100m over the river's length inside
+## it, the fraction rolled so that over many areas the total is right.
+func _area_count(rng: RandomNumberGenerator) -> int:
+	var length := 0.0
+	for l in _reach_len:
+		length += l
+	var exact := stretch.fish_per_100m * length / 100.0
+	return floori(exact) + (1 if rng.randf() < exact - floorf(exact) else 0)
 
 
 ## The spawn entries that can be in the water today: in season, and the water
