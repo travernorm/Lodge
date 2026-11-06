@@ -42,10 +42,6 @@ const REEL_SPEED := 18.75  # m/s the fly comes back on a reel-in
 const REEL_DONE := 0.375  # m from the rod tip where the reel-in finishes
 const RING_SECONDS := 0.9
 
-const COL_LINE := Color("d8cfa6")
-const COL_LINE_TIGHT := Color("f2a65a")
-const COL_LINE_DANGER := Color("e8553a")
-const COL_WAKE := Color(1, 1, 1, 0.6)
 const COL_RING := Color(1, 1, 1, 0.85)
 
 var phase := Phase.NONE
@@ -66,6 +62,8 @@ var _rng := RandomNumberGenerator.new()
 var _generator: FishGenerator
 ## A streamed section (REQ-0014) stocks each chunk as it comes into reach.
 var _stocker: ChunkStocker
+## Fish landed today stay gone, here and in sections the angler comes back to.
+var caught_log := CaughtLog.new()
 var _stream: Node2D
 var _river: RiverField
 var _cast: Node
@@ -97,7 +95,7 @@ func _ready() -> void:
 	_river = _stream.get(&"river")
 	_generator = FishGenerator.for_stretch(_stream.get(&"stretch"), _river, calendar)
 	if _river is SectionField and _generator != null:
-		_stocker = ChunkStocker.new(_generator.stretch, calendar)
+		_stocker = ChunkStocker.new(_generator.stretch, calendar, caught_log)
 	stock(fixed_conditions, fixed_seed if fixed_seed != 0 else Time.get_ticks_usec())
 
 
@@ -109,7 +107,8 @@ func stock(day: Conditions, p_seed: int) -> void:
 	weather = WeatherGenerator.year(climate, calendar, roller.randi())
 	conditions = day if day != null else weather.roll(roller, _generator != null and _generator.stretch.spring_fed)
 	_rng.seed = roller.randi()
-	fish.assign((_generator.generate(conditions, roller) if _generator else []).map(func(p): return Fish.from_plan(p, _rng)))
+	fish.assign((_generator.generate(conditions, roller) if _generator else []).filter(func(p: FishPlan) -> bool:
+		return not caught_log.has(_generator.stretch, p.lie, p_seed)).map(func(p): return Fish.from_plan(p, _rng)))
 	if _stocker != null:
 		_add_fish(_stocker.all_plans(conditions, day_seed))
 	conditions_changed.emit(conditions)
@@ -134,6 +133,17 @@ func drop_chunk(key: Vector2i) -> void:
 func _add_fish(plans: Array[FishPlan]) -> void:
 	for p in plans:
 		fish.append(Fish.from_plan(p, _rng))
+
+
+## Carries the day on from the section the angler left (REQ-0014), before
+## this one joins the tree: the same day and weather, tackle, catches and
+## caught fish.
+func take_session(from: Node) -> void:
+	fixed_seed = from.day_seed
+	fixed_conditions = from.conditions
+	tackle = from.tackle
+	catches = from.catches
+	caught_log = from.caught_log
 
 
 ## New slot or weather, same water (REQ-0008): fish stay; hatch and activity change.
@@ -423,8 +433,8 @@ func _ring_at(at: Vector2, start: float) -> void:
 func _land_fish() -> void:
 	var record := {"species": hooked.species, "length_in": hooked.length_in, "fly": current_fly()}
 	catches.append(record)
-	if _stocker != null:
-		_stocker.mark_caught(hooked.lie, day_seed)
+	if _generator != null:
+		caught_log.mark(_generator.stretch, hooked.lie, day_seed)
 	_card_lines = PackedStringArray([
 		hooked.species.display_name,
 		"%.1f in  on a %s" % [hooked.length_in, current_fly().display_name],
@@ -463,20 +473,17 @@ func _draw() -> void:
 			_draw_fight(tip)
 		Phase.REEL:
 			var fly_px := WorldScale.vec_to_px(drift.fly)
-			draw_line(tip.floor() + Vector2(0.5, 0.5), fly_px.floor() + Vector2(0.5, 0.5), COL_LINE, 1.0)
+			draw_line(tip.floor() + Vector2(0.5, 0.5), fly_px.floor() + Vector2(0.5, 0.5), LineView.COL_LINE, 1.0)
 			_draw_fly(fly_px)
 		Phase.NONE:
 			if _cast.model.state == CastModel.State.LANDED:
-				_draw_line(tip, (tip + _cast.fly_pos) * 0.5, _cast.fly_pos, COL_LINE)
+				LineView.curve(self, tip, (tip + _cast.fly_pos) * 0.5, _cast.fly_pos)
 				_draw_fly(_cast.fly_pos)
 	_draw_rings()
 	draw_set_transform(_stream.screen_origin())  # HUD: fixed on screen
 	var view: Vector2 = _stream.VIEW
 	_box_view.show_box(tackle, _stream.screen_origin(), view)  # fly box, bottom left
-	var seen := {}
-	for f in fish:
-		seen[f.species.id] = true
-	FishingHud.draw_log(self, view, catches.size(), species_caught(), seen.size())
+	FishingHud.draw_log(self, view, catches.size(), species_caught(), fish)
 	if phase == Phase.FIGHT:
 		FishingHud.draw_fight_meter(self, view, fight)
 	else:
@@ -513,16 +520,10 @@ func _facing_into_current(at: Vector2) -> float:
 
 func _draw_drift(tip: Vector2) -> void:
 	var fly_px := WorldScale.vec_to_px(drift.fly)
-	_draw_line(tip, WorldScale.vec_to_px(drift.belly), fly_px, COL_LINE)
-	if _fly_taken:
-		return
-	if drift.drag > 0.3:
-		var back := fly_px.floor()
-		var a := minf(1.0, drift.drag) * COL_WAKE.a
-		var col := Color(COL_WAKE, a)
-		draw_line(back + Vector2(-1, -1), back + Vector2(-4, -3), col, 1.0)
-		draw_line(back + Vector2(-1, 2), back + Vector2(-4, 4), col, 1.0)
-	_draw_fly(fly_px)
+	LineView.curve(self, tip, WorldScale.vec_to_px(drift.belly), fly_px)
+	if not _fly_taken:
+		LineView.wake(self, fly_px, drift.drag)
+		_draw_fly(fly_px)
 
 
 func _draw_fly(p: Vector2) -> void:
@@ -530,29 +531,13 @@ func _draw_fly(p: Vector2) -> void:
 
 
 func _draw_fight(tip: Vector2) -> void:
-	var col := COL_LINE
-	if fight.tension > 0.85:
-		col = COL_LINE_DANGER
-	elif fight.tension > 0.6:
-		col = COL_LINE_TIGHT
 	var fish_px := WorldScale.vec_to_px(hooked.pos)
 	var mid := (tip + fish_px) * 0.5
 	var sag := (1.0 - fight.tension) * 10.0
-	_draw_line(tip, mid + Vector2(0, sag), fish_px, col)
+	LineView.curve(self, tip, mid + Vector2(0, sag), fish_px, LineView.tension_colour(fight.tension))
 	var p := fish_px.floor()
 	draw_rect(Rect2(p + Vector2(-3, -1), Vector2(6, 3)), hooked.species.color)
 	draw_rect(Rect2(p + Vector2(-5 if fight.run_dir > 0 else 3, -1), Vector2(2, 3)), hooked.species.color)
-
-
-## A line from a through b to c (b is where the curve bends, not a control point).
-func _draw_line(a: Vector2, b: Vector2, c: Vector2, color: Color) -> void:
-	var control := 2.0 * b - (a + c) * 0.5
-	var points := PackedVector2Array()
-	for i in 15:
-		var t := float(i) / 14.0
-		var p := a.lerp(control, t).lerp(control.lerp(c, t), t)
-		points.append(p.floor() + Vector2(0.5, 0.5))
-	draw_polyline(points, color, 1.0)
 
 
 func _draw_rings() -> void:

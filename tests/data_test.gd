@@ -40,6 +40,7 @@ func _initialize() -> void:
 	_test_grass_looks(_load_dir("res://data/grass_looks", "GrassLook"))
 	_test_cast_looks(_load_dir("res://data/cast_looks", "CastLook"))
 	_test_bank_looks(_load_dir("res://data/bank_looks", "BankLook"))
+	_test_rivers(_load_dir("res://data/rivers", "River"))
 	_test_catalog(flies, fish, insects, _load_dir("res://data/stretches", "Stretch"), rods)
 	_main.free()
 	if _failures == 0:
@@ -552,3 +553,36 @@ func _test_grass_looks(looks: Dictionary) -> void:
 	if view != null:
 		_check(view.look != null and looks.has(view.look.resource_path),
 			"scene: the grass look is a data/grass_looks file (%s)" % _path(view.look))
+
+
+## Rivers and the world map (REQ-0014): every section and link loads, each
+## exit is at the edge of its own section, and each arrival is somewhere the
+## angler can stand, clear of the exits there (or he'd bounce straight back).
+func _test_rivers(rivers: Dictionary) -> void:
+	var world := load("res://data/world.tres") as WorldMap
+	_check(world != null and world.start != null, "data/world.tres loads with a starting section")
+	if world == null:
+		return
+	_check(world.river_of(world.start) != null, "the starting section is in one of the world's rivers")
+	for path: String in rivers:
+		var r: River = rivers[path]
+		_check(r in world.rivers, "%s is on the world map" % path.trim_prefix("res://"))
+		_check(not r.sections.is_empty() and r.display_name != "", "%s has a name and sections" % path.trim_prefix("res://"))
+		for st in r.sections:
+			_check(st.display_name != "", "%s: every section has a display name" % path.trim_prefix("res://"))
+		for link in r.links:
+			var name := "%s: %s to %s" % [path.trim_prefix("res://"), link.from.display_name, link.to.display_name]
+			_check(link.from in r.sections and link.to in r.sections, name + " joins two of its sections")
+			var map := Rect2(Vector2.ZERO, link.from.size_m)
+			_check(link.exit.has_area() and map.encloses(link.exit) and not map.grow(-3.0).encloses(link.exit),
+				name + ": the exit is a band at the edge of the map")
+			var field: RiverField
+			if link.to.streamed:
+				field = SectionField.new()
+				(field as SectionField).setup(link.to)
+			else:
+				field = RiverField.new()
+				field.build_stretch(link.to)
+			_check(Footing.can_stand(field, link.arrive_at), name + ": he arrives on dry land")
+			_check(r.links_from(link.to).all(func(back: SectionLink) -> bool: return not back.exit.grow(2.0).has_point(link.arrive_at)),
+				name + ": he arrives clear of the exits there")

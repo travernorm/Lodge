@@ -10,6 +10,8 @@ extends Resource
 ##
 ## Everything is in metres. The world's origin is the stretch's top-left corner.
 
+## The section's name, shown when the angler arrives (REQ-0014): "Upper Fall".
+@export var display_name := ""
 ## Size of the playable world (m). One screen is 40 m by 25 m.
 @export var size_m := Vector2(120, 75)
 ## Where the river runs, upstream first (m). It can start and end off the map.

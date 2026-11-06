@@ -40,7 +40,7 @@ func _summer_dusk() -> Conditions:
 
 
 func _stocker(keys: Array[Vector2i]) -> ChunkStocker:
-	var s := ChunkStocker.new(_stretch, _calendar)
+	var s := ChunkStocker.new(_stretch, _calendar, CaughtLog.new())
 	for key in keys:
 		s.add(key, _section.chunk(key), _section.chunk_rect(key))
 	return s
@@ -87,7 +87,7 @@ func _test_caught_stay_gone() -> void:
 	if before.is_empty():
 		_check(false, "a chunk to catch a fish in")
 		return
-	s.mark_caught(before[0].lie, 7)
+	s.caught.mark(_stretch, before[0].lie, 7)
 	var after := s.plans_for(key, c, 7)
 	_check(after.size() == before.size() - 1, "a caught fish stays gone that day")
 	s.remove(key)

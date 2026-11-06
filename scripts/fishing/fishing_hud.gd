@@ -20,8 +20,13 @@ const COL_TENSION_DANGER := Color("e8553a")
 const COL_STAMINA := Color("6ec3e0")
 
 
-## Catch log, bottom right: how many landed, and species when there's a choice.
-static func draw_log(ci: CanvasItem, view: Vector2, caught: int, species: int, of_species: int) -> void:
+## Catch log, bottom right: how many landed, and how many of the species in
+## `fish` when there's more than one.
+static func draw_log(ci: CanvasItem, view: Vector2, caught: int, species: int, fish: Array[Fish]) -> void:
+	var seen := {}
+	for f in fish:
+		seen[f.species.id] = true
+	var of_species := seen.size()
 	var font := ThemeDB.fallback_font
 	var log_text := "%d caught" % caught
 	if of_species > 1:

@@ -27,6 +27,13 @@ extends Node2D
 
 ## The demo stretch. Leave empty for the one-screen test stream.
 @export var stretch: Stretch
+## The ways out of this section (REQ-0014), set by the WorldRoot that made it.
+## Walking into one's exit emits section_exit once.
+var links: Array[SectionLink] = []
+## Where the angler starts (m) when he arrives from another section; INF
+## starts him at the stretch's angler_start.
+var arrive_at := Vector2.INF
+signal section_exit(link: SectionLink)
 
 const VIEW := Vector2(320, 200)
 
@@ -96,7 +103,7 @@ func _enter_tree() -> void:
 		river = section
 	else:
 		river.build_stretch(stretch)
-	_walker.setup(river, world_size(), true, WorldScale.vec_to_px(stretch.angler_start))
+	_walker.setup(river, world_size(), true, WorldScale.vec_to_px(stretch.angler_start if arrive_at == Vector2.INF else arrive_at))
 	camera = CameraRig.new()
 	camera.setup(world_size(), _walker.feet, _walker.facing)
 	add_child(camera)
@@ -137,6 +144,11 @@ func _process(delta: float) -> void:
 		_grass.angler_at(_walker.feet)
 	if _streamer != null:
 		_streamer.update(visible_rect())
+	for link in links:
+		if link.exit.has_point(WorldScale.vec_to_m(_walker.feet)):
+			links = []
+			section_exit.emit(link)
+			break
 	_view.tick(delta, visible_rect())
 	_walker.show_rod(rod_tip(), _cast.rod_butt() * ROD_LENGTH if _cast != null else Vector2.ZERO,
 		_cast != null and _cast.shows_arm())
@@ -171,6 +183,21 @@ func _setup_streamer() -> void:
 	# The camera has not moved yet: build what is around the angler.
 	_streamer.setup(river as SectionField, water_on, _bank.look if land_on else null,
 		Rect2(_walker.feet - VIEW, VIEW * 2.0))
+
+
+## The fishing node, so a WorldRoot can carry the day into the next section.
+func fishing() -> Node:
+	return get_node_or_null(^"Fishing")
+
+
+## The section and the chunk under the angler, for the debug overlay.
+func debug_lines() -> PackedStringArray:
+	if stretch == null:
+		return PackedStringArray()
+	var line := "section  %s" % stretch.display_name
+	if river is SectionField:
+		line += "  chunk %s" % (river as SectionField).key_of(WorldScale.vec_to_m(_walker.feet))
+	return PackedStringArray([line])
 
 
 ## Current velocity (px/s) at a point on screen (px).
