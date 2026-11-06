@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="River" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/river/river.gd" id="1_river"]
+[ext_resource type="Script" path="res://scripts/river/section_link.gd" id="2_link"]
+[ext_resource type="Resource" path="res://data/stretches/fall_river_upper_fall.tres" id="3_upper"]
+[ext_resource type="Resource" path="res://data/stretches/demo_freestone.tres" id="4_lower"]
+
+[sub_resource type="Resource" id="link_down"]
+script = ExtResource("2_link")
+from = ExtResource("3_upper")
+exit = Rect2(0, 462, 129, 3)
+to = ExtResource("4_lower")
+arrive_at = Vector2(5, 7.5)
+
+[sub_resource type="Resource" id="link_up"]
+script = ExtResource("2_link")
+from = ExtResource("4_lower")
+exit = Rect2(0, 0, 2.5, 75)
+to = ExtResource("3_upper")
+arrive_at = Vector2(98, 455)
+
+[resource]
+script = ExtResource("1_river")
+display_name = "Fall River"
+sections = Array[Resource]([ExtResource("3_upper"), ExtResource("4_lower")])
+links = Array[Resource]([SubResource("link_down"), SubResource("link_up")])

@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="WorldMap" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/river/world_map.gd" id="1_world"]
+[ext_resource type="Resource" path="res://data/rivers/fall_river.tres" id="2_fall"]
+[ext_resource type="Resource" path="res://data/stretches/fall_river_upper_fall.tres" id="3_upper"]
+
+[resource]
+script = ExtResource("1_world")
+rivers = Array[Resource]([ExtResource("2_fall")])
+start = ExtResource("3_upper")

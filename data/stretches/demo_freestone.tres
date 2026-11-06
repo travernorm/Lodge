@@ -186,6 +186,7 @@ density = 1.0
 
 [resource]
 script = ExtResource("1_7rl41")
+display_name = "Lower Fall (placeholder)"
 size_m = Vector2(120, 75)
 centreline = PackedVector2Array(-7.5, 18, 21, 19.5, 43.5, 30, 60, 45, 75, 55.5, 88.5, 63.75, 100.5, 64.5, 108.75, 57, 108, 43.5, 100.5, 30, 99, 13.5, 103.5, -9)
 half_width = 8.0
