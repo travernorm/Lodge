@@ -159,6 +159,7 @@ tools/run_tests.sh          Runs every test the way CI does
 export_presets.cfg          Linux x86_64 export for Steam Deck
 docs/TOOLING.md             Tools, Steam Deck testing, conventions
 docs/DEVELOPMENT_PROCESS.md How changes are planned, tested across systems and handed off
+docs/ART_GUIDE.md           How art is made without drawing: PixelLab briefs, cleanup, import, shaders
 ```
 
 See [docs/TOOLING.md](docs/TOOLING.md) for the full setup, including how to get builds onto a Steam Deck.
