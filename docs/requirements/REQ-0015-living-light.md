@@ -1,6 +1,6 @@
 # REQ-0015: Living light, storms and textured rain and snow
 
-Status: draft (waiting for Traver's answers and approval; no game code yet)
+Status: draft (question 1 answered; waiting for Traver's approval; no game code yet)
 
 ## Problem
 
@@ -96,8 +96,8 @@ Sound (thunder, rain), lightning sending the player off the water, wind moving t
 
 ## Open questions
 
-1. **What moves the time of day?**
-   - **A. Look only (recommended first).** During a visit the light drifts from the start of its slot to the end over a set time (say ten minutes) and holds there. Nothing about the fish or hatch changes.
+1. **What moves the time of day?** Answered by Traver, 2026-11-09: **A, look only.**
+   - **A. Look only (chosen).** During a visit the light drifts from the start of its slot to the end over a set time (say ten minutes) and holds there. Nothing about the fish or hatch changes.
    - **B. A real clock.** The day advances while you fish and crossing into the next slot changes the hatch and fish activity. This is the "Clock" other REQs have deferred; it touches Fishing and needs its own REQ, built before or after this one.
 2. **Retire versions A / B / C** and make the full look the only one? Recommended: yes.
 3. **Who makes the rain and snow sprites?** Recommended: Traver generates them in PixelLab from the appendix briefs. They are tiny, so if PixelLab struggles at that size, the fallback is that I supply simple few-pixel shapes in palette colours as swappable placeholders.
