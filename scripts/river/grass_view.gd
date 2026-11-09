@@ -16,6 +16,10 @@ extends Node2D
 ## Debug: Select / F1 to the Grass view shows the variant and the wind; there,
 ## R2 / F2 steps through the variants (A lean, B part and trail, C rustle).
 
+## The wind right now (REQ-0015): where it is heading and how hard, 0 to 1.
+## main.tscn connects it to the weather view, so clouds and rain follow it.
+signal wind_blew(direction: Vector2, strength: float)
+
 const FONT_SIZE := 8
 const COL_PANEL := Color(0, 0, 0, 0.55)
 const COL_TEXT := Color("f4efe0")
@@ -121,6 +125,7 @@ func _process(delta: float) -> void:
 	if look == null or (field.size() == 0 and chunks.is_empty()):
 		return
 	wind.step(delta)
+	wind_blew.emit(wind.direction, wind.strength)
 	if _angler != Vector2.INF:
 		for f: GrassField in _fields():
 			f.step(delta, _angler, push, look)

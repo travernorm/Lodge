@@ -1,7 +1,10 @@
-[gd_resource type="Resource" script_class="WeatherLook" load_steps=8 format=3]
+[gd_resource type="Resource" script_class="WeatherLook" load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/conditions/weather_look.gd" id="1_look"]
 [ext_resource type="Script" path="res://scripts/conditions/weather_style.gd" id="2_style"]
+[ext_resource type="Texture2D" path="res://assets/weather/rain.png" id="3_rain"]
+[ext_resource type="Texture2D" path="res://assets/weather/snow.png" id="4_snow"]
+[ext_resource type="Texture2D" path="res://assets/weather/splash.png" id="5_splash"]
 
 [sub_resource type="Resource" id="Resource_sunny"]
 script = ExtResource("2_style")
@@ -9,7 +12,7 @@ tint = Color(1, 0.98, 0.94, 1)
 brightness = 1.0
 saturation = 1.05
 contrast = 1.05
-clouds = 0.6
+clouds = 0.7
 fall_amount = 0
 fall_colour = Color(0.85, 0.9, 1, 0.5)
 fall_speed_mps = 20.0
@@ -18,6 +21,8 @@ fall_slant_deg = 8.0
 fall_sway_m = 0.0
 ripples = 0.0
 flashes_per_minute = 0.0
+cloud_cover = 0.38
+cloud_speed_mps = 0.7
 
 [sub_resource type="Resource" id="Resource_overcast"]
 script = ExtResource("2_style")
@@ -25,7 +30,7 @@ tint = Color(0.9, 0.93, 0.97, 1)
 brightness = 0.9
 saturation = 0.7
 contrast = 0.9
-clouds = 0.0
+clouds = 0.25
 fall_amount = 0
 fall_colour = Color(0.85, 0.9, 1, 0.5)
 fall_speed_mps = 20.0
@@ -34,6 +39,8 @@ fall_slant_deg = 8.0
 fall_sway_m = 0.0
 ripples = 0.0
 flashes_per_minute = 0.0
+cloud_cover = 0.92
+cloud_speed_mps = 0.5
 
 [sub_resource type="Resource" id="Resource_rain"]
 script = ExtResource("2_style")
@@ -41,15 +48,22 @@ tint = Color(0.85, 0.9, 0.96, 1)
 brightness = 0.8
 saturation = 0.65
 contrast = 0.9
-clouds = 0.0
+clouds = 0.3
 fall_amount = 240
-fall_colour = Color(0.8, 0.86, 0.95, 0.5)
+fall_colour = Color(1, 1, 1, 0.7)
 fall_speed_mps = 22.0
 fall_length_m = 0.5
 fall_slant_deg = 8.0
 fall_sway_m = 0.0
 ripples = 0.8
 flashes_per_minute = 0.0
+cloud_cover = 1.0
+cloud_speed_mps = 0.8
+fall_texture = ExtResource("3_rain")
+fall_variants = 4
+fall_slant_rows = 4
+splash_texture = ExtResource("5_splash")
+splash_frames = 4
 
 [sub_resource type="Resource" id="Resource_snow"]
 script = ExtResource("2_style")
@@ -57,31 +71,43 @@ tint = Color(0.96, 0.98, 1.04, 1)
 brightness = 1.0
 saturation = 0.6
 contrast = 0.85
-clouds = 0.0
+clouds = 0.15
 fall_amount = 200
-fall_colour = Color(1, 1, 1, 0.9)
+fall_colour = Color(1, 1, 1, 0.95)
 fall_speed_mps = 2.0
 fall_length_m = 0.0
 fall_slant_deg = 5.0
 fall_sway_m = 0.3
 ripples = 0.0
 flashes_per_minute = 0.0
+cloud_cover = 0.95
+cloud_speed_mps = 0.3
+fall_texture = ExtResource("4_snow")
+fall_variants = 4
+fall_slant_rows = 1
 
 [sub_resource type="Resource" id="Resource_storm"]
 script = ExtResource("2_style")
-tint = Color(0.72, 0.77, 0.88, 1)
-brightness = 0.65
-saturation = 0.55
-contrast = 1.1
-clouds = 0.0
+tint = Color(0.8, 0.85, 0.96, 1)
+brightness = 0.85
+saturation = 0.7
+contrast = 1.0
+clouds = 0.3
 fall_amount = 380
-fall_colour = Color(0.8, 0.86, 0.95, 0.55)
+fall_colour = Color(1, 1, 1, 0.8)
 fall_speed_mps = 30.0
 fall_length_m = 0.75
-fall_slant_deg = 25.0
+fall_slant_deg = 12.0
 fall_sway_m = 0.0
 ripples = 1.0
 flashes_per_minute = 4.0
+cloud_cover = 0.9
+cloud_speed_mps = 1.6
+fall_texture = ExtResource("3_rain")
+fall_variants = 4
+fall_slant_rows = 4
+splash_texture = ExtResource("5_splash")
+splash_frames = 4
 
 [resource]
 script = ExtResource("1_look")
@@ -91,5 +117,12 @@ rain = SubResource("Resource_rain")
 snow = SubResource("Resource_snow")
 storm = SubResource("Resource_storm")
 slot_tint = PackedColorArray(1, 0.88, 0.82, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.96, 0.9, 1, 1, 0.78, 0.6, 1, 0.54, 0.63, 0.88, 1)
-slot_brightness = PackedFloat32Array(0.85, 1, 1.05, 1, 0.85, 0.5)
+slot_shadow_tint = PackedColorArray(0.86, 0.85, 1, 1, 0.9, 0.94, 1, 1, 0.94, 0.96, 1, 1, 0.9, 0.92, 1, 1, 0.8, 0.76, 1, 1, 0.62, 0.72, 1, 1)
+slot_brightness = PackedFloat32Array(0.85, 1, 1.05, 1, 0.85, 0.58)
+slot_minutes = 10.0
+cloud_size_m = 14.0
+cloud_wind_mps = 4.0
+flash_strength = 1.0
+wind_slant_deg = 20.0
 fade_seconds = 2.0
+storm_fade_seconds = 10.0

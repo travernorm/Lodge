@@ -1,6 +1,6 @@
 # REQ-0015: Living light, storms and textured rain and snow
 
-Status: draft (question 1 answered; waiting for Traver's approval; no game code yet)
+Status: approved by Traver 2026-11-09; built (not yet played on device, Deck or browser)
 
 ## Problem
 
@@ -25,7 +25,7 @@ One look, not a three-way trial. The A / B / C versions from REQ-0009 are retire
 ### 1. Light that follows the time of day
 
 - A new pure model, `SkyLight`, turns a **time of day** (a number running from dawn to night, not just the slot) plus the weather and its intensity into the light: a sun colour, a shadow colour, how bright, how much cloud, how fast the clouds move.
-- The look holds one **light key** per slot (Dawn, Morning, Noon, Afternoon, Dusk, Night), each with a highlight tint, a shadow tint, brightness, saturation and contrast. `SkyLight` blends smoothly between neighbouring keys, so late afternoon slides into dusk instead of snapping.
+- The look holds one **light key** per slot (Dawn, Morning, Noon, Afternoon, Dusk, Night), each with a highlight tint, a shadow tint and a brightness (saturation and contrast stay with the weather). `SkyLight` blends smoothly between neighbouring keys, so late afternoon slides into dusk instead of snapping.
 - Highlights and shadows are tinted separately (bright pixels take the sun colour, dark pixels the shadow colour). This is what gives gold light with blue shadows at dusk and silver-blue moonlight at night.
 - Where the time of day comes from is open question 1. The light only reads one number, so it works the same whichever answer is chosen.
 
@@ -34,8 +34,8 @@ One look, not a three-way trial. The A / B / C versions from REQ-0009 are retire
 - Cloud shadows are a slow, soft-edged pattern fixed to the ground (they stay put as the camera moves) and drift with the `Wind` model's direction, faster as the wind rises.
 - **Cover** comes from the weather: Sunny has a few well-separated clouds with crisp, clearly moving shadows; Overcast is nearly solid, so the light is flat and the shadows almost vanish; Rain is solid and darker; Storm is heavy, dark and fast.
 - Cover also **breathes** over a minute or two (seeded, R8), so a sunny day has stretches of full sun and stretches where a big cloud dims the whole reach. This is the "light shifts as clouds pass" moment.
-- In a cloud's shadow the picture takes the shadow tint and loses a little saturation; in sun it takes the highlight tint. Shadow edges are dithered so they stay pixel-crisp (ART_GUIDE section 7).
-- The water sparkles only in sun: the water shader's highlights fade under a cloud.
+- In a cloud's shadow the picture takes the shadow tint and loses a little saturation; in sun it takes the highlight tint. Shadow edges are stepped (sun, half shadow, full shadow) so they stay pixel-crisp and don't shimmer as they move.
+- The cloud shadow falls on the water the same way, so the bright riffles dim under a cloud. (As built: this comes from the one full-screen light pass; the water shader itself is unchanged.)
 
 ### 3. Storms with lightning
 
@@ -48,17 +48,17 @@ One look, not a three-way trial. The A / B / C versions from REQ-0009 are retire
 
 ### 4. Textured rain and snow
 
-- **Sprites instead of lines and dots.** Each weather style gets a small sprite sheet per kind: rain streaks (4 variants), snowflakes (4 variants, small to large) and a rain splash (4 frames).
+- **Sprites instead of lines and dots.** Each weather style gets a small sprite sheet per kind: rain streaks (4 variants, each at 4 leans so wind can slant them without rotating pixels), snowflakes (4 variants, small to large) and a rain splash (4 frames). They are in `assets/weather/`.
 - **Two depths.** A far layer (smaller, slower, dimmer, more of them) and a near layer (bigger, faster, fewer). Still under the 400 cap in total.
-- **Rain lands.** Each drop ends in a splash: the ring on water that the water shader already draws, and a tiny splash sprite on land.
+- **Rain lands.** Drops end in a tiny splash ring where they land, on top of the dimples the water shader already draws.
 - **Snow drifts.** Flakes sway on their own phase and lean with the wind; big flakes fall slower.
 - **Gusts.** Slant and speed follow the `Wind` model, so a storm's rain comes in sheets with the same gusts that move the grass.
 - **Wet ground.** In rain the bank and gravel darken and deepen slightly (a `wetness` number to the bank shader) and dry out over a minute afterwards.
-- Sprite briefs for PixelLab are in the appendix. Until the sprites exist the current streak and dot stand in, and the PR will say so.
+- The sprites were made by Claude, a few pixels each in palette colours (question 3). The PixelLab briefs in the appendix remain for when Traver wants to replace them.
 
 ### Tuning
 
-Everything above is a field on the weather look (`data/weather_looks/default.tres`), tuned live in the Inspector as today. R2 / F2 still steps the weather. With the debug overlay open, R2 / F2 instead scrubs the time of day, and a strike can be triggered, so every light can be seen without waiting.
+Everything above is a field on the weather look (`data/weather_looks/default.tres`), tuned live in the Inspector as today. R2 / F2 still steps the weather. With the debug overlay open, R2 / F2 instead moves the time of day on half a slot, and in a storm also strikes, so every light can be seen without waiting. `tools/capture_weather.gd` saves a still of any weather and time.
 
 ## Out of scope
 
@@ -69,9 +69,9 @@ Sound (thunder, rain), lightning sending the player off the water, wind moving t
 | System | Changes? | Depends on the change? | How it's checked |
 |---|---|---|---|
 | Casting | No | Draws under the weather layer | playthrough_test |
-| River | Water shader: sparkle fades under cloud. Bank shader: `wetness` | No | water_view_test, bank_test |
+| River | Bank shader and `BankView.set_wetness`: `wetness`. `GrassView` emits `wind_blew` | WeatherView takes the wind | bank_test, grass_test, weather_view_test |
 | Fishing | No (question 1, option B would add a clock that changes the slot) | Emits `conditions_changed` as today | fishing_test |
-| Conditions | New `SkyLight` and `LightningModel` models; `WeatherLook` and `WeatherStyle` gain fields; `WeatherMix.Version` removed | WeatherView, WaterView, BankView | new sky_light_test, lightning_test; weather_view_test updated |
+| Conditions | New `SkyLight` and `LightningModel` models; `WeatherLook` and `WeatherStyle` gain fields; `WeatherMix.Version` removed; new `WeatherFallView` | WeatherView, WaterView, BankView | new sky_light_test, lightning_test; weather_view_test updated |
 | UI and modes | Debug overlay open: R2 / F2 scrubs the time of day | No | playthrough_test |
 | Input | No new action | No | input drift check |
 | Saves | No | No | n/a |
@@ -99,21 +99,23 @@ Sound (thunder, rain), lightning sending the player off the water, wind moving t
 1. **What moves the time of day?** Answered by Traver, 2026-11-09: **A, look only.**
    - **A. Look only (chosen).** During a visit the light drifts from the start of its slot to the end over a set time (say ten minutes) and holds there. Nothing about the fish or hatch changes.
    - **B. A real clock.** The day advances while you fish and crossing into the next slot changes the hatch and fish activity. This is the "Clock" other REQs have deferred; it touches Fishing and needs its own REQ, built before or after this one.
-2. **Retire versions A / B / C** and make the full look the only one? Recommended: yes.
-3. **Who makes the rain and snow sprites?** Recommended: Traver generates them in PixelLab from the appendix briefs. They are tiny, so if PixelLab struggles at that size, the fallback is that I supply simple few-pixel shapes in palette colours as swappable placeholders.
-4. **Lightning as light only**, with no bolt drawn? Recommended: yes, since the camera looks down. A bolt reflected in the water could be added later.
+2. **Retire versions A / B / C** and make the full look the only one? Recommended: yes. Traver, 2026-11-09: go with the recommendations.
+3. **Who makes the rain and snow sprites?** Traver, 2026-11-09: Claude makes them. They are a few pixels each, placed by `tools/make_weather_sprites.py` in palette colours, and each is a slot Traver can swap.
+4. **Lightning as light only**, with no bolt drawn? Recommended: yes, since the camera looks down. A bolt reflected in the water could be added later. Traver, 2026-11-09: go with the recommendations.
+
+Found while building, not changed here: the fly box, catch count and coaching text are drawn under the weather layer, so they dim at night and in a storm along with the river. Moving them above the light is a small follow-up if Traver wants it.
 
 ## Architecture review
 
 - **Layers (R1).** `SkyLight` and `LightningModel` are pure models (`RefCounted`, layer 2) beside `Wind` in `scripts/conditions/`. `WeatherLook` and `WeatherStyle` are data. `WeatherView` stays a view and only paints what the models say.
 - **One writer (R2).** `WeatherView` owns its `SkyLight` and steps it. The time of day has one writer: the view's own visit timer under option A, the clock under option B.
-- **Call down, signal up (R3).** `WeatherView` emits `sky_changed` (cloud pattern, cover, wetness), connected in `main.tscn` to `WaterView` and `BankView`, the same way `rain_on_water` is connected today. No sibling reads.
+- **Call down, signal up (R3).** `WeatherView` emits `ground_wet`, connected in `main.tscn` to `BankView.set_wetness`, the same way `rain_on_water` reaches the water. The wind keeps its one owner (`GrassView`), which emits `wind_blew`, connected to `WeatherView.set_wind`. No sibling reads.
 - **Seeded randomness (R8).** Cloud breathing and strikes use seeded RNGs.
 - **Metres (R11).** Cloud size and drift, fall speed and sprite sizes are in metres or seconds in the models and converted through `WorldScale` in the view.
-- **Line caps (R9).** `weather_view.gd` is 244 lines; the falling layers move to a small `WeatherFallView` child so it stays under 400. No ledger entry changes.
+- **Line caps (R9).** The falling layers moved to a `WeatherFallView` child, so `weather_view.gd` went from 244 lines to about 220. No ledger entry changes.
 - **Web and Deck.** Still one full-screen pass plus sprites drawn in batches; canvas shaders only, no real-time lights, no GPU particles.
-- **Hot files.** `scenes/main.tscn` (two signal connections). `project.godot`, `README.md` controls table, `fishing_controller.gd` and `smoke_test.gd` untouched under option A.
-- **Map.** New scripts go in the class index; WeatherView to WaterView and BankView go in the system map.
+- **Hot files.** `scenes/main.tscn` (two signal connections), `README.md` (the R2 / F2 row and two tool lines). `project.godot`, `fishing_controller.gd` and `smoke_test.gd` untouched.
+- **Map.** New scripts are in the class index; WeatherView to BankView and GrassView to WeatherView are in the system map.
 
 ## Appendix: PixelLab briefs for rain and snow
 

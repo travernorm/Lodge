@@ -40,6 +40,7 @@ var _size := Vector2.ZERO
 var _river: RiverField
 ## Chunks of a section it paints (REQ-0014), by key: Vector2i -> [Node2D, RiverField].
 var _chunks := {}
+var _wetness := 0.0
 
 
 func _ready() -> void:
@@ -82,6 +83,15 @@ func add_chunk(key: Vector2i, river: RiverField, area: Rect2, img: Image) -> voi
 			part.draw_rect(area, Color.WHITE))
 	add_child(part)
 	_chunks[key] = [part, river]
+
+
+## How wet the ground is, 0 dry to 1 soaked (REQ-0015). main.tscn connects
+## the weather view's ground_wet here.
+func set_wetness(amount: float) -> void:
+	_wetness = clampf(amount, 0.0, 1.0)
+	_mat.set_shader_parameter(&"wetness", _wetness)
+	for entry: Array in _chunks.values():
+		((entry[0] as Node2D).material as ShaderMaterial).set_shader_parameter(&"wetness", _wetness)
 
 
 func drop_chunk(key: Vector2i) -> void:

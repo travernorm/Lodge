@@ -34,6 +34,8 @@ uniform float tuft_density = 0.025;
 uniform float pebble_density = 0.45;
 uniform float pebble_px = 3.0;
 
+// Rain on the ground (REQ-0015): 0 dry to 1 soaked, darker and richer.
+uniform float wetness = 0.0;
 uniform float wet_m = 0.25;
 uniform float sand_m = 0.3;
 uniform float face_height_m = 2.0;
@@ -122,5 +124,9 @@ void fragment() {
 		COLOR = ground(sand_tex, has_sand, sand_tint, p);
 	} else {
 		COLOR = hash(p) < tuft_density ? tuft_tint : ground_tint;
+	}
+	if (wetness > 0.0) {
+		float grey = dot(COLOR.rgb, vec3(0.299, 0.587, 0.114));
+		COLOR.rgb = mix(COLOR.rgb, mix(vec3(grey), COLOR.rgb, 1.15) * 0.84, wetness);
 	}
 }
