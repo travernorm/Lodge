@@ -125,7 +125,8 @@ The river works in metres (see REQ-0001): one screen is 40 m by 25 m. The origin
 ## Project layout
 
 ```
-scenes/main.tscn            Test stream scene (entry point)
+scenes/world.tscn           Game entry point: plays the world map one river section at a time
+scenes/main.tscn            One section (the demo stretch when run alone)
 scripts/controls.gd         `Controls` autoload: action names and stick helpers
 scripts/stream_scene.gd     Placeholder river (bed, boulder, flow_at), angler and rod
 scripts/river/river_field.gd  River field: current, depth, seams and trout lies on a grid

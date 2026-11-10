@@ -147,6 +147,9 @@ func _draw() -> void:
 	var cast := get_tree().get_first_node_in_group(&"cast")
 	if cast != null:
 		lines = cast.debug_lines()
+	var section := get_tree().get_first_node_in_group(&"stream")
+	if section != null and section.has_method(&"debug_lines"):
+		lines.append_array(section.debug_lines())
 	var fishing := get_tree().get_first_node_in_group(&"fishing")
 	if fishing != null:
 		lines.append_array(fishing.debug_lines())

@@ -44,7 +44,7 @@ const STEP := 1.0  # metres per step when tracing the river
 
 
 ## A river as read from its sheets.
-class River:
+class SheetRiver:
 	var id := ""
 	var name := ""
 	var width_m := 16.0
@@ -86,8 +86,8 @@ class River:
 class Plan:
 	var errors := PackedStringArray()
 	var notes := PackedStringArray()  # planned kinds, not built yet
-	var rivers: Array = []  # of River
-	## {path, stretch: Stretch, river: River, from, to, name}
+	var rivers: Array = []  # of SheetRiver
+	## {path, stretch: Stretch, river: SheetRiver, from, to, name}
 	var sections: Array[Dictionary] = []
 
 
@@ -95,11 +95,11 @@ static func plan(dir := SHEET_DIR) -> Plan:
 	var p := Plan.new()
 	var rivers := _read_rivers(dir.path_join(RIVERS), p)
 	_read_markers(dir.path_join(MARKERS), rivers, p)
-	for r: River in rivers.values():
+	for r: SheetRiver in rivers.values():
 		_trace(r, p)
 		p.rivers.append(r)
 	if p.errors.is_empty():
-		for r: River in p.rivers:
+		for r: SheetRiver in p.rivers:
 			_plan_sections(r, p)
 	return p
 
@@ -140,7 +140,7 @@ static func _read_rivers(path: String, p: Plan) -> Dictionary:
 	var out := {}
 	for d in _rows(path, p):
 		var where := "rivers.csv row %d" % d._row
-		var r := River.new()
+		var r := SheetRiver.new()
 		r.id = d.get("id", "")
 		if not RegEx.create_from_string(Sheets.ID_RULE).search(r.id):
 			p.errors.append("%s: id '%s' must be lower case letters, digits and _" % [where, r.id])
@@ -191,7 +191,7 @@ static func _read_markers(path: String, rivers: Dictionary, p: Plan) -> void:
 		if kind in PLANNED:
 			p.notes.append("%s: drawn on the plate; built later" % where)
 		rivers[rid].markers.append(m)
-	for r: River in rivers.values():
+	for r: SheetRiver in rivers.values():
 		r.markers.sort_custom(func(a, b): return a.at < b.at)
 
 
@@ -211,7 +211,7 @@ static func _check_value(m: Dictionary, where: String, p: Plan) -> void:
 				p.errors.append("%s: side is required (left, right or mid)" % where)
 
 
-static func _check_spawn(r: River, where: String, p: Plan) -> void:
+static func _check_spawn(r: SheetRiver, where: String, p: Plan) -> void:
 	if r.spawn == "":
 		p.errors.append("%s: spawn is required (redband:0.6;brook:0.2)" % where)
 	for pair in r.spawn.split(";", false):
@@ -247,7 +247,7 @@ static func _bend_angle(value: String) -> float:
 # ---- Building --------------------------------------------------------------
 
 ## Walks the river from its top, turning through each bend.
-static func _trace(r: River, p: Plan) -> void:
+static func _trace(r: SheetRiver, p: Plan) -> void:
 	var end_at := 0.0
 	var has_end := false
 	for m in r.markers:
@@ -270,13 +270,13 @@ static func _trace(r: River, p: Plan) -> void:
 		for m in r.markers:
 			if m.kind == "bend" and s >= m.at and s < m.at + m.length:
 				h += deg_to_rad(_bend_angle(m.value)) * STEP / m.length
-		pos += River._dir(h) * STEP
+		pos += SheetRiver._dir(h) * STEP
 	for m in r.markers:
 		if m.at > end_at + 0.001:
 			p.errors.append("%s: past the river's end at %d m" % [m.row, end_at])
 
 
-static func _plan_sections(r: River, p: Plan) -> void:
+static func _plan_sections(r: SheetRiver, p: Plan) -> void:
 	var starts: Array[Dictionary] = []
 	for m in r.markers:
 		if m.kind == "section":
@@ -289,8 +289,10 @@ static func _plan_sections(r: River, p: Plan) -> void:
 		var to: float = starts[k + 1].at if k + 1 < starts.size() else r.length_m
 		var title: String = starts[k].title
 		var path := _stretch_path("%s_%s" % [r.id, slug(title)])
+		var st := build_section(r, from, to)
+		st.display_name = title
 		p.sections.append({"path": path, "river": r, "from": from, "to": to, "name": title,
-			"stretch": build_section(r, from, to), "origin": section_box(r, from, to).position})
+			"stretch": st, "origin": section_box(r, from, to).position})
 
 
 ## "Upper Fall" -> upper_fall.
@@ -308,7 +310,7 @@ static func _stretch_path(id: String) -> String:
 
 
 ## One section of a river as a Stretch, in its own map with its top-left at 0.
-static func build_section(r: River, from: float, to: float) -> Stretch:
+static func build_section(r: SheetRiver, from: float, to: float) -> Stretch:
 	var hw := r.width_m * 0.5
 	var box := section_box(r, from, to)
 	var origin := box.position
@@ -351,7 +353,7 @@ static func build_section(r: River, from: float, to: float) -> Stretch:
 
 ## The section's map in river coordinates (m): the river plus BANK_ROOM of
 ## land, snapped to whole metres. Its top-left is the map's origin.
-static func section_box(r: River, from: float, to: float) -> Rect2:
+static func section_box(r: SheetRiver, from: float, to: float) -> Rect2:
 	var box := Rect2(r.point_at(from), Vector2.ZERO)
 	var s := from
 	while s <= to:
@@ -378,7 +380,7 @@ static func section_box(r: River, from: float, to: float) -> Rect2:
 
 
 ## Inside the section the real river; past its ends, straight on.
-static func _lead_point(r: River, from: float, to: float, s: float) -> Vector2:
+static func _lead_point(r: SheetRiver, from: float, to: float, s: float) -> Vector2:
 	if s < from:
 		return r.point_at(from) - r.dir_at(from) * (from - s)
 	if s > to:
@@ -386,7 +388,7 @@ static func _lead_point(r: River, from: float, to: float, s: float) -> Vector2:
 	return r.point_at(s)
 
 
-static func _depth_keys(r: River, a: float, b: float) -> PackedVector2Array:
+static func _depth_keys(r: SheetRiver, a: float, b: float) -> PackedVector2Array:
 	var keys := {0.0: BASE_DEPTH, 1.0: BASE_DEPTH}
 	var span := b - a
 	for m in r.markers:
@@ -405,7 +407,7 @@ static func _depth_keys(r: River, a: float, b: float) -> PackedVector2Array:
 	return out
 
 
-static func _spawn(r: River) -> Array[SpawnEntry]:
+static func _spawn(r: SheetRiver) -> Array[SpawnEntry]:
 	var out: Array[SpawnEntry] = []
 	for pair in r.spawn.split(";", false):
 		var kv := pair.split(":")
@@ -418,7 +420,7 @@ static func _spawn(r: River) -> Array[SpawnEntry]:
 
 ## Where a marker sits (m, in the section's map). In the water it is offset_m
 ## in from its bank; on land (`land`), offset_m back from the water.
-static func _place(r: River, m: Dictionary, hw: float, origin: Vector2, land := false) -> Vector2:
+static func _place(r: SheetRiver, m: Dictionary, hw: float, origin: Vector2, land := false) -> Vector2:
 	var c := r.point_at(m.at)
 	if m.side == "mid" or m.side == "":
 		return c - origin
@@ -427,7 +429,7 @@ static func _place(r: River, m: Dictionary, hw: float, origin: Vector2, land := 
 	return c + out * (hw + off if land else hw - off) - origin
 
 
-static func _feature(r: River, m: Dictionary, hw: float, origin: Vector2) -> RiverFeature:
+static func _feature(r: SheetRiver, m: Dictionary, hw: float, origin: Vector2) -> RiverFeature:
 	match m.kind:
 		"boulder":
 			return Boulder.make(_place(r, m, hw, origin), m.size if m.size > 0.0 else 0.8)
