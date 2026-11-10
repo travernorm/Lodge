@@ -13,7 +13,7 @@ extends SceneTree
 ##   * walking only while reeled in, and B reeling in a drift
 ##   * the weather debug key (R2 / F2) during a drift: every weather comes round,
 ##     the fish stay, the drift carries on, and with a debug view open it steps
-##     through the weather look versions (REQ-0009)
+##     the light round the day (REQ-0009, REQ-0015)
 ##   * the tall grass (REQ-0012): walking through bends it, and in the debug
 ##     overlay's Grass view R2 / F2 steps the grass variants, not the weather
 ##   * the cast look versions (Square / M in practice with the line in): every
@@ -314,7 +314,7 @@ func _rod_pass() -> bool:
 
 
 ## R2 / F2 steps the day's weather round during a drift without touching the
-## fish or the drift; with a debug view open it steps the look versions round.
+## fish or the drift; with a debug view open it steps the light round the day.
 func _weather_pass() -> bool:
 	var view: Node = _main.get_node_or_null(^"Weather/WeatherView")
 	if view == null or not view.has_method(&"show_conditions"):
@@ -346,17 +346,19 @@ func _weather_pass() -> bool:
 		return false
 	await _press_event(&"toggle_debug")
 	var weather: Calendar.Weather = _fishing.conditions.weather
-	for i in WeatherMix.Version.size():
+	var time_before: float = view.sky.day_time
+	var scrubs := int(Calendar.Slot.size() / WeatherMix.SCRUB_SLOTS)
+	for i in scrubs:
 		await _press_event(Controls.DEBUG_WEATHER)
 	await _cycle_debug_views_closed()
-	if view.version != WeatherMix.Version.GRADE or _fishing.conditions.weather != weather:
-		_fail("With a debug view open, R2 / F2 didn't step the look versions round (version %d)" % view.version)
+	if absf(view.sky.day_time - time_before) > 0.1 or _fishing.conditions.weather != weather:
+		_fail("With a debug view open, R2 / F2 didn't step the light round the day (%.2f to %.2f)" % [time_before, view.sky.day_time])
 		return false
 	await _tap(&"back")
 	await _wait_for(func(): return _cast.model.state == CastModel.State.IDLE, 3.0)
 	_trout.species.bite_chance = 1.0
-	print("  ok    weather: R2 / F2 stepped %d days through every weather in a drift, fish kept; %d look versions" % [
-		WeatherMix.DEBUG_STEPS.size(), WeatherMix.Version.size()])
+	print("  ok    weather: R2 / F2 stepped %d days through every weather in a drift, fish kept; %d steps of light round the day" % [
+		WeatherMix.DEBUG_STEPS.size(), scrubs])
 	return true
 
 
@@ -388,7 +390,7 @@ func _grass_pass() -> bool:
 		return false
 	_main.angler_pos = home
 	var weather: Calendar.Weather = _fishing.conditions.weather
-	var version: int = _main.get_node(^"Weather/WeatherView").version
+	var light: float = _main.get_node(^"Weather/WeatherView").sky.day_time
 	var first: GrassField.Push = grass.push
 	while _overlay.view != _overlay.View.GRASS:
 		await _press_event(&"toggle_debug")
@@ -400,8 +402,8 @@ func _grass_pass() -> bool:
 	if seen.size() != GrassField.Push.size() or grass.push != first:
 		_fail("In the Grass view, R2 / F2 didn't step the grass variants round (saw %d)" % seen.size())
 		return false
-	if _fishing.conditions.weather != weather or _main.get_node(^"Weather/WeatherView").version != version:
-		_fail("In the Grass view, R2 / F2 also changed the weather")
+	if _fishing.conditions.weather != weather or absf(_main.get_node(^"Weather/WeatherView").sky.day_time - light) > 0.1:
+		_fail("In the Grass view, R2 / F2 also changed the weather or the light")
 		return false
 	print("  ok    grass: %d clumps, walking bends them, R2 / F2 steps %d variants in the Grass view" % [
 		field.size(), GrassField.Push.size()])

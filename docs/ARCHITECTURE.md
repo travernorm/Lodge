@@ -96,7 +96,7 @@ The data folders today, each covered by `tests/data_test.gd`:
 * `data/cast_looks/`: `CastLook`, how the rod and the angler's arm move through a cast on screen (a feel experiment): which version starts (Off, A rod sweep, B cutout arm), the rod's stop angles, its bend, and B's fixed angles. `CastPose` does the sums; the cast node holds the version on trial and `AnglerView` draws it.
 * `data/grass_looks/`: `GrassLook`, how the tall grass looks and moves (REQ-0012): clump sprites (a placeholder clump of blades until Traver's art), size and density, how it reacts to the angler (the variant on trial, push radius, lean, spring-back, trail, rustle) and the wind per weather. `GrassView` draws it in every `GrassPatch` of the stretch. `spring.tres` is the game's look.
 * `data/bank_looks/`: `BankLook`, how the shoreline looks (REQ-0013): the cut bank face strip (`assets/bank/cut_bank.png`, Traver's PixelLab art), slots for wet stones, gravel and sand textures (placeholder pebbles in a tint until they're set), the ground under the grass, and the widths of the wet line, gravel, point bars and sand. `BankZones` decides where each goes; `BankView` paints it from the river field. `spring.tres` is the game's look.
-* `data/weather_looks/`: `WeatherLook`, how the weather and the time of day look on screen (REQ-0009): a `WeatherStyle` per weather (grade, rain or snow, cloud shadows, rain dimples, lightning) and a tint and brightness per slot. `WeatherView` paints it from the day's `Conditions`.
+* `data/weather_looks/`: `WeatherLook`, how the weather and the time of day look on screen (REQ-0009, REQ-0015): a `WeatherStyle` per weather (grade, cloud cover and shadows, rain or snow sprite sheets from `assets/weather/`, rain dimples, lightning) and a light key per slot (highlight tint, shadow tint, brightness) that the light blends between as a visit drifts through its slot. `WeatherView` paints it from the day's `Conditions`, its `SkyLight` and its `LightningModel`.
 * `data/calendar.tres`: `Calendar`, the year's rules (REQ-0007): how each slot lowers the air, how the water follows it, and how keen fish are in each slot and weather. Not in the catalog; the fishing node takes it as an export.
 * `data/water_types.tres`: `WaterTypeRules`, how the river's water is sorted into riffle, run, pool, tail-out, pocket, seam and eddy (REQ-0010), plus the `WaterType` enum and the stray weight for water a species doesn't list. Not in the catalog; code reaches it through `WaterTypeRules.shared()`.
 * `data/climates/`: `Climate`, one per region (REQ-0008; today `central_oregon.tres`): each season's highs, weather odds and persistence (how long spells last), how far the high wanders a day, how each weather lowers it, when storms hit, and how hard rain, snow and storms fall. A new region is a new file. Not in the catalog; the fishing node takes one as an export until regions exist.
@@ -249,7 +249,7 @@ Game (Node)                         owns GameState, pause and menus; loads stret
 │  ├─ CastView (Node2D)             line in the air, timing meter
 │  ├─ Angler (Node2D)               walking, rod pose
 │  └─ Camera2D                      owned by the stretch, follows the angler
-├─ Weather (CanvasLayer)            the weather's grade, rain and snow (WeatherView)
+├─ Weather (CanvasLayer)            the light, clouds, lightning, rain and snow (WeatherView)
 ├─ Hud (CanvasLayer)                fly box, catch count, coaching text, fight meter, catch card
 ├─ Screens (CanvasLayer)            journal, fly box, game menu with controls (backlog)
 └─ DebugLayer (CanvasLayer)         finds things through groups
@@ -377,9 +377,12 @@ Every script, its layer and its system. `architecture_test.gd` fails if a script
 | `scripts/casting/rules/tiered_rules.gd` | `TieredCastRules` | Rule set (data) | Casting |
 | `scripts/conditions/calendar.gd` | `Calendar` | Data | Conditions |
 | `scripts/conditions/climate.gd` | `Climate` | Data (place: a region) | Conditions (weather) |
+| `scripts/conditions/lightning_model.gd` | `LightningModel` | Model | Conditions (weather drawing: when lightning strikes and how bright) |
 | `scripts/conditions/conditions.gd` | `Conditions` | Model (value; a `Resource` so a fixed day can be set in the inspector) | Conditions |
 | `scripts/conditions/season_window.gd` | `SeasonWindow` | Data | Conditions |
+| `scripts/conditions/sky_light.gd` | `SkyLight` | Model | Conditions (weather drawing: time of day in the slot, cloud cover, wet ground) |
 | `scripts/conditions/weather_day.gd` | `WeatherDay` | Model (value) | Conditions (weather) |
+| `scripts/conditions/weather_fall_view.gd` | `WeatherFallView` | View (child of `WeatherView`) | Conditions (weather drawing: rain, snow, splashes) |
 | `scripts/conditions/weather_generator.gd` | `WeatherGenerator` | Model | Conditions (weather) |
 | `scripts/conditions/weather_look.gd` | `WeatherLook` | Data (look) | Conditions (weather drawing) |
 | `scripts/conditions/weather_mix.gd` | `WeatherMix` | Model | Conditions (weather drawing) |

@@ -47,6 +47,27 @@ The land of a stretch (the wet line at the water, gravel, point bars, sand, the 
    - **Edges**: how ragged the edges between grounds are.
 3. Save, and press Cmd+B to see it in the game.
 
+## Changing how the weather and the light look
+
+The light, clouds, lightning, rain and snow are painted by `WeatherView` from a **weather look**, `data/weather_looks/default.tres` (REQ-0009, REQ-0015). Open it in the Inspector with the game running:
+
+- **Sunny, Overcast, Rain, Snow, Storm**: one style each.
+  - *Grade*: tint, brightness, saturation and contrast for that weather.
+  - *Clouds*: `clouds` is how dark and cool a cloud's shadow is, `cloud_cover` how much of the sky is cloud (around 0.4 gives shadows that come and go, near 1 gives flat light), `cloud_speed_mps` how fast they cross in a calm.
+  - *Falling*: the sprite sheet (`fall_texture`, with how many drops across and lean rows down), the splash strip, how many drops, their speed, lean and sway. The sheets are in `assets/weather/`.
+  - *On the water and in the sky*: rain dimples and lightning strikes a minute.
+- **Time of day**: `slot_tint` is the light on bright things and `slot_shadow_tint` the light in shadow, one each for Dawn, Morning, Noon, Afternoon, Dusk and Night. The light blends from one to the next. `slot_minutes` is how long a visit takes to drift through its slot (0 holds it still).
+- **Clouds and lightning**: the size of a cloud shadow, how much wind speeds the clouds, `flash_strength` (0 turns lightning's flash off) and how far wind leans the rain.
+- **Change**: how long a change of weather fades, and how long a storm takes to build and pass.
+
+To see every light without waiting: R2 / F2 steps the weather. Press Select / F1 to open a debug view and R2 / F2 moves the light on half a slot instead, and in a storm also strikes.
+
+For a still picture of any weather and time (needs a display, so `xvfb-run` on a headless box):
+
+```
+godot --path . --script res://tools/capture_weather.gd -- out.png storm dusk 1.0 flash
+```
+
 ## Controls are defined in code
 
 `tools/setup_input_map.gd` is the source of truth for the input map. To change a binding, edit that file and run:

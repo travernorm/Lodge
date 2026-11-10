@@ -67,6 +67,8 @@ script = ExtResource("2_debug")
 [connection signal="conditions_changed" from="Fishing" to="Weather/WeatherView" method="show_conditions"]
 [connection signal="day_requested" from="Weather/WeatherView" to="Fishing" method="set_conditions"]
 [connection signal="rain_on_water" from="Weather/WeatherView" to="Water" method="set_rain"]
+[connection signal="ground_wet" from="Weather/WeatherView" to="Bank" method="set_wetness"]
+[connection signal="wind_blew" from="Grass" to="Weather/WeatherView" method="set_wind"]
 [connection signal="view_changed" from="DebugLayer/DebugOverlay" to="Weather/WeatherView" method="set_debug_view"]
 [connection signal="conditions_changed" from="Fishing" to="Grass" method="show_conditions"]
 [connection signal="view_changed" from="DebugLayer/DebugOverlay" to="Grass" method="set_debug_view"]

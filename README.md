@@ -102,7 +102,7 @@ The bite numbers live in `data/take_rules/drift_past.tres`.
 | B | Backspace | Back / reel in |
 | Menu (Start) | Esc | Pause |
 | View (Select) | F1 | Cycle debug views: controller, read the water, water types, grass, hidden |
-| R2 | F2 | Debug: next weather (the hatch follows, the fish stay). With a debug view open: next weather look version (A grade, B + rain and snow, C + on the water). In the Grass debug view: next grass variant (A lean, B part and trail, C rustle) |
+| R2 | F2 | Debug: next weather (the hatch follows, the fish stay). With a debug view open: move the light on half a time slot (and strike lightning in a storm). In the Grass debug view: next grass variant (A lean, B part and trail, C rustle) |
 | Left stick click (L3) | T | Casting practice on/off |
 | Right stick click (R3) | Tab | Switch casting rule set |
 
@@ -149,6 +149,8 @@ tools/import_content.gd     Checks the sheets and writes them into data/ (see TO
 scripts/debug_overlay.gd    Bumper timeline, stick readouts, rumble test
 tools/setup_input_map.gd    Source of truth for the input map (regenerates project.godot)
 tools/capture_screenshot.gd Plays a scripted catch and saves screenshots
+tools/capture_weather.gd    Saves a screenshot of a chosen weather, time of day and lightning
+tools/make_weather_sprites.py Writes the rain, snow and splash sheets in assets/weather/
 tests/smoke_test.gd         Headless check: a scripted cast, drift, hook set and fight end in a catch
 tests/cast_test.gd          Headless tests for the cast rhythm
 tests/cast_rules_test.gd    Headless tests for each casting rule set (Short/Middle/Long)
@@ -160,6 +162,7 @@ tools/run_tests.sh          Runs every test the way CI does
 export_presets.cfg          Linux x86_64 export for Steam Deck
 docs/TOOLING.md             Tools, Steam Deck testing, conventions
 docs/DEVELOPMENT_PROCESS.md How changes are planned, tested across systems and handed off
+docs/ART_GUIDE.md           How art is made without drawing: PixelLab briefs, cleanup, import, shaders
 ```
 
 See [docs/TOOLING.md](docs/TOOLING.md) for the full setup, including how to get builds onto a Steam Deck.

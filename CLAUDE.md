@@ -6,7 +6,7 @@ Lodge is a Godot 4.3 fly fishing game (GL Compatibility, 320×200 ×4) for the S
 
 1. [docs/DEVELOPMENT_PROCESS.md](docs/DEVELOPMENT_PROCESS.md): tracks (small, feel experiment, feature), approvals, testing, PRs.
 2. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): layers, rules R1 to R12, where new code goes, the debt ledger.
-3. For fish behaviour, [docs/FISH_LOGIC.md](docs/FISH_LOGIC.md). For Godot vocabulary, [docs/GODOT_PRIMER.md](docs/GODOT_PRIMER.md).
+3. For fish behaviour, [docs/FISH_LOGIC.md](docs/FISH_LOGIC.md). For Godot vocabulary, [docs/GODOT_PRIMER.md](docs/GODOT_PRIMER.md). For any art, sprite, texture or shader look, [docs/ART_GUIDE.md](docs/ART_GUIDE.md).
 
 ## Hard rules
 
